@@ -38,7 +38,8 @@ C++17, Lua/LuaJIT, HLSL/GLSL, CMake, vcpkg/Conan
 在 Claude Code 中运行:
 
 ```
-/plugin install hgl-pong/claude-code-flow
+/plugin marketplace add hgl-pong/claude-code-flow
+/plugin install game-engine-dev@claude-code-flow
 ```
 
 安装后 `/reload-plugins` 生效。

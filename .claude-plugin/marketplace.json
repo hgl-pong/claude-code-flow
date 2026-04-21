@@ -1,0 +1,13 @@
+{
+  "name": "claude-code-flow",
+  "owner": {
+    "name": "hgl-pong"
+  },
+  "plugins": [
+    {
+      "name": "game-engine-dev",
+      "source": ".",
+      "description": "Game engine development workflow with model-tiered agents (oracle/atlas/forge/prism/anvil/sentinel) for planning, architecture, implementation, testing, building, and review."
+    }
+  ]
+}
