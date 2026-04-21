@@ -1,9 +1,9 @@
 ---
-name: Game Engine Dev
-description: This skill should be used when the user asks to "develop a game engine feature", "implement an engine system", "design engine architecture", "add a renderer", "build a physics system", "create an ECS", "set up the build system", "write engine tests", or mentions game engine development tasks involving C++, Lua, HLSL, or CMake. Triggers on any multi-step game engine development task that benefits from agent orchestration and model-tiered delegation.
+name: Dev Orchestrator
+description: This skill should be used when the user asks to "develop a feature", "implement a system", "design architecture", "build an API", "refactor a module", or any multi-step development task that benefits from agent orchestration and model-tiered delegation. Triggers on complex development tasks where planning, implementation, testing, and review should be coordinated.
 ---
 
-# Game Engine Development Orchestrator
+# Development Orchestrator
 
 Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered agents.
 
@@ -13,9 +13,9 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 |-------|-------|------|------|
 | `oracle` | opus | Implementation planning, HTML visualization | Plan |
 | `atlas` | opus | Architecture design, module decomposition | Design |
-| `forge` | sonnet | C++/Lua/HLSL implementation | -- |
+| `forge` | sonnet | Code implementation | -- |
 | `prism` | sonnet | Test frameworks, benchmarks | -- |
-| `anvil` | haiku | CMake, CI/CD, cross-platform build | -- |
+| `anvil` | haiku | Build, CI/CD, dependencies | -- |
 | `sentinel` | sonnet | Code review before commit | Review |
 
 ## Pipeline
@@ -49,7 +49,7 @@ Report & Done
 ## Step 1: Analyze
 
 Classify the task:
-- **Domain**: Rendering, Physics, Audio, ECS, Input, Resource, Build, Testing
+- **Domain**: What area of the codebase is affected
 - **Complexity**: Simple (1-2 subtasks) vs Complex (3+ subtasks, cross-cutting)
 - **Needs design**: Yes (new system) vs No (bug fix, feature addition)
 
@@ -59,7 +59,7 @@ Always invoke oracle. Output differs by complexity.
 
 **Complex** (new system, multi-module, architectural):
 - oracle generates self-contained HTML (inline CSS/JS, dark theme, no external deps)
-- Include: architecture diagram, phase timeline, dependency graph, risk table, file tree
+- Include: architecture overview, phase timeline, dependency graph, risk table, file tree
 - Save to temp file, open in browser, wait for feedback, iterate until approved
 
 **Simple** (bug fix, single feature, config):
@@ -80,18 +80,18 @@ For new systems or architectural changes:
 
 ## Step 4: Implementation
 
-**Simple mode** (1-3 subtasks) -- direct Agent tool calls:
+**Simple mode** (1-3 subtasks) — direct Agent tool calls:
 
 ```
-Agent({ name: "dev", subagent_type: "game-engine-dev:forge", model: "sonnet", prompt: "..." })
+Agent({ name: "dev", subagent_type: "claude-code-flow:forge", model: "sonnet", prompt: "..." })
 ```
 
-**Complex mode** (4+ subtasks) -- Team + TaskList:
+**Complex mode** (4+ subtasks) — Team + TaskList:
 
 ```
-TeamCreate({ team_name: "engine-feature-x" })
+TeamCreate({ team_name: "feature-x" })
 TaskCreate({ subject: "...", addBlockedBy: [...] })
-Agent({ name: "dev-1", team_name: "...", subagent_type: "game-engine-dev:forge", model: "sonnet", prompt: "..." })
+Agent({ name: "dev-1", team_name: "...", subagent_type: "claude-code-flow:forge", model: "sonnet", prompt: "..." })
 ```
 
 **Parallel rules:**
@@ -106,7 +106,7 @@ Always invoke sentinel after implementation:
 ```
 Agent({
   name: "reviewer",
-  subagent_type: "game-engine-dev:sentinel",
+  subagent_type: "claude-code-flow:sentinel",
   model: "sonnet",
   prompt: """
   Task: [task description]
@@ -125,37 +125,9 @@ Agent({
 
 Max 3 review rounds. Escalate to user after that.
 
-## Workflow Examples
-
-**Complex: "Build a physics system with rigid body and collision"**
-1. Plan Gate: HTML with 4 phases, 12 files, 3 risks -> browser review -> approved
-2. Design Gate: atlas designs modules and API -> approved
-3. Implementation: forge + prism + anvil in parallel
-4. Review Gate: 2 issues found -> fix -> re-review -> APPROVE
-5. Report
-
-**Simple: "Fix memory leak in ResourceLoader::load"**
-1. Plan Gate: text summary -> inline approved
-2. Design Gate: skipped
-3. Implementation: forge fixes, prism adds regression test
-4. Review Gate: APPROVE
-5. Report
-
-**Build: "Add vcpkg integration with SDL2 and ImGui"**
-1. Plan Gate: text summary -> approved
-2. Design Gate: skipped
-3. Implementation: anvil
-4. Review Gate: APPROVE
-5. Report
-
 ## Prompting Guidelines
 
 For all agents, include: Context, Scope, Constraints, Dependencies, Output.
 
 For **oracle**: also specify complexity level and HTML requirement.
 For **sentinel**: also specify files to review, plan path, focus areas.
-
-## Additional Resources
-
-- **`references/architecture-patterns.md`** -- ECS, frame graph, memory allocator
-- **`references/performance-guide.md`** -- SIMD, profiling, concurrency
