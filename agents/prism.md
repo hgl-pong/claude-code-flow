@@ -1,5 +1,5 @@
 ---
-name: test-engineer
+name: prism
 description: Use this agent when writing game engine tests, creating test frameworks, implementing unit tests for engine systems, writing integration tests, creating performance benchmarks, testing ECS systems, testing renderers, or setting up continuous testing pipelines. Examples:
 
 <example>

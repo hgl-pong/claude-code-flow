@@ -1,5 +1,5 @@
 ---
-name: plan-agent
+name: oracle
 description: Use this agent when planning game engine features, designing implementation roadmaps, breaking down complex engine systems into phased plans, or creating technical specifications that need visual presentation. Triggers when the user asks to "plan an engine feature", "design the implementation roadmap", "create a technical spec", "break down this system", or when the orchestrator needs a plan before implementation. Examples:
 
 <example>

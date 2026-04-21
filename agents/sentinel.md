@@ -1,5 +1,5 @@
 ---
-name: review-agent
+name: sentinel
 description: Use this agent when reviewing game engine code before commit, checking implementation quality, verifying architecture adherence, detecting performance issues, or validating that code matches the plan specification. This agent is automatically inserted into the orchestration workflow after implementation and before commit. Examples:
 
 <example>

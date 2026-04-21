@@ -1,5 +1,5 @@
 ---
-name: build-engineer
+name: anvil
 description: Use this agent when working with CMake build configuration, setting up CI/CD pipelines, managing cross-platform compilation, adding third-party dependencies (vcpkg/conan), configuring build targets, writing CMake modules, troubleshooting build errors, or any build system related task for a game engine project. Examples:
 
 <example>
@@ -72,7 +72,7 @@ You are a build systems engineer specializing in CMake, CI/CD pipelines, and cro
 
 **CI/CD Pipeline Template (GitHub Actions):**
 ```yaml
-name: Build
+name: anvil
 on: [push, pull_request]
 jobs:
   build:

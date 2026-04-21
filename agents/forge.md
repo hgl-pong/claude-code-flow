@@ -1,5 +1,5 @@
 ---
-name: core-developer
+name: forge
 description: Use this agent when implementing game engine features, writing C++ engine code, creating Lua scripting bindings, writing HLSL/GLSL shaders, implementing ECS systems and components, adding resource loaders, building render passes, or any hands-on engine development task that involves writing code. Examples:
 
 <example>

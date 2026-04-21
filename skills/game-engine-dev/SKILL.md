@@ -11,35 +11,35 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 
 | Agent | Model | Role | Gate |
 |-------|-------|------|------|
-| `plan-agent` | opus | Implementation planning, HTML visualization | Plan |
-| `architect` | opus | Architecture design, module decomposition | Design |
-| `core-developer` | sonnet | C++/Lua/HLSL implementation | -- |
-| `test-engineer` | sonnet | Test frameworks, benchmarks | -- |
-| `build-engineer` | haiku | CMake, CI/CD, cross-platform build | -- |
-| `review-agent` | sonnet | Code review before commit | Review |
+| `oracle` | opus | Implementation planning, HTML visualization | Plan |
+| `atlas` | opus | Architecture design, module decomposition | Design |
+| `forge` | sonnet | C++/Lua/HLSL implementation | -- |
+| `prism` | sonnet | Test frameworks, benchmarks | -- |
+| `anvil` | haiku | CMake, CI/CD, cross-platform build | -- |
+| `sentinel` | sonnet | Code review before commit | Review |
 
 ## Pipeline
 
 All tasks follow this pipeline. Complexity determines which stages activate.
 
 ```
-Plan Gate (plan-agent, Opus)
+Plan Gate (oracle, Opus)
   Complex: HTML viz -> browser review
   Simple:  text summary -> inline approval
   [BLOCKED until user approves]
        |
        v
-Design Gate (architect, Opus) -- only for new systems / arch changes
+Design Gate (atlas, Opus) -- only for new systems / arch changes
   [BLOCKED until user approves]
        |
        v
 Implementation
-  core-developer + test-engineer + build-engineer (parallel where possible)
+  forge + prism + anvil (parallel where possible)
        |
        v
-Review Gate (review-agent, Sonnet)
+Review Gate (sentinel, Sonnet)
   PASS  -> proceed
-  FAIL  -> back to core-developer -> re-review (max 3 rounds)
+  FAIL  -> back to forge -> re-review (max 3 rounds)
   [BLOCKED until review passes]
        |
        v
@@ -55,15 +55,15 @@ Classify the task:
 
 ## Step 2: Plan Gate
 
-Always invoke plan-agent. Output differs by complexity.
+Always invoke oracle. Output differs by complexity.
 
 **Complex** (new system, multi-module, architectural):
-- plan-agent generates self-contained HTML (inline CSS/JS, dark theme, no external deps)
+- oracle generates self-contained HTML (inline CSS/JS, dark theme, no external deps)
 - Include: architecture diagram, phase timeline, dependency graph, risk table, file tree
 - Save to temp file, open in browser, wait for feedback, iterate until approved
 
 **Simple** (bug fix, single feature, config):
-- plan-agent produces text summary: what to change, which files, risks
+- oracle produces text summary: what to change, which files, risks
 - Present inline for quick approval
 
 **Do NOT proceed until user approves the plan.**
@@ -73,8 +73,8 @@ Always invoke plan-agent. Output differs by complexity.
 Skip for: bug fixes, small features, build/CI tasks.
 
 For new systems or architectural changes:
-1. Spawn **architect** (Opus) with approved plan as context
-2. Architect produces: module design, API surface, data layout, file structure
+1. Spawn **atlas** (Opus) with approved plan as context
+2. atlas produces: module design, API surface, data layout, file structure
 3. Present to user for confirmation
 4. Wait for approval
 
@@ -83,7 +83,7 @@ For new systems or architectural changes:
 **Simple mode** (1-3 subtasks) -- direct Agent tool calls:
 
 ```
-Agent({ name: "dev", subagent_type: "game-engine-dev:core-developer", model: "sonnet", prompt: "..." })
+Agent({ name: "dev", subagent_type: "game-engine-dev:forge", model: "sonnet", prompt: "..." })
 ```
 
 **Complex mode** (4+ subtasks) -- Team + TaskList:
@@ -91,22 +91,22 @@ Agent({ name: "dev", subagent_type: "game-engine-dev:core-developer", model: "so
 ```
 TeamCreate({ team_name: "engine-feature-x" })
 TaskCreate({ subject: "...", addBlockedBy: [...] })
-Agent({ name: "dev-1", team_name: "...", subagent_type: "game-engine-dev:core-developer", model: "sonnet", prompt: "..." })
+Agent({ name: "dev-1", team_name: "...", subagent_type: "game-engine-dev:forge", model: "sonnet", prompt: "..." })
 ```
 
 **Parallel rules:**
-- core-developer + test-engineer can parallel if tests are for existing code
-- build-engineer can parallel with test-engineer
-- architect always before core-developer
+- forge + prism can parallel if tests are for existing code
+- anvil can parallel with prism
+- atlas always before forge
 
 ## Step 5: Review Gate
 
-Always invoke review-agent after implementation:
+Always invoke sentinel after implementation:
 
 ```
 Agent({
   name: "reviewer",
-  subagent_type: "game-engine-dev:review-agent",
+  subagent_type: "game-engine-dev:sentinel",
   model: "sonnet",
   prompt: """
   Task: [task description]
@@ -120,7 +120,7 @@ Agent({
 
 **Outcomes:**
 - APPROVE -> report
-- REQUEST CHANGES -> fixes to core-developer -> re-review
+- REQUEST CHANGES -> fixes to forge -> re-review
 - NEEDS DISCUSSION -> present to user
 
 Max 3 review rounds. Escalate to user after that.
@@ -129,22 +129,22 @@ Max 3 review rounds. Escalate to user after that.
 
 **Complex: "Build a physics system with rigid body and collision"**
 1. Plan Gate: HTML with 4 phases, 12 files, 3 risks -> browser review -> approved
-2. Design Gate: architect designs modules and API -> approved
-3. Implementation: core-developer + test-engineer + build-engineer in parallel
+2. Design Gate: atlas designs modules and API -> approved
+3. Implementation: forge + prism + anvil in parallel
 4. Review Gate: 2 issues found -> fix -> re-review -> APPROVE
 5. Report
 
 **Simple: "Fix memory leak in ResourceLoader::load"**
 1. Plan Gate: text summary -> inline approved
 2. Design Gate: skipped
-3. Implementation: core-developer fixes, test-engineer adds regression test
+3. Implementation: forge fixes, prism adds regression test
 4. Review Gate: APPROVE
 5. Report
 
 **Build: "Add vcpkg integration with SDL2 and ImGui"**
 1. Plan Gate: text summary -> approved
 2. Design Gate: skipped
-3. Implementation: build-engineer
+3. Implementation: anvil
 4. Review Gate: APPROVE
 5. Report
 
@@ -152,8 +152,8 @@ Max 3 review rounds. Escalate to user after that.
 
 For all agents, include: Context, Scope, Constraints, Dependencies, Output.
 
-For **plan-agent**: also specify complexity level and HTML requirement.
-For **review-agent**: also specify files to review, plan path, focus areas.
+For **oracle**: also specify complexity level and HTML requirement.
+For **sentinel**: also specify files to review, plan path, focus areas.
 
 ## Additional Resources
 
