@@ -35,45 +35,13 @@ C++17, Lua/LuaJIT, HLSL/GLSL, CMake, vcpkg/Conan
 
 ## 安装
 
-### 全局
+在 Claude Code 中运行:
 
-`~/.claude/settings.json`，在已有的配置中合并以下内容:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "game-engine-dev": {
-      "source": {
-        "source": "directory",
-        "path": "C:/Users/heguoling/Desktop/claude-code-flow"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "game-engine-dev@game-engine-dev": true
-  }
-}
+```
+/plugin install hgl-pong/claude-code-flow
 ```
 
-### 项目级
-
-在**你的游戏引擎项目**根目录创建 `.claude/settings.json`（不是本仓库），路径用相对路径以便团队共享:
-
-```json
-{
-  "extraKnownMarketplaces": {
-    "game-engine-dev": {
-      "source": {
-        "source": "directory",
-        "path": "../claude-code-flow"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "game-engine-dev@game-engine-dev": true
-  }
-}
-```
+安装后 `/reload-plugins` 生效。
 
 也可用 `/plugin` 命令交互安装，装完 `/reload-plugins` 生效。
 
