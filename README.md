@@ -37,45 +37,47 @@ C++17, Lua/LuaJIT, HLSL/GLSL, CMake, vcpkg/Conan
 
 ### 全局
 
-`~/.claude/settings.json`:
+`~/.claude/settings.json`，在已有的配置中合并以下内容:
 
 ```json
 {
   "extraKnownMarketplaces": {
-    "local-engine": {
+    "game-engine-dev": {
       "source": {
         "source": "directory",
-        "path": "C:/Users/heguoling/Desktop/claude-code-flow/game-engine-dev"
+        "path": "C:/Users/heguoling/Desktop/claude-code-flow"
       }
     }
   },
   "enabledPlugins": {
-    "game-engine-dev@local-engine": true
+    "game-engine-dev@game-engine-dev": true
   }
 }
 ```
 
 ### 项目级
 
-项目根目录 `.claude/settings.json`，路径用相对路径以便团队共享:
+在**你的游戏引擎项目**根目录创建 `.claude/settings.json`（不是本仓库），路径用相对路径以便团队共享:
 
 ```json
 {
   "extraKnownMarketplaces": {
-    "local-engine": {
+    "game-engine-dev": {
       "source": {
         "source": "directory",
-        "path": "../claude-code-flow/game-engine-dev"
+        "path": "../claude-code-flow"
       }
     }
   },
   "enabledPlugins": {
-    "game-engine-dev@local-engine": true
+    "game-engine-dev@game-engine-dev": true
   }
 }
 ```
 
 也可用 `/plugin` 命令交互安装，装完 `/reload-plugins` 生效。
+
+> 注意: 不要在插件仓库内部创建 `.claude/settings.json`，会导致循环引用。配置应放在使用插件的项目中。
 
 ## 工作流
 
@@ -133,7 +135,7 @@ Review Gate (sentinel, Sonnet)
 ## 结构
 
 ```
-game-engine-dev/
+claude-code-flow/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── agents/
