@@ -8,7 +8,7 @@
       "name": "game-engine-dev",
       "source": {
         "source": "git-subdir",
-        "url": "hgl-pong/claude-code-flow",
+        "url": "https://github.com/hgl-pong/claude-code-flow.git",
         "path": ".",
         "ref": "main"
       },
