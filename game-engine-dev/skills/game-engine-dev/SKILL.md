@@ -5,120 +5,228 @@ description: This skill should be used when the user asks to "develop a game eng
 
 # Game Engine Development Orchestrator
 
-Orchestrate game engine development tasks by analyzing complexity, decomposing work, and delegating to specialized agents with appropriate model tiers. Every complex task follows a **Plan → Review → Implement → Review → Commit** pipeline.
+Orchestrate game engine development tasks through a structured pipeline with model-tiered agents. Every task passes through **Plan → Implement → Review** gates, with HTML visualization for complex plans.
 
 ## Agent Roster
 
-| Agent | Model | Role | Color |
-|-------|-------|------|-------|
-| `game-engine-dev:plan-agent` | opus | Implementation planning, phased roadmap, HTML visualization | cyan |
-| `game-engine-dev:architect` | opus | Architecture design, module decomposition, ECS design, performance strategy | magenta |
-| `game-engine-dev:core-developer` | sonnet | C++/Lua/HLSL implementation, memory management, concurrency | blue |
-| `game-engine-dev:test-engineer` | sonnet | Test frameworks, unit/integration/performance tests | green |
-| `game-engine-dev:build-engineer` | haiku | CMake, CI/CD, cross-platform compilation, dependency management | yellow |
-| `game-engine-dev:review-agent` | sonnet | Code review before commit, correctness/performance/architecture check | red |
+| Agent | Model | Role | Tools | Gate |
+|-------|-------|------|-------|------|
+| `game-engine-dev:plan-agent` | opus | Implementation planning, phased roadmap, HTML visualization | Read,Grep,Glob,Write,Bash | Plan Gate |
+| `game-engine-dev:architect` | opus | Architecture design, module decomposition, ECS design | Read,Grep,Glob | Design Gate |
+| `game-engine-dev:core-developer` | sonnet | C++/Lua/HLSL implementation | Read,Write,Edit,Grep,Glob,Bash | Implementation |
+| `game-engine-dev:test-engineer` | sonnet | Test frameworks, unit/integration/performance tests | Read,Write,Edit,Grep,Glob,Bash | Verification |
+| `game-engine-dev:build-engineer` | haiku | CMake, CI/CD, cross-platform compilation | Read,Write,Edit,Grep,Glob,Bash | Build Gate |
+| `game-engine-dev:review-agent` | sonnet | Code review, correctness/performance/architecture check | Read,Grep,Glob | Review Gate |
 
-## Orchestration Workflow
+## Universal Pipeline
 
-### Step 1: Analyze the Task
+Every task, regardless of complexity, follows this pipeline. The difference is how many stages are active.
 
-Read the user's request and classify it by:
+```
+┌─────────────────────────────────────────────────────────┐
+│                    PLAN GATE                            │
+│  plan-agent (Opus)                                       │
+│  Complex: HTML visualization → user browser review      │
+│  Simple: text summary → user inline approval            │
+│  ⛔ Blocked until user approves the plan                │
+└──────────────────────┬──────────────────────────────────┘
+                       │ approved
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                 DESIGN GATE (if needed)                  │
+│  architect (Opus) — detailed system design              │
+│  ⛔ Blocked until design is complete                    │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                 IMPLEMENTATION                           │
+│  core-developer (Sonnet) + test-engineer (Sonnet)       │
+│  + build-engineer (Haiku) — parallel where possible     │
+└──────────────────────┬──────────────────────────────────┘
+                       │ implementation done
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                  REVIEW GATE                             │
+│  review-agent (Sonnet) — checks all changed files       │
+│  ✅ Pass → proceed to report                            │
+│  ❌ Fail → back to core-developer for fixes → re-review │
+│  ⛔ Blocked until review passes                         │
+└──────────────────────┬──────────────────────────────────┘
+                       │ review passed
+                       ▼
+                   Report & Done
+```
+
+## Step 1: Analyze the Task
+
+Read the user's request and classify:
 - **Domain**: Rendering, Physics, Audio, ECS, Input, Resource Management, Build System, Testing
-- **Complexity**: Simple (1-2 subtasks) vs Complex (3+ subtasks, cross-cutting concerns)
-- **Phase**: Design, Implementation, Testing, Build/Deploy
+- **Complexity**: Simple (1-2 subtasks, single domain) vs Complex (3+ subtasks, cross-cutting)
+- **Needs design**: Yes (new system, architectural change) vs No (bug fix, feature addition to existing system)
 
-### Step 2: Plan (Complex Tasks)
+## Step 2: Plan Gate
 
-For complex tasks (3+ subtasks, new systems, architectural changes):
+**Always** invoke plan-agent, regardless of complexity. The difference is output format:
 
-1. Spawn the **plan-agent** to create a phased implementation plan
-2. Plan-agent generates an HTML visualization and saves to a temp file
-3. Open the HTML in the user's browser for review
-4. Wait for user feedback before proceeding
-5. If user requests changes, iterate with plan-agent until approved
+**Complex tasks** (new system, multi-module, architectural):
+- plan-agent generates self-contained HTML visualization
+- Include: architecture diagram, phase timeline, dependency graph, risk table, file impact tree
+- Save HTML to temp file, open in browser for user review
+- Wait for user feedback; iterate until approved
 
-For simple tasks (bug fix, single feature, config change), skip planning and go directly to implementation.
+**Simple tasks** (bug fix, single feature, config change):
+- plan-agent produces a brief text summary: what to change, which files, risks
+- Present inline to user for quick approval
+- No HTML needed
 
-### Step 3: Decompose into Subtasks
+**Plan-agent prompt template:**
+```
+Task: [user's request]
+Complexity: [simple|complex]
+Codebase context: [existing architecture notes]
+Output: [HTML file path | text summary]
+```
 
-Break the approved plan (or simple task) into concrete, assignable subtasks:
-- Have a clear deliverable (file, module, test, config)
-- Map to exactly one agent
-- Be independently verifiable
+⛔ Do NOT proceed to implementation until the user approves the plan.
 
-**Decomposition patterns by domain:**
+## Step 3: Design Gate (if needed)
 
-- **New system/feature** → Plan-agent plans → Architect designs → Core-developer implements → Review-agent reviews → Test-engineer writes tests
-- **Bug fix** → Core-developer investigates and fixes → Review-agent reviews → Test-engineer adds regression test
-- **Build/CI issue** → Build-engineer handles directly
-- **Performance optimization** → Plan-agent plans → Architect analyzes → Core-developer implements → Review-agent reviews → Test-engineer benchmarks
-- **Architecture refactor** → Plan-agent plans → Architect designs → Core-developer executes → Review-agent reviews → Test-engineer validates → Build-engineer updates build
+Skip for: bug fixes, small features on existing systems, build/CI tasks.
 
-### Step 4: Choose Orchestration Mode
+For new systems or architectural changes:
+1. Spawn **architect** (Opus) with the approved plan as context
+2. Architect produces: module design, API surface, data layout, file structure
+3. Present the design to the user for confirmation (can be inline, no HTML needed)
+4. Wait for approval before implementation
 
-**Simple mode** (1-2 subtasks, single domain):
-- Use the `Agent` tool directly to spawn agents with explicit `model` parameter
-- Sequential execution, results flow back to the conversation
+## Step 4: Implementation
 
-**Complex mode** (3+ subtasks, cross-cutting):
-- Use `TeamCreate` to create a team
-- Use `TaskCreate` to create tasks with dependencies (`addBlockedBy`)
-- Use `Agent` tool with `team_name` to spawn teammates
-- Agents self-coordinate via TaskList
+Decompose the approved plan+design into concrete subtasks. Use orchestration mode based on task count:
 
-### Step 5: Execute with Model Assignment
+**Simple mode** (1-3 subtasks):
+```
+Agent({ name: "dev", subagent_type: "game-engine-dev:core-developer", model: "sonnet", prompt: "..." })
+```
 
-When spawning agents, always specify the `model` parameter:
+**Complex mode** (4+ subtasks, parallel work):
+```
+TeamCreate({ team_name: "engine-feature-x" })
+TaskCreate({ subject: "...", addBlockedBy: [...] })  // set dependencies
+Agent({ name: "dev-1", team_name: "...", subagent_type: "game-engine-dev:core-developer", model: "sonnet", prompt: "..." })
+Agent({ name: "test-1", team_name: "...", subagent_type: "game-engine-dev:test-engineer", model: "sonnet", prompt: "..." })
+```
+
+**Parallel execution rules:**
+- core-developer and test-engineer can work in parallel if tests are for existing (not new) code
+- build-engineer can work in parallel with test-engineer
+- architect and core-developer are always sequential (design before code)
+
+## Step 5: Review Gate
+
+After implementation completes, **always** invoke review-agent:
 
 ```
 Agent({
-  name: "plan-agent",
-  subagent_type: "game-engine-dev:plan-agent",
-  model: "opus",
-  prompt: "..."
+  name: "reviewer",
+  subagent_type: "game-engine-dev:review-agent",
+  model: "sonnet",
+  prompt: """
+  Review the following changes for the task: [task description]
+  Plan reference: [path to approved plan, if exists]
+  Files created: [list of new files]
+  Files modified: [list of changed files]
+  Focus areas: [any specific concerns]
+  """
 })
 ```
 
-**Model selection rules:**
-- `opus` — For plan-agent and architect: deep reasoning, system design, trade-off analysis, visual planning
-- `sonnet` — For core-developer, test-engineer, and review-agent: code generation, test writing, quality review
-- `haiku` — For build-engineer: config files, build scripts, CI pipelines (fast, low-cost)
+**Review outcome handling:**
+- **APPROVE** → proceed to report
+- **REQUEST CHANGES** → collect the issue list, delegate fixes back to core-developer, then re-run review-agent
+- **NEEDS DISCUSSION** → present findings to user, ask for direction
 
-### Step 6: Review Before Commit
+The review loop continues until review-agent returns APPROVE. Maximum 3 iterations; if still failing after 3, escalate to user.
 
-After core-developer finishes implementation, **automatically insert a review step**:
+## Complete Workflow Examples
 
-1. Spawn **review-agent** with the list of files created/modified
-2. Review-agent checks correctness, performance, architecture adherence
-3. If review finds critical issues → delegate fixes back to core-developer
-4. If review passes → proceed to commit or next phase
+### Example 1: Complex New System
 
-The review-agent is a read-only gate — it never modifies code. Fixes go back through the core-developer.
+```
+User: "Build a physics system with rigid body and collision detection"
 
-### Step 7: Aggregate and Report
+1. PLAN GATE: plan-agent (Opus)
+   → HTML with: 4 phases, architecture diagram, 12 files to create, 3 risks
+   → User reviews in browser, approves with feedback: "skip fluid simulation for now"
+   → plan-agent revises plan
 
-After all agents complete and review passes:
-1. Collect results from each agent
-2. Verify cross-agent consistency (plan matches implementation matches review)
-3. Check that build-engineer's config covers all new files
-4. Confirm test-engineer's tests cover core-developer's changes
-5. Report summary to user with file-level change list and review status
+2. DESIGN GATE: architect (Opus)
+   → Module design: physics/, collision/, broadphase/, narrowphase/
+   → API surface: PhysicsWorld, RigidBody, Collider, CollisionEvent
+   → User approves
+
+3. IMPLEMENTATION: core-developer (Sonnet) + test-engineer (Sonnet) + build-engineer (Haiku)
+   → Parallel: core-developer implements, test-engineer writes tests, build-engineer updates CMake
+
+4. REVIEW GATE: review-agent (Sonnet)
+   → Reviews 12 new files
+   → Finds: missing alignment in RigidBody struct (critical), TODO in collision resolver (warning)
+   → Back to core-developer for fixes → re-review → APPROVE
+
+5. REPORT: Summary with file list and review status
+```
+
+### Example 2: Simple Bug Fix
+
+```
+User: "Fix the memory leak in ResourceLoader::load"
+
+1. PLAN GATE: plan-agent (Opus)
+   → Text summary: "Investigate ResourceLoader::load, fix leak, add regression test. Files: resource_loader.cpp, test_resource.cpp"
+   → User approves inline
+
+2. DESIGN GATE: skipped (bug fix)
+
+3. IMPLEMENTATION: core-developer (Sonnet)
+   → Fixes the leak, test-engineer adds regression test
+
+4. REVIEW GATE: review-agent (Sonnet)
+   → Reviews 2 files → APPROVE
+
+5. REPORT: Done
+```
+
+### Example 3: Build Configuration
+
+```
+User: "Add vcpkg integration and add SDL2 + ImGui"
+
+1. PLAN GATE: plan-agent (Opus)
+   → Text summary: "Add vcpkg.json, update CMakeLists.txt, add find_package calls"
+   → User approves
+
+2. DESIGN GATE: skipped
+3. IMPLEMENTATION: build-engineer (Haiku)
+
+4. REVIEW GATE: review-agent (Sonnet)
+   → Reviews CMakeLists.txt and vcpkg.json → APPROVE
+
+5. REPORT: Done
+```
 
 ## Task Prompting Guidelines
 
-When delegating to agents, include in the prompt:
-- **Context**: What the overall project goal is
+For all agents, include in the prompt:
+- **Context**: Overall project goal and where this task fits
 - **Scope**: Exactly what this agent should produce
 - **Constraints**: Files to modify, patterns to follow, APIs to use
 - **Dependencies**: What other agents are producing (if known)
 - **Output**: What the agent should return
 
-For review-agent specifically, include:
-- **Files to review**: Explicit list of created/modified files
-- **Plan reference**: Path to the plan spec (if available)
-- **Focus areas**: Any specific concerns (thread safety, memory, performance)
+For **plan-agent**: also specify complexity level and whether HTML is needed.
+For **review-agent**: also specify files to review, plan reference path, and focus areas.
 
 ## Additional Resources
 
-- **`references/architecture-patterns.md`** — Common game engine architecture patterns (ECS, component, scene graph)
-- **`references/performance-guide.md`** — Performance optimization strategies and memory patterns
+- **`references/architecture-patterns.md`** — ECS, frame graph, memory allocator patterns
+- **`references/performance-guide.md`** — SIMD, profiling, concurrency patterns
