@@ -7,10 +7,8 @@
     {
       "name": "game-engine-dev",
       "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/hgl-pong/claude-code-flow.git",
-        "path": ".",
-        "ref": "main"
+        "source": "github",
+        "repo": "hgl-pong/claude-code-flow"
       },
       "description": "Game engine development workflow with model-tiered agents (oracle/atlas/forge/prism/anvil/sentinel) for planning, architecture, implementation, testing, building, and review."
     }
