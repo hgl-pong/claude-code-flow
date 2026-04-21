@@ -1,0 +1,9 @@
+{
+  "name": "game-engine-dev",
+  "version": "0.1.0",
+  "description": "Game engine development workflow with model-tiered agents for architecture, core development, testing, and build engineering",
+  "author": {
+    "name": "hgl"
+  },
+  "keywords": ["game-engine", "c-plus-plus", "lua", "hlsl", "cmake", "ecs", "rendering"]
+}
