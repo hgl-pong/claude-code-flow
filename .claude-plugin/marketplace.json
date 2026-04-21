@@ -6,7 +6,12 @@
   "plugins": [
     {
       "name": "game-engine-dev",
-      "source": ".",
+      "source": {
+        "source": "git-subdir",
+        "url": "hgl-pong/claude-code-flow",
+        "path": ".",
+        "ref": "main"
+      },
       "description": "Game engine development workflow with model-tiered agents (oracle/atlas/forge/prism/anvil/sentinel) for planning, architecture, implementation, testing, building, and review."
     }
   ]
