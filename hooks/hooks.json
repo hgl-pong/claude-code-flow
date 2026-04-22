@@ -1,89 +1,87 @@
 {
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/session-check.sh",
-            "timeout": 30000
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh clear",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-changes.sh",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "If the bash command contains 'git commit', check if there are unreviewed changes by reading .claude/flow/modified-files.txt. If the file exists and has content, warn the user that they have unreviewed changes and suggest running /workflow-review first. If the file doesn't exist or is empty, allow the commit to proceed."
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Before spawning an agent, validate the orchestration context: 1) If spawning forge, check if there is an approved plan in .claude/flow/phase-context.md or if this is a standalone request. 2) If spawning sentinel, ensure there are files to review in .claude/flow/modified-files.txt. If validation fails, warn and suggest the correct next step rather than proceeding."
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/on-agent-complete.sh",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/on-workflow-stop.sh",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh clear",
-            "timeout": 5000
-          }
-        ]
-      }
-    ]
-  }
+  "SessionStart": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/session-check.sh",
+          "timeout": 30000
+        },
+        {
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh clear",
+          "timeout": 5000
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "Write|Edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/track-changes.sh",
+          "timeout": 10000
+        }
+      ]
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "Bash",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "If the bash command contains 'git commit', check if there are unreviewed changes by reading .claude/flow/modified-files.txt. If the file exists and has content, warn the user that they have unreviewed changes and suggest running /workflow-review first. If the file doesn't exist or is empty, allow the commit to proceed."
+        }
+      ]
+    },
+    {
+      "matcher": "Agent",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "Before spawning an agent, validate the orchestration context: 1) If spawning forge, check if there is an approved plan in .claude/flow/phase-context.md or if this is a standalone request. 2) If spawning sentinel, ensure there are files to review in .claude/flow/modified-files.txt. If validation fails, warn and suggest the correct next step rather than proceeding."
+        }
+      ]
+    }
+  ],
+  "SubagentStop": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/on-agent-complete.sh",
+          "timeout": 10000
+        }
+      ]
+    }
+  ],
+  "Stop": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/on-workflow-stop.sh",
+          "timeout": 10000
+        }
+      ]
+    }
+  ],
+  "SessionEnd": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh clear",
+          "timeout": 5000
+        }
+      ]
+    }
+  ]
 }
