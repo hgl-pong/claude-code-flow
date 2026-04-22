@@ -1,10 +1,10 @@
 {
   "name": "claude-code-flow",
-  "version": "1.0.0",
-  "description": "General-purpose development workflow with model-tiered agents for planning, architecture, implementation, testing, building, and review",
+  "version": "1.1.0",
+  "description": "General-purpose development workflow with model-tiered agents for planning, architecture, implementation, testing, building, review, and documentation",
   "author": {
     "name": "hgl"
   },
   "repository": "https://github.com/hgl-pong/claude-code-flow",
-  "keywords": ["workflow", "agents", "code-review", "testing", "planning", "orchestration"]
+  "keywords": ["workflow", "agents", "code-review", "testing", "planning", "orchestration", "documentation", "statusline"]
 }
