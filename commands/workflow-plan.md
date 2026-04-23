@@ -13,16 +13,23 @@ Start the planning pipeline for a feature or task.
    - **Domain**: What area of the codebase is affected
    - **Complexity**: Simple (1-2 subtasks) vs Complex (3+ subtasks, cross-cutting)
    - **Needs design**: Yes (new system/architectural change) vs No (feature addition/bug fix)
+   - **Needs research**: Yes (external library/API, best practices lookup, tech comparison) vs No (internal-only)
 
-2. **Invoke oracle** to create a plan:
+2. **Research** (if needed): invoke scout to gather external information:
+   - Documentation, API references, library usage patterns
+   - Technology comparisons and best practices
+   - Version compatibility and deprecation warnings
+   - Feed research findings into oracle's planning context
+
+3. **Invoke oracle** to create a plan:
    - **Complex**: oracle generates HTML visualization with architecture, phases, dependencies, risks
    - **Simple**: oracle produces a text summary with files to change, risks, and approach
 
-3. **Wait for user approval** — do NOT proceed until the user confirms the plan
+4. **Wait for user approval** — do NOT proceed until the user confirms the plan
 
-4. **If needs design**: invoke atlas (Opus) for architecture design, wait for approval
+5. **If needs design**: invoke atlas (Opus) for architecture design, wait for approval
 
-5. **Hand off to implementation**: spawn forge (and prism/anvil as needed) with the approved plan
+6. **Hand off to implementation**: spawn forge (and prism/anvil as needed) with the approved plan
 
 ## Usage
 

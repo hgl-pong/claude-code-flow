@@ -11,7 +11,7 @@ Display the current state of the development workflow pipeline.
 
 ### 1. Current Phase
 Read `.claude/flow/workflow-state.json` and display:
-- Phase: plan / design / impl / review / idle
+- Phase: research / plan / design / impl / review / idle
 - Task progress: x/y tasks completed
 - Last updated timestamp
 

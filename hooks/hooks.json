@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Before spawning an agent, validate the orchestration context: 1) If spawning forge, check if there is an approved plan in .claude/flow/phase-context.md or if this is a standalone request. 2) If spawning sentinel, ensure there are files to review in .claude/flow/modified-files.txt. If validation fails, warn and suggest the correct next step rather than proceeding."
+            "prompt": "Before spawning an agent, validate the orchestration context: 1) If spawning scout, allow it anytime — no phase restriction. 2) If spawning forge, check if there is an approved plan in .claude/flow/phase-context.md or if this is a standalone request. 3) If spawning sentinel, ensure there are files to review in .claude/flow/modified-files.txt. If validation fails, warn and suggest the correct next step rather than proceeding."
           }
         ]
       }

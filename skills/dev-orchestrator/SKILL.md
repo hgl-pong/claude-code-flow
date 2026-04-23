@@ -12,6 +12,7 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 
 | Agent | Model | Role | Gate |
 |-------|-------|------|------|
+| `scout` | sonnet | Web research, docs lookup, tech comparison | Research |
 | `oracle` | opus | Implementation planning, HTML visualization | Plan |
 | `atlas` | opus | Architecture design, module decomposition | Design |
 | `forge` | sonnet | Code implementation | -- |
@@ -25,6 +26,11 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 All tasks follow this pipeline. Complexity determines which stages activate.
 
 ```
+Research (scout, Sonnet) -- if external info needed
+  Search docs, APIs, best practices, comparisons
+  Output: research report -> feeds into oracle
+       |
+       v
 Plan Gate (oracle, Opus)
   Complex: HTML viz -> browser review
   Simple:  text summary -> inline approval
@@ -61,7 +67,9 @@ bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase <phase>
 
 Valid transitions:
 ```
-idle -> plan         (user requests feature)
+idle -> research     (external info needed before planning)
+research -> plan     (research complete)
+idle -> plan         (user requests feature, no research needed)
 plan -> design       (plan approved, needs architecture)
 plan -> impl         (plan approved, no architecture needed)
 design -> impl       (design approved)
@@ -108,7 +116,38 @@ Write initial state:
 bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase plan
 ```
 
-## Step 2: Plan Gate
+## Step 2: Research (if needed)
+
+Skip for: tasks that only involve the local codebase, internal refactoring, or when the user already has all necessary external context.
+
+Invoke scout when:
+- The task involves a library, framework, or API not yet in the codebase
+- The user asks to research or look up something
+- Technology comparison or evaluation is needed
+- Best practices or migration guides need to be found
+- Version compatibility or deprecation concerns exist
+
+```
+Agent({
+  name: "researcher",
+  subagent_type: "claude-code-flow:scout",
+  model: "sonnet",
+  prompt: """
+  Research topic: [specific question or area]
+  Context: [task description and what we're trying to build]
+  What we need: [specific information gaps to fill]
+  """
+})
+```
+
+scout produces a research report. The orchestrator feeds key findings into oracle's planning prompt.
+
+Write state:
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase plan
+```
+
+## Step 3: Plan Gate
 
 Always invoke oracle. Output differs by complexity.
 
@@ -125,7 +164,7 @@ Always invoke oracle. Output differs by complexity.
 
 After approval, oracle writes plan summary to `.claude/flow/phase-context.md`.
 
-## Step 3: Design Gate (if needed)
+## Step 4: Design Gate (if needed)
 
 Skip for: bug fixes, small features, build/CI tasks.
 
@@ -142,7 +181,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase design
 
 After approval, atlas appends architecture decisions to `phase-context.md`.
 
-## Step 4: Implementation
+## Step 5: Implementation
 
 Write state:
 ```bash
@@ -173,7 +212,7 @@ Update task progress:
 bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-tasks <done> <total>
 ```
 
-## Step 5: Review Gate
+## Step 6: Review Gate
 
 Write state:
 ```bash
@@ -204,7 +243,7 @@ Agent({
 
 Max 3 review rounds. Escalate to user after that.
 
-## Step 6: Error Recovery
+## Step 7: Error Recovery
 
 When an agent fails or produces unexpected output:
 
@@ -218,7 +257,7 @@ When an agent fails or produces unexpected output:
 - On retry, prepend: "Previous attempt failed. Error was: [error]. Please try again, ensuring [requirement]."
 - If retry also fails, escalate to user with: "Agent [name] failed twice on [task]. Error: [error]. Options: retry manually, skip this step, or cancel."
 
-## Step 7: Documentation (optional)
+## Step 8: Documentation (optional)
 
 After implementation passes review, invoke chronicler if:
 - The feature adds new public APIs
@@ -240,7 +279,7 @@ Agent({
 })
 ```
 
-## Step 8: Report & Done
+## Step 9: Report & Done
 
 Write final state:
 ```bash
@@ -258,6 +297,7 @@ Present final summary to user with:
 
 For all agents, include: Context, Scope, Constraints, Dependencies, Output.
 
-For **oracle**: also specify complexity level and HTML requirement.
+For **scout**: also specify research topic, what info gaps need filling, and how findings feed into planning.
+For **oracle**: also specify complexity level, HTML requirement, and any research findings from scout.
 For **sentinel**: also specify files to review, plan path, focus areas.
 For **chronicler**: also specify doc style and target audience.
