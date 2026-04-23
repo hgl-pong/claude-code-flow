@@ -62,7 +62,7 @@ Report & Done
 Workflow phases follow strict transition rules. Write state to `.claude/flow/workflow-state.json` at each transition using:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase <phase>
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <phase>
 ```
 
 Valid transitions:
@@ -113,7 +113,7 @@ Classify the task:
 
 Write initial state:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase plan
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan
 ```
 
 ## Step 2: Research (if needed)
@@ -144,7 +144,7 @@ scout produces a research report. The orchestrator feeds key findings into oracl
 
 Write state:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase plan
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan
 ```
 
 ## Step 3: Plan Gate
@@ -176,7 +176,7 @@ For new systems or architectural changes:
 
 Write state:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase design
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase design
 ```
 
 After approval, atlas appends architecture decisions to `phase-context.md`.
@@ -185,7 +185,7 @@ After approval, atlas appends architecture decisions to `phase-context.md`.
 
 Write state:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase impl
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase impl
 ```
 
 **Simple mode** (1-3 subtasks) — direct Agent tool calls:
@@ -209,14 +209,14 @@ Agent({ name: "dev-1", team_name: "...", subagent_type: "claude-code-flow:forge"
 
 Update task progress:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-tasks <done> <total>
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-tasks <done> <total>
 ```
 
 ## Step 6: Review Gate
 
 Write state:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase review
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase review
 ```
 
 Always invoke sentinel after implementation:
@@ -283,7 +283,7 @@ Agent({
 
 Write final state:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.sh set-phase idle
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase idle
 ```
 
 Present final summary to user with:
