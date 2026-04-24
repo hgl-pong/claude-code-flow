@@ -1,6 +1,6 @@
 ---
 name: workflow-status
-description: Show current workflow state — phase, task progress, review history, agent log, and git context. Read-only diagnostic command.
+description: Show current workflow state — phase, task progress, mode, agent log, metrics, and git context. Read-only diagnostic command.
 ---
 
 # Workflow Status
@@ -12,7 +12,10 @@ Display the current state of the development workflow pipeline.
 ### 1. Current Phase
 Read `.claude/flow/workflow-state.json` and display:
 - Phase: research / plan / design / impl / review / idle
+- Mode: quick / standard / deep / autonomous
 - Task progress: x/y tasks completed
+- Current agent (if any)
+- Retry count
 - Last updated timestamp
 
 ### 2. Modified Files
@@ -28,7 +31,13 @@ Read `.claude/flow/review-result.txt` if it exists and display:
 Read `.claude/flow/agent-log.txt` if it exists and display:
 - Last 10 agent completions with timestamps
 
-### 5. Git Context
+### 5. Metrics
+Run `python hooks/scripts/metrics.py collect` and display:
+- Agent call counts for this session
+- Phase durations (if phase transitions recorded)
+- Guard block count
+
+### 6. Git Context
 Run `git status --short` and `git branch --show-current` to show:
 - Current branch
 - Uncommitted changes count
@@ -44,5 +53,6 @@ Run `git status --short` and `git branch --show-current` to show:
 
 1. Check if `.claude/flow/` directory exists
 2. If not, report "No workflow state found. Start a workflow with /workflow-plan."
-3. If yes, read each state file and format output
-4. Do NOT modify any state files — this is a read-only command
+3. If yes, read each state file and run metrics collection
+4. Format all sections as a clear summary
+5. Do NOT modify any state files — this is a read-only command
