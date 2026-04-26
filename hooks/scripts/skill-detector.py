@@ -15,7 +15,7 @@ def now():
 def load_seeds():
     if os.path.exists(SEEDS_FILE):
         try:
-            with open(SEEDS_FILE, "r") as f:
+            with open(SEEDS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, Exception):
             return {"skills": []}
@@ -61,7 +61,7 @@ def increment_usage(skill_name):
             skill["usage_count"] = skill.get("usage_count", 0) + 1
             break
     os.makedirs(FLOW_DIR, exist_ok=True)
-    with open(SEEDS_FILE, "w") as f:
+    with open(SEEDS_FILE, "w", encoding="utf-8") as f:
         json.dump(seeds, f, indent=2)
 
 def detect_proposals(min_occurrences=3):
@@ -121,7 +121,11 @@ def write_proposals(proposals):
         lines.append(f"- **Example tasks**:")
         for ex in p["examples"]:
             lines.append(f"  - \"{ex}\"")
-        lines.append(f"- **Suggested agents**: oracle(plan) -> forge(impl) -> prism(tests) -> sentinel(review)")
+        ui_keywords = {"ui", "interface", "component", "page", "frontend", "css", "layout", "design", "responsive", "modal", "form", "dashboard", "页面", "组件", "前端", "样式", "布局", "界面", "交互"}
+        if any(kw in ' '.join(key) for kw in ui_keywords):
+            lines.append(f"- **Suggested agents**: oracle(plan) -> designer(ui design) -> weaver(impl) -> prism(tests) -> sentinel(review)")
+        else:
+            lines.append(f"- **Suggested agents**: oracle(plan) -> forge(impl) -> prism(tests) -> sentinel(review)")
         lines.append("")
 
     with open(PROPOSALS_FILE, "w") as f:
@@ -137,7 +141,9 @@ def main():
             sys.exit(1)
         skill, score = match_skill(task)
         if skill:
-            print(f"MATCH: {skill['name']} (score={score})")
+            assignment = skill.get('agent_assignment', {})
+            agents_str = '|'.join(f"{role}={agent}" for role, agent in assignment.items())
+            print(f"MATCH: {skill['name']} (score={score}) agents={agents_str}")
             # Increment usage
             increment_usage(skill["name"])
         else:

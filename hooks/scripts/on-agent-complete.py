@@ -13,6 +13,7 @@ AGENT_MODELS = {
     "oracle": "opus", "atlas": "opus", "forge": "sonnet",
     "prism": "sonnet", "anvil": "haiku", "sentinel": "sonnet",
     "chronicler": "sonnet", "scout": "sonnet", "evolver": "opus",
+    "designer": "sonnet", "weaver": "sonnet",
 }
 
 def get_session_id():

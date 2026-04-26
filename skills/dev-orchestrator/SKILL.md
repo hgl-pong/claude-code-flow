@@ -15,7 +15,9 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 | `scout` | sonnet | Web research, docs lookup, tech comparison | Research |
 | `oracle` | opus | Implementation planning, HTML visualization | Plan |
 | `atlas` | opus | Architecture design, module decomposition | Design |
-| `forge` | sonnet | Code implementation | -- |
+| `designer` | sonnet | UI/UX interaction design documents | UI Design |
+| `forge` | sonnet | Code implementation (backend, general) | -- |
+| `weaver` | sonnet | Frontend implementation (React/Vue/Svelte) | -- |
 | `prism` | sonnet | Test frameworks, benchmarks | -- |
 | `anvil` | haiku | Build, CI/CD, dependencies | -- |
 | `sentinel` | sonnet | Code review before commit | Review |
@@ -64,9 +66,21 @@ Plan Gate (oracle)
 Design Gate (atlas) -- only for deep mode / new systems
       |
       v
-Implementation (forge + prism + anvil)
+UI Research (scout) -- only for frontend-ui tasks, skipped in quick mode
+  scout researches similar products, design trends, best practices
+  reusable knowledge written to persistent memory (type: reference)
+      |
+      v
+UI Design Gate (designer) -- only for frontend-ui tasks
+  designer produces design doc based on research -> user approval -> handoff to weaver
+      |
+      v
+Implementation (forge/weaver + prism + anvil)
   DAG-aware scheduling for deep/standard
   Direct call for quick
+  Agent selection based on skill match:
+    frontend-ui tasks -> weaver implements
+    all other tasks   -> forge implements
       |
       v
 Review Gate (sentinel)
@@ -95,9 +109,13 @@ idle -> plan         (no research needed)
 research -> plan     (research complete)
 plan -> design       (plan approved, needs architecture)
 plan -> impl         (plan approved, no architecture needed)
-design -> impl       (design approved)
+plan -> ui-research  (plan approved, frontend-ui task, no architecture needed)
+design -> impl       (design approved, non-UI task)
+design -> ui-research (design approved, frontend-ui task)
+ui-research -> ui-design (research complete, ready for design)
+ui-design -> impl    (UI design approved)
 impl -> review       (implementation complete)
-review -> impl       (review failed, back to forge)
+review -> impl       (review failed, back to implementer)
 review -> idle       (review passed)
 impl -> idle         (simple/quick task, skip review)
 * -> idle            (user cancels or error)
@@ -108,7 +126,8 @@ impl -> idle         (simple/quick task, skip review)
 | File | Written by | Read by | Content |
 |------|-----------|---------|---------|
 | `.claude/flow/workflow-state.json` | flow-state.py | statusline, orchestrator | Phase, mode, task progress, retry count |
-| `.claude/flow/phase-context.md` | oracle/atlas | forge/sentinel | Approved plan, architecture decisions |
+| `.claude/flow/phase-context.md` | oracle/atlas/designer | forge/weaver/sentinel | Approved plan, architecture decisions, design research summary, UI design document |
+| `.claude/flow/ui-research.md` | scout | designer | Design research findings: trends, similar products, best practices |
 | `.claude/flow/modified-files.txt` | track-changes.py | sentinel | Files modified (plain list) |
 | `.claude/flow/modified-files.jsonl` | track-changes.py | orchestrator | File ownership log (file, action, agent, ts) |
 | `.claude/flow/review-result.txt` | sentinel | orchestrator | Latest review outcome |
@@ -117,8 +136,10 @@ impl -> idle         (simple/quick task, skip review)
 **Phase handoff protocol:**
 1. After plan approval: oracle writes plan summary to `phase-context.md` with YAML frontmatter (written_by, phase, timestamp, session_id, task_summary)
 2. After design approval: atlas appends architecture decisions to `phase-context.md`
-3. Before review: orchestrator lists modified files for sentinel
-4. After review: sentinel writes outcome to `review-result.txt`
+3. After UI research: scout writes research report to `.claude/flow/ui-research.md`, orchestrator appends summary to `phase-context.md` under `## Design Research Summary`, and writes reusable knowledge to persistent memory
+4. After UI design approval: designer appends design document to `phase-context.md` under `## UI Design Document`
+5. Before review: orchestrator lists modified files for sentinel
+6. After review: sentinel writes outcome to `review-result.txt`
 
 ## Step 1: Analyze + Mode Select
 
@@ -188,6 +209,142 @@ Write state:
 python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase design
 ```
 
+## Step 4a: UI Research (for frontend-ui tasks only)
+
+Skip for: quick mode, non-UI tasks.
+
+Detection: After Plan Gate (or Design Gate), if skill-detector matched `frontend-ui`, route to UI Research before UI Design Gate.
+
+Process:
+1. Spawn **scout** (Sonnet) with a targeted design research prompt
+2. Scout researches:
+   - Similar product UI patterns (2-3 comparable products)
+   - Cutting-edge design trends for the specific component/page type
+   - Best practices and common anti-patterns
+   - Notable open-source implementations or design systems
+3. Scout produces a structured research report with a "Reusable Design Knowledge" section
+4. Orchestrator extracts reusable knowledge and writes to persistent memory (type: reference, file: `design-reference-<topic-slug>.md`)
+5. Research report is saved to `.claude/flow/ui-research.md`
+6. A 3-5 bullet summary is appended to `phase-context.md` under `## Design Research Summary`
+
+**Memory writing criteria** — write to persistent memory when a finding meets ALL:
+- Reusable: applies to multiple projects, not just current task
+- Durable: relevant for 6+ months
+- Concrete: specific enough to be actionable
+- Verified: found in 2+ credible sources
+
+```
+Agent({
+  name: "ui-researcher",
+  subagent_type: "claude-code-flow:scout",
+  model: "sonnet",
+  prompt: """
+  Research topic: Design research for [component/page type]
+
+  Context: [task description from approved plan]
+
+  Research scope:
+  1. Find 2-3 similar products or well-known implementations of [component/page type].
+     Focus on: layout patterns, interaction flows, information architecture, visual hierarchy.
+
+  2. Identify current design trends (2025-2026) relevant to [component/page type].
+     Search for: recent design system updates, popular component libraries, award-winning UI examples.
+
+  3. Find best practices and anti-patterns for [component/page type].
+     Focus on: accessibility considerations, responsive behavior, performance implications.
+
+  4. Identify notable open-source design systems or component libraries that implement [component/page type].
+     Examples: Radix UI, shadcn/ui, Material Design 3, Apple HIG, Ant Design.
+
+  Output format:
+  ### Similar Product Analysis
+  For each product: Product name/URL, pattern used, strengths, weaknesses, applicability to our task.
+
+  ### Design Trends
+  Trend name with description, source URL, and how it applies to our component/page type.
+
+  ### Best Practices
+  Practice with explanation and source reference.
+
+  ### Anti-Patterns to Avoid
+  Anti-pattern with explanation and what to do instead.
+
+  ### Reusable Design Knowledge
+  Findings valuable across multiple projects (not task-specific):
+  - Knowledge topic (e.g., "dashboard layout patterns 2026")
+  - Brief summary (2-3 sentences)
+  - Why this is reusable
+  """
+})
+```
+
+After scout completes:
+1. Save full research report to `.claude/flow/ui-research.md`
+2. Extract reusable design knowledge from the "Reusable Design Knowledge" section
+3. Write reusable knowledge to persistent memory (check for existing `design-reference-*.md` to avoid duplicates)
+4. Append summary to `phase-context.md`:
+   ```markdown
+   ## Design Research Summary
+   - [Key finding 1]
+   - [Key finding 2]
+   - [Key finding 3]
+   Full research report: `.claude/flow/ui-research.md`
+   ```
+
+Write state:
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase ui-research
+```
+
+After research complete:
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase ui-design
+```
+
+## Step 4b: UI Design Gate (for frontend-ui tasks only)
+
+Skip for: non-UI tasks, backend-only features, tasks matched to other skills.
+
+Detection: After Plan Gate (or Design Gate), if skill-detector matched `frontend-ui`, route to UI Design Gate.
+
+Process:
+1. Spawn **designer** (Sonnet) with approved plan, task description, and research findings as context
+2. designer produces structured UI/UX design document covering:
+   - Component hierarchy and data flow
+   - Interaction flows and state transitions
+   - Responsive breakpoints and layout behavior
+   - Accessibility requirements (WCAG 2.1 AA)
+   - Design tokens (colors, typography, spacing)
+   - Design research integration: which patterns/trends from research are adopted and why
+3. Present design document to user for confirmation (auto-approve in autonomous mode)
+4. After approval, designer's output is appended to `phase-context.md` under `## UI Design Document`
+5. DAG task graph is updated: weaver tasks depend on designer task completion
+
+```
+Agent({
+  name: "ui-designer",
+  subagent_type: "claude-code-flow:designer",
+  model: "sonnet",
+  prompt: """
+  Task: [task description]
+  Approved plan: .claude/flow/phase-context.md
+  Design research: .claude/flow/ui-research.md
+  Design constraints: [existing UI framework, component library, styling approach]
+  Accessibility level: WCAG 2.1 AA
+  Target breakpoints: mobile <640px, tablet 640-1024px, desktop >1024px
+
+  Important: Read the design research report (.claude/flow/ui-research.md) and incorporate
+  relevant findings into your design. Reference which patterns or trends you're adopting
+  and explain why. You are not required to follow any specific finding — use your judgment.
+  """
+})
+```
+
+Write state:
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase ui-design
+```
+
 ## Step 5: Implementation (DAG-Aware Scheduling)
 
 Write state:
@@ -208,6 +365,19 @@ For standard/deep/autonomous modes, tasks are structured as a DAG in `.claude/fl
 }
 ```
 
+For frontend-ui tasks, the DAG includes scout research, designer, and weaver:
+```json
+{
+  "nodes": [
+    {"id": "T1", "title": "Research login page design patterns", "agent": "scout", "status": "pending", "dependencies": [], "files": []},
+    {"id": "T2", "title": "Design login page UI", "agent": "designer", "status": "pending", "dependencies": ["T1"], "files": []},
+    {"id": "T3", "title": "Implement login page", "agent": "weaver", "status": "pending", "dependencies": ["T2"], "files": [...]},
+    {"id": "T4", "title": "Write login page tests", "agent": "prism", "status": "pending", "dependencies": ["T3"], "files": [...]}
+  ],
+  "edges": [["T1","T2"],["T2","T3"],["T3","T4"]]
+}
+```
+
 ### Scheduling Loop
 
 ```
@@ -225,6 +395,16 @@ while get-ready tasks exist:
 - anvil can parallel with prism
 - Tasks with shared file dependencies must NOT run in parallel
 - Use `modified-files.jsonl` ownership data to detect potential conflicts
+
+**Agent routing for UI tasks:**
+- Tasks with `agent: "scout"` run first and produce design research (can parallel with backend forge tasks)
+- Tasks with `agent: "designer"` depend on scout research and produce the design document
+- Tasks with `agent: "weaver"` depend on designer tasks and implement the frontend
+- Tasks with `agent: "forge"` may still appear in the same DAG for non-UI subtasks (e.g., backend API endpoints needed by the frontend)
+- scout and designer must NOT run in parallel (designer depends on scout research)
+- designer and weaver must NOT run in parallel (weaver depends on designer output)
+- scout and forge CAN run in parallel (design research + backend work are independent)
+- forge and weaver CAN run in parallel if they work on different files (e.g., backend API + frontend UI)
 
 **quick mode**: Skip DAG. Direct single forge call.
 
@@ -273,6 +453,12 @@ Outcomes:
 - NEEDS DISCUSSION -> present to user
 
 Max 3 review rounds. Escalate to user after that.
+
+For frontend-ui tasks, sentinel should also check:
+- Accessibility (ARIA attributes, keyboard navigation, screen reader support)
+- Responsive design (layout at specified breakpoints)
+- Design document adherence (component matches design spec)
+- Performance (bundle size, render performance, unnecessary re-renders)
 
 ### Rule Check
 
@@ -332,7 +518,11 @@ Present final summary:
 For all agents, include: Context, Scope, Constraints, Dependencies, Output.
 
 For **scout**: research topic, info gaps, how findings feed into planning.
+For **scout (design research)**: component/page type to research, similar products to compare, design trends scope, what reusable knowledge to extract.
 For **oracle**: complexity level, mode, HTML requirement, research findings.
+For **atlas**: approved plan, system boundaries, constraints, integration points.
+For **designer**: task requirements, existing UI framework, design constraints, accessibility level, target breakpoints, design research findings from `.claude/flow/ui-research.md`.
 For **forge**: specific files, plan reference, task from DAG, related files to avoid breaking.
+For **weaver**: design document path (phase-context.md), specific components to implement, existing project frontend patterns, styling approach.
 For **sentinel**: files to review, plan path, focus areas, rules to check.
 For **chronicler**: doc style, target audience.

@@ -1,6 +1,6 @@
 ---
 name: forge
-description: Use this agent when implementing features, writing production code, creating API endpoints, implementing business logic, adding database queries, building UI components, or any hands-on development task that involves writing code. Examples:
+description: Use this agent when implementing features, writing production code, creating API endpoints, implementing business logic, adding database queries, building backend services, or any hands-on development task that involves writing code. Note: For UI/frontend tasks, use the weaver agent instead. Examples:
 
 <example>
 Context: User has an architecture design and needs implementation
