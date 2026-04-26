@@ -8,6 +8,19 @@ description: This skill should be used when the user asks to "develop a feature"
 
 Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and dynamic error recovery.
 
+## Common Rationalizations — Reality Check
+
+When you feel tempted to skip a step, check this table first:
+
+| Rationalization | Reality |
+|---|---|
+| "This is simple enough to skip planning" | Simple tasks have hidden complexity. The 2-minute plan saves 20-minute rework. |
+| "I can just implement this directly" | Direct implementation without review misses edge cases. Use the pipeline. |
+| "The review will slow us down" | Review catches 40%+ of bugs before they compound. Skipping it is false speed. |
+| "This subagent can figure out the context" | Subagents build no context from nothing. Construct their prompt precisely. |
+| "The user won't want to approve this" | Gates exist because agents miss things humans catch. Present the gate. |
+| "I already know what they need" | What you know and what the user needs are not always the same. Ask, don't assume. |
+
 ## Agent Roster
 
 | Agent | Model | Role | Gate |
@@ -517,6 +530,15 @@ Present final summary:
 
 For all agents, include: Context, Scope, Constraints, Dependencies, Output.
 
+### Subagent Prompt Construction
+
+Subagents get fresh context — they never inherit your session history. This means YOU are responsible for giving them everything they need:
+
+1. **NEVER let a subagent read the plan file themselves.** Paste the relevant sections directly into their prompt. Agents given a file path will produce vaguer results than agents given the actual content.
+2. **Construct exactly what they need — no more, no less.** Too much context dilutes focus; too little causes NEEDS_CONTEXT escalations.
+3. **Include a "Questions?" gate:** Tell the subagent to ask questions BEFORE starting work. This catches scope misunderstandings early.
+4. **Specify the output format:** Tell the subagent exactly what you expect back (status code + specific deliverables).
+
 For **scout**: research topic, info gaps, how findings feed into planning.
 For **scout (design research)**: component/page type to research, similar products to compare, design trends scope, what reusable knowledge to extract.
 For **oracle**: complexity level, mode, HTML requirement, research findings.
@@ -526,3 +548,40 @@ For **forge**: specific files, plan reference, task from DAG, related files to a
 For **weaver**: design document path (phase-context.md), specific components to implement, existing project frontend patterns, styling approach.
 For **sentinel**: files to review, plan path, focus areas, rules to check.
 For **chronicler**: doc style, target audience.
+
+## Verification Before Completion
+
+```
+IRON LAW: NEVER claim a phase is complete without fresh verification evidence.
+Claiming work is complete without verification is dishonesty, not efficiency.
+```
+
+Before reporting any phase as complete:
+
+1. **Run verification** — build, tests, lint. Don't trust, verify.
+2. **Read the actual output** — don't assume the agent did what you asked.
+3. **Verify against acceptance criteria** — check every criterion from the plan.
+4. **Only then** mark the task complete.
+
+| Claim | Required Evidence | Insufficient |
+|-------|------------------|--------------|
+| "Tests pass" | Actual test output showing pass/fail counts | "I wrote the tests" |
+| "Build succeeds" | Actual build command output | "The code should compile" |
+| "Implementation matches plan" | Line-by-line comparison of requirements vs code | "I followed the plan" |
+| "Review passed" | Sentinel report with APPROVE | No critical issues found (by you) |
+
+## Review Gate — Two-Stage Review
+
+The review gate uses two distinct stages. NEVER run Stage 2 before Stage 1 passes.
+
+**Stage 1: Spec Compliance** — "Did they build the right thing?"
+- Read the approved plan from `phase-context.md`
+- Read every modified file
+- For each requirement, verify it exists in the implementation
+- Check for missing requirements, extra work, misunderstandings
+- If Stage 1 fails → REQUEST CHANGES → back to implementation
+
+**Stage 2: Code Quality** — "Did they build it right?" (only after Stage 1 passes)
+- Correctness, security, performance, architecture
+- Sentinel's full review checklist
+- Rule violations from `rules.json` if it exists

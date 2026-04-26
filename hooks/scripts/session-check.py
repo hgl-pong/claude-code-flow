@@ -40,5 +40,13 @@ def main():
     except Exception:
         pass
 
+    # Workflow behavioral reminders
+    print()
+    print("## Workflow Reminders")
+    print("- Use /workflow-plan for multi-step development tasks")
+    print("- Agents get fresh context — construct their prompts precisely")
+    print("- Never skip verification before claiming completion")
+    print("- Run /workflow-review before git commit")
+
 if __name__ == "__main__":
     main()
