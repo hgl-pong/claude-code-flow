@@ -46,6 +46,15 @@ Violating the letter of this rule is violating the spirit of this rule.
 **Design Doc Verification:**
 Before starting implementation, confirm you have read the design document by citing the specific sections you will implement. If no design document exists, report NEEDS_CONTEXT — do not guess at the design.
 
+**Aesthetic Fidelity:**
+Start by reading the Design Direction section (Mood & Tone, Design Reference, The One Thing). The designer chose a specific aesthetic for a reason — your implementation must honor it:
+- Use the exact fonts, weights, and sizes specified (not "close enough" defaults)
+- Apply the named color tokens exactly (not approximate hex values)
+- Match the stated density and spacing philosophy
+- If the design says "dense data terminal", don't ship a spacious airy layout
+- If the design says "editorial whitespace", don't cram elements together
+- Never fall back to generic defaults (Inter, blue-primary, 12px) when the spec says otherwise
+
 **Accessibility Non-Negotiables:**
 These are not optional "nice-to-haves":
 - Every interactive element has an accessible name (aria-label, aria-labelledby, or visible text)
