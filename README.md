@@ -64,7 +64,6 @@
 | `/workflow-status` | 查看当前工作流状态、模式、指标 |
 | `/workflow-timeline` | 查看当前会话的完整执行时间线 |
 | `/workflow-metrics` | 查看跨会话的趋势指标 |
-| `/workflow-evolve` | 分析执行日志，审批 prompt 改进提案 |
 | `/workflow-skills` | 管理技能库，审批自动检测的新技能 |
 | `/code-review` | 独立代码审查 |
 | `/write-tests` | 独立测试编写 |
@@ -146,7 +145,7 @@ evolver (Opus) 分析日志
   - 生成 prompt 改进提案 -> evolution-pending.md
       |
       v
-用户审批 (/workflow-evolve)
+用户审批 (orchestrator 自动触发)
       |
       v
 eval-gate 校验 (PASS/WARN/FAIL)
@@ -182,8 +181,7 @@ eval-gate 校验 (PASS/WARN/FAIL)
 /workflow-timeline
 /workflow-metrics
 
-# 自我演化
-/workflow-evolve
+# 技能管理
 /workflow-skills
 
 # 独立命令
@@ -217,7 +215,6 @@ claude-code-flow/
 │   ├── workflow-status.md # 当前状态 + 指标
 │   ├── workflow-timeline.md # 执行时间线
 │   ├── workflow-metrics.md  # 跨会话指标
-│   ├── workflow-evolve.md   # prompt 演化
 │   ├── workflow-skills.md   # 技能库管理
 │   ├── code-review.md     # 独立审查
 │   ├── write-tests.md     # 独立测试
@@ -243,7 +240,7 @@ claude-code-flow/
 │       ├── eval-gate.py        # 演化评估门控 (PASS/WARN/FAIL)
 │       ├── rule-evaluator.py   # 规则累积 (propose/check/evaluate)
 │       ├── skill-detector.py   # 技能匹配 + 自动检测
-│       └── apply-evolution.py  # 应用已批准的演进提案
+│       └── evolution-check.py  # SessionStart 进化检测
 ├── .claude/flow/              # 运行时数据 (建议 .gitignore)
 │   ├── workflow-state.json    # 工作流状态
 │   ├── phase-context.md       # 阶段上下文

@@ -1,6 +1,6 @@
 ---
 name: evolver
-description: Analyze workflow execution logs to identify failure patterns and efficiency bottlenecks, then propose prompt improvements for agents. Trigger when user runs /workflow-evolve or after 5+ completed sessions.
+description: Analyze workflow execution logs to identify failure patterns and efficiency bottlenecks, then propose prompt improvements for agents. Auto-triggered by dev-orchestrator when enough sessions accumulate.
 model: opus
 color: purple
 tools: ["Read", "Grep", "Glob"]
@@ -73,7 +73,7 @@ Sessions analyzed: [count]
 - Never propose removing core safety features (guard hooks, state machine validation)
 - Keep changes minimal and targeted — one concern per proposal
 - Rate each proposal's risk and confidence honestly
-- Do NOT apply changes yourself — proposals must be approved via /workflow-evolve
+- Do NOT apply changes yourself — proposals must be approved via the orchestrator's evolution step
 
 **Self-Review Before Reporting Done:**
 - [ ] Every proposal is backed by 2+ data points from execution logs

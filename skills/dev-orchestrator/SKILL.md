@@ -120,6 +120,33 @@ Max 2 retries per task. Always escalate after that.
 ### 8-9. Documentation + Report
 Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Set phase to `idle`. Present final summary with files modified, test results, review outcome.
 
+### 10. Self-Evolution Check
+After every workflow completion, check `.claude/flow/evolution-pending.md` for existing proposals and `.claude/flow/evolution.json` config.
+
+**If `EVOLUTION_PENDING` or `EVOLUTION_READY` notification appeared in SessionStart:**
+
+1. Read `.claude/flow/evolution.json` — if `disabled: true`, skip entirely.
+
+2. If no pending proposals but analysis is due (sessions since last analysis >= `auto_analyze_after`):
+   - Invoke evolver agent to analyze logs and generate proposals:
+     ```
+     Agent({ name: "evolver", subagent_type: "claude-code-flow:evolver", model: "opus",
+       prompt: "Analyze workflow execution logs and propose prompt improvements. Write proposals to .claude/flow/evolution-pending.md" })
+     ```
+
+3. Read `.claude/flow/evolution-pending.md` and present each proposal to the user with:
+   - Agent/file affected, specific change (before/after), expected effect, risk level
+   - Options: **Approve** / **Reject** / **Defer**
+
+4. For each approved proposal:
+   - Run `python hooks/scripts/eval-gate.py validate-prompt-change <agent_file>`
+   - PASS → apply the change; WARN → confirm with user; FAIL → skip
+   - Update `evolution.json`: set `last_analysis_session_count` to current workflow_stop count
+   - Move applied proposals to `.claude/flow/evolution-history.md`
+   - If `auto_apply_low_risk: true` and risk is "low", apply without asking
+
+**User control:** Edit `.claude/flow/evolution.json` to configure frequency, disable, or auto-apply. Edit `.claude/flow/evolution-pending.md` to manually modify or reject proposals.
+
 ## Verification
 
 **IRON LAW: NEVER claim a phase is complete without fresh verification evidence.**
