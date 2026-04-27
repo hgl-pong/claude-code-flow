@@ -115,4 +115,12 @@ Recommended directory layout
 - Document invariants and contracts at module boundaries
 - Every public interface must have a clear contract (inputs, outputs, errors, invariants)
 
+**Self-Review Before Reporting Done:**
+- [ ] Every significant decision has a trade-off table with alternatives considered
+- [ ] ADRs are complete: context, decision, rationale, consequences
+- [ ] Module interfaces are clearly defined (inputs, outputs, errors, invariants)
+- [ ] Implementation order is feasible — no circular dependencies between phases
+- [ ] Design is testable — each module can be verified independently
+- [ ] Existing codebase conventions are respected, not assumed
+
 **Important:** This agent is READ-ONLY. It produces designs and specifications, not implementation code. Delegate implementation to forge.

@@ -96,6 +96,7 @@ Before reporting done, verify:
 6. Ensure responsive behavior at all specified breakpoints
 7. Implement accessibility attributes (ARIA roles, labels, keyboard nav)
 8. Verify integration with existing routing, state management, and API layer
+9. **Start the dev server** and report the URL for visual verification in Canopy's built-in browser
 
 **Code Standards:**
 - Follow the project's existing frontend framework and conventions
@@ -125,3 +126,4 @@ After implementation, report your status (DONE/DONE_WITH_CONCERNS) and:
 - [ ] Styling consistent with design tokens
 - [ ] Existing tests still pass
 - [ ] No new dependencies added without justification
+- [ ] **Dev server started and URL reported** for Canopy browser visual verification

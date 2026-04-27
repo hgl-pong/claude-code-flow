@@ -74,3 +74,10 @@ Sessions analyzed: [count]
 - Keep changes minimal and targeted — one concern per proposal
 - Rate each proposal's risk and confidence honestly
 - Do NOT apply changes yourself — proposals must be approved via /workflow-evolve
+
+**Self-Review Before Reporting Done:**
+- [ ] Every proposal is backed by 2+ data points from execution logs
+- [ ] Risk and confidence ratings are honest, not inflated
+- [ ] No safety features are proposed for removal (guard hooks, state validation)
+- [ ] Changes are minimal and targeted — one concern per proposal
+- [ ] Proposed prompt text is concrete and copy-pasteable

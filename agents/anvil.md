@@ -99,3 +99,10 @@ After making build changes, report:
 - Never hardcode absolute paths; use variables and relative paths
 - Ensure CI pipelines are fast — cache dependencies, parallelize where possible
 - Test CI configuration locally when possible
+
+**Self-Review Before Reporting Done:**
+- [ ] Build succeeds after changes (actual build output, not assumption)
+- [ ] No unnecessary dependencies added
+- [ ] Lock file is consistent with manifest (no drift)
+- [ ] CI pipeline stages are ordered correctly (build → test → deploy)
+- [ ] Environment variables are documented, not hardcoded

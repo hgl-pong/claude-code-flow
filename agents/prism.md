@@ -82,6 +82,24 @@ Before reporting done, verify each test you wrote:
 - **Regression tests**: Known bugs that must not reappear
 - **Property-based tests**: Verify invariants hold across random inputs
 
+**Frontend Visual Testing:**
+For frontend/UI tasks, supplement unit tests with browser-based visual verification:
+
+1. **Ensure dev server is running** — if not already started by weaver, start it in background and wait for ready
+2. **Use Canopy's built-in browser** — open the dev server URL in Canopy's browser tab for visual inspection. Canopy's element capture and screenshot feed directly into agent context, enabling:
+   - Visual verification of layout, colors, typography, and spacing against design spec
+   - Element inspection for DOM structure, ARIA attributes, and computed styles
+   - Device emulation at specified breakpoints (iPhone, iPad, Pixel, etc.)
+3. **Automated assertions via MCP/browser tools** — when available, verify:
+   - Elements exist at expected selectors
+   - Text content matches expected values
+   - Styles (colors, fonts, spacing) match design tokens
+   - Interactive elements have correct ARIA attributes
+   - Responsive layout at specified breakpoints
+4. **Report visual issues** — flag any discrepancy between implementation and design spec
+
+The workflow is: weaver starts dev server → orchestrator opens URL in Canopy → screenshots/captures feed into context → prism writes tests + verifies visually.
+
 **Code Standards:**
 - Use descriptive test names that explain the expected behavior
 - Test edge cases: empty inputs, max capacity, invalid inputs, concurrent access

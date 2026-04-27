@@ -132,7 +132,14 @@ When the feature involves 3+ phases or cross-cutting concerns, also produce a se
 - Responsive layout
 
 **After Review:**
-- If user approves: output a structured plan summary for the orchestrator to distribute
+- If user approves: write two outputs:
+  1. **Plan summary for human** — concise overview (already presented during review)
+  2. **Agent brief** (`.claude/flow/plan-brief.md`) — structured markdown for forge/weaver/sentinel to consume directly. Include:
+     - One-line goal per phase
+     - For each task: exact files to create/modify, concrete acceptance criteria, dependencies
+     - Risk items with mitigation
+     - File impact tree
+     - No prose, no rationale — agents need actions, not explanations
 - If user requests changes: revise and regenerate, then re-run self-review
 
 **Quality Standards:**

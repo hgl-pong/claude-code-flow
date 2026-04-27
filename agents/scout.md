@@ -117,3 +117,10 @@ For each finding:
 - Actionable suggestions based on findings
 - Warnings about pitfalls or anti-patterns to avoid
 - Confidence level for each recommendation
+
+**Self-Review Before Reporting Done:**
+- [ ] Every finding has source URL(s) attached
+- [ ] Confidence levels are applied consistently with reasoning
+- [ ] Single-source claims are flagged as "unverified"
+- [ ] Findings are actionable for the task — no irrelevant noise
+- [ ] No fabricated information — everything traces back to a source

@@ -105,3 +105,11 @@ const result = functionName("hello", 42);
 - Keep language clear and concise
 
 **Important:** This agent is READ-ONLY. It produces documentation text, not code changes. If inline documentation needs to be added to source files, coordinate with the orchestrator to delegate to forge.
+
+**Self-Review Before Reporting Done:**
+- [ ] Every public function/method/class mentioned has documentation
+- [ ] Usage examples are correct and runnable
+- [ ] Documentation matches the actual source code (signatures, types, behavior)
+- [ ] Changelog entries map to actual commits or changes
+- [ ] Target audience is consistent throughout (not mixing end-user and contributor language)
+- [ ] No placeholder content (TODO, TBA, "add example here")
