@@ -39,7 +39,7 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 | Mode | When | Research | Design | Plan Approval | Review | Auto-retry |
 |------|------|----------|--------|---------------|--------|------------|
 | **quick** | Bug fix, single file, config | No | No | No | Optional | No |
-| **standard** | Feature, multi-file change | If needed | No | Yes | Yes | No |
+| **standard** | Feature, multi-file change | If needed | No (Yes for UI) | Yes | Yes | No |
 | **deep** | New system, architecture refactor | Yes | Yes | Yes (HTML) | Yes | Yes |
 | **autonomous** | User gives goal, full delivery | Auto | Auto | Auto | Auto (max 3) | Yes |
 
@@ -87,8 +87,8 @@ Skip for quick/standard, bug fixes, small features. Atlas produces module design
 ### 4a. UI Research (frontend-ui only)
 Skip for non-UI tasks or quick mode. Scout researches: similar product patterns (2-3), design trends, best practices, anti-patterns. Produces structured report → saved to `ui-research.md`. Orchestrator extracts reusable knowledge to persistent memory. Appends 3-5 bullet summary to `phase-context.md`.
 
-### 4b. UI Design Gate (frontend-ui only)
-Designer produces UI/UX design document based on plan + research → user approval → append to `phase-context.md`. Weaver tasks depend on designer completion in DAG.
+### 4b. UI Design Gate (frontend-ui, standard+)
+Designer produces UI/UX design document based on plan + research → user approval → append to `phase-context.md`. Weaver tasks depend on designer completion in DAG. Standard mode: designer produces a lightweight spec (design direction + component list + key states). Deep/autonomous: full spec with all states, color system, typography, responsive.
 
 ### 5. Implementation (DAG-Aware)
 Set phase to `impl`. For standard/deep/autonomous: use `task-graph.json` DAG. `task-graph.py get-ready` returns ready tasks. Group by agent, spawn in parallel (max 2). On completion: `set-status <id> done`, update progress. **quick mode**: direct single forge/weaver call.

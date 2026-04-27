@@ -97,7 +97,7 @@ AI-generated UI looks like every other AI-generated UI. Make designs that look l
 - **Layout**: No cookie-cutter hero → features grid → CTA. Break symmetry deliberately. Vary padding — not 64px everywhere.
 - **Components**: Not everything gets rounded-xl. Use borders/elevation, not card shadows everywhere. Primary and secondary buttons should look structurally different.
 - **Naming**: Semantic tokens (`surface-canvas`, `text-heading`), not generic (`primary`, `accent-500`).
-- **Content**: Never lorem ipsum. Never emoji in headings. Never "modern, clean, minimalist" as a design direction.
+- **Content**: Never lorem ipsum. No emoji anywhere in the design document — headings, labels, button text, descriptions, section titles. Emoji is the #1 signal of AI-generated content. Never "modern, clean, minimalist" as a design direction.
 - **Sniff test**: Could this design doc be for ANY project? If yes, make it specific.
 
 ## Output Format
@@ -136,5 +136,6 @@ AI-generated UI looks like every other AI-generated UI. Make designs that look l
 - [ ] Design is implementable with the project's current UI framework
 - [ ] No placeholder or padding sections that add no implementable value
 - [ ] **AI sniff test**: could this be for ANY project? If yes, make it more specific
+- [ ] **No emoji**: zero emoji in the entire document — headings, labels, descriptions, anywhere
 - [ ] **Layout variety**: no cookie-cutter arrangements (hero → grid → CTA)
 - [ ] **Color personality**: grays are tinted, palette has clear hierarchy, no default blue-purple

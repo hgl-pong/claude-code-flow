@@ -22,9 +22,10 @@ Start the planning pipeline for a feature or task.
 1. **Parse arguments**: Extract mode override (if any) and task description
 
 2. **Analyze** the user's request to classify:
-   - **Domain**: What area of the codebase is affected
+   - **Domain**: `frontend-ui` (pages, components, styles, layouts) or `backend/general`
    - **Complexity**: Simple (1-2 subtasks) vs Complex (3+ subtasks, cross-cutting)
    - **Needs design**: Yes (new system/architectural change) vs No (feature addition/bug fix)
+   - **Needs UI design**: Yes if domain is `frontend-ui` and not a trivial CSS tweak
    - **Needs research**: Yes (external library/API, best practices lookup, tech comparison) vs No (internal-only)
 
 3. **Select mode** (if not overridden by user):
@@ -52,7 +53,12 @@ Start the planning pipeline for a feature or task.
 
 8. **If needs design** (deep/autonomous + new system): invoke atlas (Opus) for architecture design, wait for approval
 
-9. **Hand off to implementation**: spawn forge (and prism/anvil as needed) with the approved plan
+9. **If needs UI design** (frontend-ui, standard+): invoke scout for UI research → invoke designer for design document → wait for approval
+
+10. **Hand off to implementation**:
+    - Frontend-UI → weaver (with design doc from step 9)
+    - Backend/General → forge
+    - Tests → prism, Build/CI → anvil (as needed)
 
 ## Usage
 
@@ -65,9 +71,24 @@ Start the planning pipeline for a feature or task.
 
 ## After Plan Approval
 
-Distribute work to agents based on task type and mode:
-- Implementation → forge
-- Tests → prism
-- Build/CI → anvil
+### Domain Routing
+
+Distribute work to agents based on task domain and mode:
+
+**Frontend-UI tasks** (new pages, UI components, layout changes, visual features):
+1. **UI Research** (standard+): invoke scout to research similar product patterns, design trends → save to `ui-research.md`
+2. **UI Design Gate** (standard+): invoke designer to produce design document → user approval
+3. **Implementation** → weaver (with design doc as context)
+4. **Tests** → prism
+5. **Build/CI** → anvil
+
+**Backend/General tasks**:
+1. **Implementation** → forge
+2. **Tests** → prism
+3. **Build/CI** → anvil
+
+### Scheduling
+
 - For standard/deep/autonomous with 4+ subtasks, use DAG-aware scheduling via task-graph.py
 - For complex tasks, use TaskList for tracking progress
+- Weaver tasks must wait for designer completion in the DAG
