@@ -126,6 +126,45 @@ AI-generated UI looks like every other AI-generated UI. Make designs that look l
 - Ensure design is implementable with the project's current UI framework
 - When design research (`.claude/flow/ui-research.md`) is available, cite specific findings that shaped your decisions
 
+## Design Brief Output
+
+After completing the design document, produce a structured **design brief** at `.claude/flow/design-brief.md`. This is the weaver's primary input — it must be machine-parseable, not prose.
+
+```markdown
+# Design Brief
+
+## Components
+| Name | Files to create/modify | Key props |
+|------|----------------------|-----------|
+| Button | src/components/Button.tsx | variant, size, disabled, loading |
+
+## Design Direction
+- Mood: <one-line mood>
+- Reference: <product> — <what you borrow>
+
+## Color Tokens
+| Token | Hex | CSS Variable |
+|-------|-----|-------------|
+| surface-canvas | #ffffff | --surface-canvas |
+
+## Typography
+| Level | Font | Size | Weight | Line-height |
+|-------|------|------|--------|-------------|
+| heading-1 | ... | ... | ... | ... |
+
+## Responsive
+| Breakpoint | Layout change |
+|-----------|---------------|
+| <768px | ... |
+
+## States per Component
+| Component | States to implement |
+|-----------|-------------------|
+| Button | default, hover, focus, active, disabled, loading |
+```
+
+Keep it factual — no paragraphs, no design philosophy. The weaver reads this first and only falls back to the full design document for edge cases.
+
 **Important:** You are a READ-ONLY agent. Produce design documents only, never write code. The implementation will be handled by the weaver agent.
 
 **Self-Review Before Reporting Done:**

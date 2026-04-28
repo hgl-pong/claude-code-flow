@@ -88,7 +88,7 @@ Skip for quick/standard, bug fixes, small features. Atlas produces module design
 Skip for non-UI tasks or quick mode. Scout researches: similar product patterns (2-3), design trends, best practices, anti-patterns. Produces structured report → saved to `ui-research.md`. Orchestrator extracts reusable knowledge to persistent memory. Appends 3-5 bullet summary to `phase-context.md`.
 
 ### 4b. UI Design Gate (frontend-ui, standard+)
-Designer produces UI/UX design document based on plan + research → user approval → append to `phase-context.md`. Weaver tasks depend on designer completion in DAG. Standard mode: designer produces a lightweight spec (design direction + component list + key states). Deep/autonomous: full spec with all states, color system, typography, responsive.
+Designer produces UI/UX design document based on plan + research → user approval → append to `phase-context.md`. Designer also outputs `.claude/flow/design-brief.md` (structured component specs, tokens, typography — weaver's primary input). Weaver tasks depend on designer completion in DAG. Standard mode: designer produces a lightweight spec (design direction + component list + key states). Deep/autonomous: full spec with all states, color system, typography, responsive.
 
 ### 5. Implementation (DAG-Aware)
 Set phase to `impl`. For standard/deep/autonomous: use `task-graph.json` DAG. `task-graph.py get-ready` returns ready tasks. Group by agent, spawn in parallel (max 2). On completion: `set-status <id> done`, update progress. **quick mode**: direct single forge/weaver call.

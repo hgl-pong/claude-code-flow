@@ -88,7 +88,7 @@ Before reporting done, verify:
 - Build tools: Vite, Webpack, Next.js, Nuxt (follow project convention)
 
 **Implementation Process:**
-1. Read the UI design document from `.claude/flow/phase-context.md` (or provided design doc path) — cite specific sections
+1. Read `.claude/flow/design-brief.md` first (structured component specs, tokens, typography). If it doesn't exist, fall back to `.claude/flow/phase-context.md` — cite specific sections
 2. Explore existing codebase to understand framework, component library, and patterns
 3. Identify which files to create or modify
 4. Implement components following the design document specifications

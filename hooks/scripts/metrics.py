@@ -53,13 +53,27 @@ def collect(entries, session_id=None):
     if not filtered:
         return None
 
-    # Agent stats
-    agent_stats = defaultdict(lambda: {"count": 0, "statuses": defaultdict(int)})
+    # Agent stats with duration tracking
+    agent_stats = defaultdict(lambda: {"count": 0, "statuses": defaultdict(int), "durations": []})
     for e in filtered:
         if e.get("event") == "agent_complete":
             agent = e.get("agent", "unknown")
             agent_stats[agent]["count"] += 1
             agent_stats[agent]["statuses"][e.get("status", "unknown")] += 1
+
+    # Compute durations from start/complete pairs
+    starts = {}
+    for e in filtered:
+        if e.get("event") == "agent_start":
+            starts[e.get("agent", "")] = parse_ts(e.get("ts", ""))
+    for e in filtered:
+        if e.get("event") == "agent_complete":
+            agent = e.get("agent", "")
+            end_ts = parse_ts(e.get("ts", ""))
+            start_ts = starts.get(agent)
+            if start_ts and end_ts:
+                dur = (end_ts - start_ts).total_seconds()
+                agent_stats[agent]["durations"].append(dur)
 
     # Phase durations
     phase_transitions = [e for e in filtered if e.get("event") == "phase_transition"]

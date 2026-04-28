@@ -11,6 +11,7 @@ VALID_EVENTS = [
     "phase_transition", "agent_start", "agent_complete",
     "tool_guard_block", "review_result", "error",
     "workflow_stop", "session_start", "session_end",
+    "task_created", "task_completed",
 ]
 
 def get_session_id():
