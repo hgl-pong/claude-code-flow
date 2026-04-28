@@ -81,11 +81,15 @@ Distribute work to agents based on task domain and mode:
 3. **Implementation** → weaver (with design doc as context)
 4. **Tests** → prism
 5. **Build/CI** → anvil
+6. **Review** → sentinel (code quality)
+7. **Acceptance** → validator (functional verification) → TaskUpdate completed
 
 **Backend/General tasks**:
 1. **Implementation** → forge
 2. **Tests** → prism
 3. **Build/CI** → anvil
+4. **Review** → sentinel (code quality)
+5. **Acceptance** → validator (functional verification) → TaskUpdate completed
 
 ### Scheduling
 

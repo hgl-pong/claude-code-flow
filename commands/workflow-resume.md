@@ -19,6 +19,7 @@ Resume an interrupted workflow from the most recent state snapshot.
 4. Ask the user to confirm: "Resume this workflow? (The state will be restored)"
 5. If confirmed, run `python hooks/scripts/flow-state.py resume`
 6. Read `.claude/flow/phase-context.md` if it exists to recover the plan/architecture context
+7. Read `.claude/plans/plan-brief.md` if it exists to recover task details
 7. Display a summary of what was restored and suggest next steps based on the phase:
    - `plan` → "Plan was in progress. Re-run /workflow-plan to continue."
    - `design` → "Architecture design was in progress. Re-run the design step."

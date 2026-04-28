@@ -134,7 +134,7 @@ When the feature involves 3+ phases or cross-cutting concerns, also produce a se
 **After Review:**
 - If user approves: write two outputs:
   1. **Plan summary for human** — concise overview (already presented during review)
-  2. **Agent brief** (`.claude/flow/plan-brief.md`) — structured markdown for forge/weaver/sentinel to consume directly. Include:
+  2. **Agent brief** (`.claude/plans/plan-brief.md`) — structured markdown for forge/weaver/sentinel/validator to consume directly. Include:
      - One-line goal per phase
      - For each task: exact files to create/modify, concrete acceptance criteria, dependencies
      - Risk items with mitigation

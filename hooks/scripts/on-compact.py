@@ -11,7 +11,7 @@ MODIFIED_FILES_JSONL = os.path.join(FLOW_DIR, "modified-files.jsonl")
 PRE_COMPACT = os.path.join(FLOW_DIR, "pre-compact-context.md")
 
 CRITICAL_FILES = [
-    "workflow-state.json", "phase-context.md", "plan-brief.md",
+    "workflow-state.json", "phase-context.md", "plans/plan-brief.md",
     "task-graph.json", "modified-files.txt", "ui-research.md",
 ]
 

@@ -6,7 +6,7 @@ description: This skill should be used when the user asks to "develop a feature"
 
 # Development Orchestrator
 
-Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and dynamic error recovery.
+Orchestrate tasks through Plan -> Design -> Implement -> Review -> Acceptance pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and dynamic error recovery.
 
 ## Common Rationalizations — Reality Check
 
@@ -32,6 +32,7 @@ Orchestrate tasks through Plan -> Implement -> Review pipeline with model-tiered
 | `prism` | sonnet | Test frameworks, benchmarks | -- |
 | `anvil` | haiku | Build, CI/CD, dependencies | -- |
 | `sentinel` | sonnet | Code review before commit | Review |
+| `validator` | sonnet | Functional acceptance testing | Acceptance |
 | `chronicler` | sonnet | Documentation, changelogs, API docs | -- |
 
 ## Mode Selection
@@ -54,16 +55,16 @@ Mode Selection → Research (scout, if needed) → Plan Gate (oracle)
   → Design Gate (atlas, deep/autonomous only)
   → UI Research (scout, frontend-ui only) → UI Design Gate (designer)
   → Implementation (forge/weaver + prism + anvil, DAG-scheduled)
-  → Review Gate (sentinel) → Documentation (chronicler, if needed) → Done
+  → Review Gate (sentinel) → Acceptance Gate (validator) → Documentation (chronicler, if needed) → Done
 ```
 
 ## State Machine
 
 Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <phase>`
 
-Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + architecture + design), `plan-brief.md` (agent-ready task breakdown from oracle), `ui-research.md` (design research), `modified-files.txt` + `modified-files.jsonl` (file tracking), `review-result.txt` (review outcome).
+Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + architecture + design), `.claude/plans/plan-brief.md` (agent-ready task breakdown from oracle), `ui-research.md` (design research), `modified-files.txt` + `modified-files.jsonl` (file tracking), `review-result.txt` (review outcome).
 
-Phase handoff: each gate agent appends its output to `phase-context.md` with YAML frontmatter. Oracle also writes `plan-brief.md` after approval — this is the agent-consumable version with concrete tasks and file lists.
+Phase handoff: each gate agent appends its output to `phase-context.md` with YAML frontmatter. Oracle also writes `.claude/plans/plan-brief.md` after approval — this is the agent-consumable version with concrete tasks and file lists.
 
 ## Steps
 
@@ -91,7 +92,7 @@ Skip for non-UI tasks or quick mode. Scout researches: similar product patterns 
 Designer produces UI/UX design document based on plan + research → user approval → append to `phase-context.md`. Designer also outputs `.claude/flow/design-brief.md` (structured component specs, tokens, typography — weaver's primary input). Weaver tasks depend on designer completion in DAG. Standard mode: designer produces a lightweight spec (design direction + component list + key states). Deep/autonomous: full spec with all states, color system, typography, responsive.
 
 ### 5. Implementation (DAG-Aware)
-Set phase to `impl`. For standard/deep/autonomous: use TaskList to get available tasks (pending, no owner, empty blockedBy). Group by agent type, spawn in parallel (max 2). On completion: TaskUpdate status=completed. **quick mode**: direct single forge/weaver call.
+Set phase to `impl`. For standard/deep/autonomous: use TaskList to get available tasks (pending, no owner, empty blockedBy). Group by agent type, spawn in parallel (max 2). On agent completion: TaskUpdate status=in_progress, then proceed to Review → Acceptance. After validator ACCEPT: TaskUpdate status=completed. **quick mode**: direct single forge/weaver call, then skip to Acceptance.
 
 Task dependency rules: use `blockedBy` / `addBlocks` to express ordering. Oracle sets these during plan approval. Implementation checks TaskList for unblocked pending tasks. Frontend tasks blocked by designer completion automatically via DAG.
 
@@ -112,7 +113,14 @@ For frontend tasks, prism should use browser automation (Playwright/Puppeteer/MC
 
 **Canopy Browser Integration:** When running in Canopy, after weaver starts the dev server, open the URL in Canopy's built-in browser for visual verification. Canopy's element capture and screenshots feed directly into agent context, enabling real-time visual review without external browser automation tools. Use device emulation presets for responsive checking.
 
-### 7. Error Recovery
+### 7. Acceptance Gate
+After sentinel APPROVE, invoke validator for functional acceptance testing. **quick**: optional. **standard/deep**: mandatory. **autonomous**: auto-invoke.
+
+Validator reads `.claude/plans/plan-brief.md`, runs build and tests, checks feature delivery against plan requirements.
+
+Outcomes: ACCEPT → TaskUpdate status=completed, proceed; REJECT → back to implementer with gap list (max 2 rounds).
+
+### 8. Error Recovery
 ```
 syntax error     → auto-correct, retry
 dependency error → install missing dep, retry
@@ -123,7 +131,7 @@ unknown          → investigate (max 2 retries), then escalate
 
 Max 2 retries per task. Always escalate after that.
 
-### 8-9. Documentation + Report
+### 9. Documentation + Report
 Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Set phase to `idle`. Present final summary with files modified, test results, review outcome.
 
 ### 10. Self-Evolution Check
@@ -161,6 +169,8 @@ After every workflow completion, check `.claude/flow/evolution-pending.md` for e
 - "Build succeeds" requires actual build output, not "it should compile"
 - "Implementation matches plan" requires line-by-line comparison
 - "Review passed" requires sentinel APPROVE report
+- "Feature accepted" requires validator ACCEPT report
+- TaskUpdate status=completed only after validator ACCEPT
 
 Review is two-stage: Stage 1 spec compliance (did they build the right thing?) → Stage 2 code quality (did they build it right?). NEVER run Stage 2 before Stage 1 passes.
 
