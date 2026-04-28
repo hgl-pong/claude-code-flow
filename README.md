@@ -230,7 +230,7 @@ claude-code-flow/
 │       ├── log-event.py        # 通用结构化日志工具
 │       ├── session-check.py    # git 状态 + session_id 生成
 │       ├── track-changes.py    # 文件修改追踪 (txt + JSONL 所有权)
-│       ├── task-graph.py       # DAG 任务图 (循环检测/并行调度)
+│       ├── task-graph.py       # DAG 任务图 [DEPRECATED → TaskCreate/TaskList]
 │       ├── on-agent-complete.py # Agent 完成日志
 │       ├── on-workflow-stop.py  # 工作流停止日志
 │       ├── on-compact.py       # 上下文压缩前保存状态
@@ -247,7 +247,7 @@ claude-code-flow/
 │   ├── exec-log.jsonl         # 结构化执行日志
 │   ├── modified-files.txt     # 已修改文件列表
 │   ├── modified-files.jsonl   # 文件所有权日志
-│   ├── task-graph.json        # DAG 任务图
+│   ├── task-graph.json        # DAG 任务图 [DEPRECATED]
 │   ├── rules.json             # 累积规则库
 │   ├── skill-seeds.json       # 技能种子库
 │   ├── snapshots/             # 状态快照

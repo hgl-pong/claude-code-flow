@@ -61,7 +61,7 @@ Mode Selection → Research (scout, if needed) → Plan Gate (oracle)
 
 Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <phase>`
 
-Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + architecture + design), `plan-brief.md` (agent-ready task breakdown from oracle), `ui-research.md` (design research), `modified-files.txt` + `modified-files.jsonl` (file tracking), `review-result.txt` (review outcome), `task-graph.json` (DAG structure).
+Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + architecture + design), `plan-brief.md` (agent-ready task breakdown from oracle), `ui-research.md` (design research), `modified-files.txt` + `modified-files.jsonl` (file tracking), `review-result.txt` (review outcome).
 
 Phase handoff: each gate agent appends its output to `phase-context.md` with YAML frontmatter. Oracle also writes `plan-brief.md` after approval — this is the agent-consumable version with concrete tasks and file lists.
 
@@ -79,7 +79,7 @@ Skip for quick mode or internal-only tasks. Invoke scout for external info (libr
 - **deep**: oracle produces HTML visualization → browser review.
 - **autonomous**: oracle produces plan → auto-approve.
 
-Oracle writes summary to `phase-context.md` and generates `task-graph.json`.
+Oracle writes summary to `phase-context.md`. After approval, oracle creates tasks via TaskCreate (subject, description, blockedBy for dependencies).
 
 ### 4. Design Gate (deep/autonomous only)
 Skip for quick/standard, bug fixes, small features. Atlas produces module design, API surface, data layout → user approval → append to `phase-context.md`.
@@ -91,7 +91,9 @@ Skip for non-UI tasks or quick mode. Scout researches: similar product patterns 
 Designer produces UI/UX design document based on plan + research → user approval → append to `phase-context.md`. Designer also outputs `.claude/flow/design-brief.md` (structured component specs, tokens, typography — weaver's primary input). Weaver tasks depend on designer completion in DAG. Standard mode: designer produces a lightweight spec (design direction + component list + key states). Deep/autonomous: full spec with all states, color system, typography, responsive.
 
 ### 5. Implementation (DAG-Aware)
-Set phase to `impl`. For standard/deep/autonomous: use `task-graph.json` DAG. `task-graph.py get-ready` returns ready tasks. Group by agent, spawn in parallel (max 2). On completion: `set-status <id> done`, update progress. **quick mode**: direct single forge/weaver call.
+Set phase to `impl`. For standard/deep/autonomous: use TaskList to get available tasks (pending, no owner, empty blockedBy). Group by agent type, spawn in parallel (max 2). On completion: TaskUpdate status=completed. **quick mode**: direct single forge/weaver call.
+
+Task dependency rules: use `blockedBy` / `addBlocks` to express ordering. Oracle sets these during plan approval. Implementation checks TaskList for unblocked pending tasks. Frontend tasks blocked by designer completion automatically via DAG.
 
 Parallel rules: forge+prism can parallel (tests on existing code); anvil can parallel with prism; shared file dependencies must NOT parallel. Agent routing: frontend-ui → weaver, everything else → forge.
 

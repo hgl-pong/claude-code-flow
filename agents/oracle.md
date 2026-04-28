@@ -140,6 +140,10 @@ When the feature involves 3+ phases or cross-cutting concerns, also produce a se
      - Risk items with mitigation
      - File impact tree
      - No prose, no rationale — agents need actions, not explanations
+  3. **Create tasks** using TaskCreate for each implementation task:
+     - `subject`: concise imperative title (e.g., "Implement auth middleware")
+     - `description`: files to create/modify, acceptance criteria, concrete steps, which agent (forge/weaver/prism/anvil)
+     - `addBlockedBy`: task IDs that must complete first (based on dependency graph)
 - If user requests changes: revise and regenerate, then re-run self-review
 
 **Quality Standards:**

@@ -89,6 +89,6 @@ Distribute work to agents based on task domain and mode:
 
 ### Scheduling
 
-- For standard/deep/autonomous with 4+ subtasks, use DAG-aware scheduling via task-graph.py
-- For complex tasks, use TaskList for tracking progress
-- Weaver tasks must wait for designer completion in the DAG
+- For standard/deep/autonomous, use TaskCreate/TaskList for task tracking with blockedBy dependencies
+- Group tasks by agent type, spawn in parallel (max 2) when no shared file dependencies
+- Weaver tasks blocked by designer completion (set via blockedBy)

@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-"""DAG task graph manager. Usage: task-graph.py <action> [args]"""
+"""DAG task graph manager. Usage: task-graph.py <action> [args]
+
+DEPRECATED: This module is superseded by Claude Code's built-in TaskCreate/TaskList/TaskUpdate.
+New workflows should use TaskCreate with blockedBy for dependencies instead.
+This file is kept for backward compatibility only and will be removed in a future version.
+"""
 import json, os, sys
 from collections import deque
 
