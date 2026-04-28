@@ -97,6 +97,10 @@ Task dependency rules: use `blockedBy` / `addBlocks` to express ordering. Oracle
 
 Parallel rules: forge+prism can parallel (tests on existing code); anvil can parallel with prism; shared file dependencies must NOT parallel. Agent routing: frontend-ui → weaver, everything else → forge.
 
+**Parallel dispatch:** When multiple unblocked tasks are ready, send multiple Agent tool calls in a single message. Each call gets its own `name` and a self-contained prompt (context, scope, constraints, output format). Max 2 concurrent agents to avoid context explosion. When one completes, check TaskList for newly unblocked tasks before dispatching the next batch.
+
+**Conflict detection:** Before parallel dispatch, check task descriptions for overlapping file paths. If two tasks modify the same file, serialize them (add blockedBy dependency).
+
 Context management: after every 3 tasks, generate intermediate summary. Write key decisions to `phase-context.md` incrementally.
 
 ### 6. Review Gate

@@ -90,5 +90,7 @@ Distribute work to agents based on task domain and mode:
 ### Scheduling
 
 - For standard/deep/autonomous, use TaskCreate/TaskList for task tracking with blockedBy dependencies
-- Group tasks by agent type, spawn in parallel (max 2) when no shared file dependencies
+- Group tasks by agent type, dispatch multiple Agent calls in a single message (max 2 concurrent)
+- Check for shared file conflicts before parallel dispatch — serialize overlapping tasks
 - Weaver tasks blocked by designer completion (set via blockedBy)
+- On agent completion: TaskUpdate status=completed, then check TaskList for newly unblocked tasks
