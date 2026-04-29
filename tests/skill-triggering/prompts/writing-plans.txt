@@ -1,0 +1,1 @@
+We've agreed on the design for the auth system. Now write the implementation plan.
