@@ -5,6 +5,7 @@
 
 FLOW_DIR=".claude/flow"
 STATE_FILE="$FLOW_DIR/workflow-state.json"
+ULW_STATE_FILE="$FLOW_DIR/ulw-state.json"
 TRACK_FILE="$FLOW_DIR/modified-files.txt"
 LAST_VERIFICATION="$FLOW_DIR/last-verification.json"
 
@@ -21,7 +22,40 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-# --- Workflow phase from state file ---
+# --- ULW (Ultrawork) active state — shown instead of normal flow status ---
+if [ -f "$ULW_STATE_FILE" ]; then
+  ULW_ACTIVE=$(sed -n 's/.*"active"[[:space:]]*:[[:space:]]*\([a-z]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
+  if [ "$ULW_ACTIVE" = "true" ]; then
+    ULW_INTENT=$(sed -n 's/.*"intent"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$ULW_STATE_FILE" | head -1)
+    ULW_DONE=$(sed -n 's/.*"task_done"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
+    ULW_TOTAL=$(sed -n 's/.*"task_total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
+    ULW_ITER=$(sed -n 's/.*"iteration"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
+
+    ULW_PROGRESS=""
+    if [ -n "$ULW_TOTAL" ] && [ "$ULW_TOTAL" -gt 0 ]; then
+      ULW_PROGRESS=" ${ULW_DONE}/${ULW_TOTAL}"
+    fi
+
+    ULW_LOOP=""
+    if [ -n "$ULW_ITER" ] && [ "$ULW_ITER" -gt 0 ]; then
+      ULW_LOOP=" #${ULW_ITER}"
+    fi
+
+    VERIFY=""
+    if [ -f "$LAST_VERIFICATION" ]; then
+      VERIFY_STATUS=$(sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LAST_VERIFICATION" | head -1)
+      case "$VERIFY_STATUS" in
+        pass) VERIFY=" ok" ;;
+        fail) VERIFY=" fail" ;;
+      esac
+    fi
+
+    echo "⚡ulw:${ULW_INTENT:-?}${ULW_PROGRESS}${ULW_LOOP}${VERIFY}${GIT_INFO}"
+    exit 0
+  fi
+fi
+
+# --- Normal workflow phase from state file ---
 if [ -f "$STATE_FILE" ]; then
   PHASE=$(sed -n 's/.*"phase"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
   TASK_TOTAL=$(sed -n 's/.*"task_total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)

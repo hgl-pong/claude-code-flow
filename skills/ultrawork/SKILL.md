@@ -1,12 +1,23 @@
 ---
 name: Ultrawork
-version: "1.0.0"
-description: This skill should be used when the user includes "ulw" or "ultrawork" in their prompt, or invokes /ulw. It provides fully autonomous, zero-gate execution: Intent Gate classifies the task, then the appropriate pipeline runs without any user approval steps. The ralph-loop keeps execution going until the task is 100% verified complete.
+version: "1.1.0"
+description: This skill should be used when the user includes "ulw" or "ultrawork" in their prompt, or invokes /ulw. It provides fully autonomous, zero-gate execution: Intent Gate classifies the task, then the appropriate pipeline runs without any user approval steps. A dedicated Stop Hook (ulw-stop-hook.sh) guarantees continuous execution by blocking session exit until <ulw-done> is emitted with verified evidence.
 ---
 
 # Ultrawork (ULW)
 
-Full-autonomous execution mode. Classify intent → execute pipeline → verify evidence → done. No approval gates. No stopping until finished.
+Full-autonomous execution mode. Classify intent → execute pipeline → verify evidence → emit `<ulw-done>` → done. No approval gates. Stop Hook prevents exit until complete.
+
+## How Continuous Execution Is Guaranteed
+
+ULW uses a dedicated **Stop Hook** (`hooks/scripts/ulw-stop-hook.sh`) — not just a skill instruction. When Claude tries to exit:
+
+1. The hook reads `.claude/flow/ulw-state.json`
+2. If `active: true` and the last assistant message lacks `<ulw-done>`, the hook **blocks the exit** (`decision: "block"`) and re-injects the original prompt
+3. Claude resumes work with full awareness of what it already did (files on disk, git history, task state)
+4. This loop repeats until Claude outputs `<ulw-done>SUMMARY</ulw-done>` with verified evidence
+
+This is the **Ralph Wiggum technique** — the hook, not the model, enforces completion.
 
 ## Activation Contract
 
@@ -14,15 +25,35 @@ This skill is invoked when:
 1. The `ulw-detector` hook fires (user wrote `ulw` or `ultrawork` in their prompt), OR
 2. The user explicitly calls `/ulw`
 
-On activation:
+**Immediately on activation, write the ULW state file:**
+
+```bash
+python -c "
+import json, os, datetime
+state_dir = '.claude/flow'
+os.makedirs(state_dir, exist_ok=True)
+state = {
+  'active': True,
+  'session_id': os.environ.get('CLAUDE_SESSION_ID', ''),
+  'intent': 'unknown',
+  'prompt': '''ORIGINAL_PROMPT_HERE''',
+  'task_done': 0,
+  'task_total': 0,
+  'iteration': 0,
+  'max_iterations': 25,
+  'started_at': datetime.datetime.utcnow().isoformat() + 'Z'
+}
+with open(os.path.join(state_dir, 'ulw-state.json'), 'w') as f:
+    json.dump(state, f, indent=2)
+"
+```
+
+Replace `ORIGINAL_PROMPT_HERE` with the **exact text of the user's original request** (used by the Stop Hook to re-inject if Claude exits early).
+
+Then set workflow mode:
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous
 python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan
-```
-
-Then invoke the ralph-loop to ensure continuous execution:
-```
-Skill({ skill: "ralph-loop:ralph-loop", args: "Run until all tasks in the current session are completed and verified." })
 ```
 
 ## Step 1 — Intent Gate
@@ -40,9 +71,19 @@ Classify into one of:
 | `explain` | walk me through, describe, show me, what does X do | Read codebase → Structured answer |
 | `test` | add tests, write tests, test coverage, unit test | testing-strategy → prism |
 
-**Ambiguous signals**: if two intents are equally likely (e.g., "fix the tests" = fix _or_ test?), pick the one that involves the less destructive action first. Debug before patching.
+**Ambiguous signals**: pick the less destructive action first. Debug before patching.
 
-**Never ask the user for clarification in ULW mode.** Make a decision and proceed. If you were wrong, you'll find out at the verification step and can course-correct.
+**Never ask the user for clarification in ULW mode.** Make a decision and proceed.
+
+**After classifying, update ulw-state.json with the intent:**
+```bash
+python -c "
+import json
+with open('.claude/flow/ulw-state.json') as f: s = json.load(f)
+s['intent'] = 'CLASSIFIED_INTENT_HERE'
+with open('.claude/flow/ulw-state.json', 'w') as f: json.dump(s, f, indent=2)
+"
+```
 
 ## Step 2 — Pre-flight Checks
 
@@ -52,9 +93,28 @@ Before any code changes:
    ```bash
    git checkout -b ulw/$(date +%Y%m%d-%H%M%S)-<slug-from-task>
    ```
-3. Record task intent and branch in `workflow-state.json`.
 
 ## Step 3 — Execute the Intent Pipeline
+
+**After creating tasks with TaskCreate, update the total count in ulw-state.json:**
+```bash
+python -c "
+import json
+with open('.claude/flow/ulw-state.json') as f: s = json.load(f)
+s['task_total'] = TOTAL_COUNT_HERE
+with open('.claude/flow/ulw-state.json', 'w') as f: json.dump(s, f, indent=2)
+"
+```
+
+**After each task completes, increment task_done:**
+```bash
+python -c "
+import json
+with open('.claude/flow/ulw-state.json') as f: s = json.load(f)
+s['task_done'] = s.get('task_done', 0) + 1
+with open('.claude/flow/ulw-state.json', 'w') as f: json.dump(s, f, indent=2)
+"
+```
 
 ### Pipeline: `implement` / `refactor`
 
@@ -69,6 +129,7 @@ Before any code changes:
    - Use writing-plans skill
    - Create atomic tasks with blockedBy dependencies
    - TaskCreate each task immediately
+   - Update ulw-state.json task_total
    - DO NOT show plan to user for approval
 
 3. Implementation (DAG-aware, parallel)
@@ -78,6 +139,7 @@ Before any code changes:
      c. Refactor while tests stay green
      d. Run verification: bash -c "<test command>"
      e. Record evidence in verification-evidence.jsonl
+     f. Increment ulw-state.json task_done
    - Dispatch max 2 agents in parallel
    - Check for file conflicts before parallel dispatch
 
@@ -138,29 +200,7 @@ Before any code changes:
 4. Report coverage and evidence
 ```
 
-## Step 4 — Continuous Execution (ralph-loop)
-
-The ralph-loop keeps this skill alive until the TaskList is empty:
-
-```
-while tasks_remaining():
-    task = next_unblocked_task()
-    execute(task)
-    verify(task)
-    TaskUpdate(task, status=completed)
-
-if all_tasks_done() and verification_evidence_present():
-    exit_loop()
-else:
-    continue_loop()
-```
-
-**Do NOT exit or declare done if:**
-- Any task in TaskList is still `pending` or `in_progress`
-- `verification-evidence.jsonl` has no entries for the current session
-- The test suite has not been run since the last code change
-
-## Step 5 — Verification Before Completion
+## Step 4 — Verification Before Completion
 
 After all tasks complete, apply `verification-before-completion`:
 
@@ -170,7 +210,28 @@ After all tasks complete, apply `verification-before-completion`:
 4. Write evidence to `verification-evidence.jsonl`
 5. Compare deliverables against original task description
 
-Only after step 4 is evidence written may you mark the workflow done.
+Only after step 4 is evidence written may you signal completion.
+
+## Step 5 — Signal Completion (REQUIRED)
+
+**This is what stops the Stop Hook loop.**
+
+After verification passes, output the completion tag in your final message:
+
+```
+<ulw-done>BRIEF_SUMMARY_OF_WHAT_WAS_DONE</ulw-done>
+```
+
+Example:
+```
+<ulw-done>Added divide(a,b) to src/math.js with division-by-zero guard. 7 tests pass. Build OK. Lint clean.</ulw-done>
+```
+
+**Rules:**
+- Include this tag ONLY when ALL tasks have fresh verification evidence
+- The summary must be truthful — the Stop Hook checks this tag to release the loop
+- Do NOT output this tag speculatively or prematurely
+- If you output this and the Stop Hook reads it, the loop ends — make sure work is actually done
 
 ## Error Recovery
 
@@ -187,13 +248,14 @@ After max retries: **escalate**. Never loop infinitely on a failing task.
 
 ## ULW Golden Rules
 
-1. **Classify intent first.** Never start working before the Intent Gate completes.
-2. **Write the failing test first.** No exceptions, even in autonomous mode.
-3. **Never claim done without evidence.** `verification-evidence.jsonl` must have fresh entries.
-4. **Branch off main.** Never commit directly to `main`/`master` in ULW mode.
-5. **Escalate, don't loop forever.** Max retries are hard limits — after that, report to user.
-6. **Parallel max 2.** Dispatch at most 2 agents simultaneously. More creates context explosion.
-7. **No feature creep.** Implement exactly what was asked. Spec compliance before code quality.
+1. **Write ulw-state.json first.** The Stop Hook needs it to work. Write it before doing anything else.
+2. **Classify intent first.** Never start working before the Intent Gate completes.
+3. **Write the failing test first.** No exceptions, even in autonomous mode.
+4. **Never emit `<ulw-done>` without evidence.** The Stop Hook trusts this tag — don't lie.
+5. **Branch off main.** Never commit directly to `main`/`master` in ULW mode.
+6. **Escalate, don't loop forever.** Max retries are hard limits — after that, report to user.
+7. **Parallel max 2.** Dispatch at most 2 agents simultaneously.
+8. **No feature creep.** Implement exactly what was asked.
 
 ## Common Rationalizations — ULW Reality Check
 
@@ -204,10 +266,11 @@ After max retries: **escalate**. Never loop infinitely on a failing task.
 | "I can commit to main since it's autonomous" | No. Always branch. main is protected even in ULW mode. |
 | "I should ask for clarification before proceeding" | No. Classify and decide. That's what ULW is for. |
 | "The tests pass so I don't need to run lint" | No. Full verification suite: tests + build + lint. |
+| "I can output `<ulw-done>` to stop early" | No. Only output when ALL tasks are verified. The hook trusts that tag. |
 
 ## Output Format
 
-When ULW completes, report:
+When ULW completes, the final message must include:
 
 ```
 ## ULW Complete ✓
@@ -227,4 +290,9 @@ When ULW completes, report:
 
 ### Commits
 - feat: add divide function with tests (abc1234)
+
+<ulw-done>Added divide(a,b) to src/math.js with guard. 7 tests pass. Build OK. Lint clean.</ulw-done>
 ```
+
+The `<ulw-done>` tag must be the last thing in the message.
+
