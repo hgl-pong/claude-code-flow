@@ -136,10 +136,10 @@ AI-generated UI looks like every other AI-generated UI. Make designs that look l
 
 ## Design Brief Output
 
-After completing the design document, produce a structured **design brief** for `.claude/flow/design-brief.md`. If your tool access is read-only, include the full brief in your response and tell the orchestrator to write it to that path. This is the weaver's primary input — it must be machine-parseable, not prose.
+After completing the design document, produce a structured **DESIGN.md** for `.claude/flow/DESIGN.md`. If your tool access is read-only, include the full content in your response and tell the orchestrator to write it to that path. This is the weaver's primary input — it must be machine-parseable, not prose.
 
 ```markdown
-# Design Brief
+# Design
 
 ## Components
 | Name | Files to create/modify | Key props |
