@@ -18,6 +18,7 @@ User instructions still win. If the user explicitly asks for a lightweight answe
 
 | Situation | Use |
 |---|---|
+| Prompt contains `ulw` or `ultrawork` | `ultrawork` — full autonomous delivery, no gates |
 | New feature, behavior change, refactor, UI work | `brainstorming` first, then `writing-plans` |
 | Multi-step implementation with an approved plan | `dev-orchestrator` or `subagent-driven-development` pattern inside it |
 | Bug or failing behavior with unknown cause | `systematic-debugging` |
@@ -34,6 +35,8 @@ Stop and re-check skills if you catch yourself thinking:
 - "The implementation report says it works."
 - "I can skip review because the diff is simple."
 - "I need to inspect everything before choosing a process."
+
+**ULW exception:** In `ultrawork` mode the approval gates above are automatically bypassed — but verification evidence is still required, and test-first is still mandatory.
 
 ## Process
 

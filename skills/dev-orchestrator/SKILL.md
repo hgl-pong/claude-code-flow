@@ -60,8 +60,11 @@ If the user explicitly asks to skip a gate, respect that instruction and record 
 | **standard** | Feature, multi-file change | If needed | No (Yes for UI) | Yes | Yes | No |
 | **deep** | New system, architecture refactor | Yes | Yes | Yes (HTML) | Yes | Yes |
 | **autonomous** | User gives goal, full delivery | Auto | Auto | Auto | Auto (max 3) | Yes |
+| **ultrawork** | `ulw`/`ultrawork` keyword in prompt | Auto | Auto | Auto (no user) | Auto (max 3) | Yes |
 
-Auto-recommend: 1-2 subtasks single domain → quick; 3-5 subtasks → standard; 6+ or cross-module → deep; "just ship it" → autonomous.
+Auto-recommend: 1-2 subtasks single domain → quick; 3-5 subtasks → standard; 6+ or cross-module → deep; "just ship it" → autonomous; user writes `ulw`/`ultrawork` → ultrawork.
+
+**ultrawork vs autonomous:** Both skip all human gates. `ultrawork` is keyword-triggered (zero friction), adds an Intent Gate to classify the request before acting, and activates the ralph-loop for continuous execution. Use `ultrawork` skill — not `dev-orchestrator` autonomous — when `ulw`/`ultrawork` is detected.
 
 Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mode>`
 
