@@ -1,12 +1,18 @@
 ---
 name: Testing Strategy
 version: "1.0.0"
-description: This skill should be used when the user asks about "testing", "write tests", "test strategy", "test coverage", "unit tests", "integration tests", "end-to-end tests", "mocking", "TDD", or any testing-related topic. Triggers when planning test approach, writing tests, or setting up test infrastructure.
+description: This skill should be used when the user asks about "testing", "write tests", "test strategy", "test coverage", "unit tests", "integration tests", "end-to-end tests", "mocking", "TDD", or when implementing any production behavior change. Triggers when planning test approach, writing tests, setting up test infrastructure, fixing bugs, or adding features.
 ---
 
 # Testing Strategy
 
 Guidelines for effective software testing across all test types.
+
+## Iron Law
+
+For behavior changes, write or identify a failing test before production code changes.
+
+If code was already written as exploration, treat it as a spike: keep the learning, but do not claim TDD for it. Add a regression or characterization test before finalizing the production change.
 
 ## Test Pyramid
 
@@ -93,10 +99,29 @@ When writing new features:
 2. **Green**: Write the minimum code to make the test pass
 3. **Refactor**: Improve the code while keeping tests green
 
+Required evidence:
+- RED command and expected failure
+- GREEN command and passing result
+- Any broader regression command run before completion
+
 TDD works best for:
 - New modules with clear interfaces
 - Bug fixes (write regression test first)
 - Complex business logic
+
+Allowed exceptions, with user-visible note:
+- Documentation-only edits
+- Pure configuration changes that cannot be reasonably tested in the repo
+- Throwaway prototypes
+- Generated files where the generator is the tested surface
+
+## Testing Anti-Patterns
+
+- Tests that only assert mocks were called instead of observable behavior
+- Snapshot updates without explaining the behavioral change
+- Broad end-to-end tests where a fast unit or integration test would prove the same thing
+- "Happy path only" coverage on validation, authorization, persistence, or money/data-loss paths
+- Tests added after implementation that were never seen fail
 
 ## Coverage
 

@@ -7,6 +7,7 @@ FLOW_DIR = os.path.join(".claude", "flow")
 SUMMARY_FILE = os.path.join(FLOW_DIR, "session-summary.txt")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 MODIFIED_FILE = os.path.join(FLOW_DIR, "modified-files.txt")
+LAST_VERIFICATION = os.path.join(FLOW_DIR, "last-verification.json")
 EXEC_LOG = os.path.join(FLOW_DIR, "exec-log.jsonl")
 SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
 
@@ -38,9 +39,20 @@ def main():
         with open(MODIFIED_FILE, "r") as f:
             modified = sum(1 for line in f if line.strip())
 
+    last_verification = None
+    if os.path.exists(LAST_VERIFICATION):
+        try:
+            with open(LAST_VERIFICATION, "r", encoding="utf-8") as f:
+                last_verification = json.load(f)
+        except (json.JSONDecodeError, Exception):
+            last_verification = None
+
     # Legacy summary (backward compatible)
     with open(SUMMARY_FILE, "a") as f:
-        f.write(f"[{ts}] phase={phase} | modified={modified}\n")
+        verification_summary = ""
+        if last_verification:
+            verification_summary = f" | verification={last_verification.get('status', '?')}:{last_verification.get('kind', '?')}"
+        f.write(f"[{ts}] phase={phase} | modified={modified}{verification_summary}\n")
 
     # Structured JSONL log
     entry = {
@@ -51,6 +63,7 @@ def main():
         "task_done": task_done,
         "task_total": task_total,
         "modified_files": modified,
+        "last_verification": last_verification,
     }
     with open(EXEC_LOG, "a") as f:
         f.write(json.dumps(entry) + "\n")

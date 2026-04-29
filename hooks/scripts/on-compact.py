@@ -8,11 +8,13 @@ STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 PHASE_CONTEXT = os.path.join(FLOW_DIR, "phase-context.md")
 TASK_GRAPH = os.path.join(FLOW_DIR, "task-graph.json")
 MODIFIED_FILES_JSONL = os.path.join(FLOW_DIR, "modified-files.jsonl")
+VERIFICATION_EVIDENCE = os.path.join(FLOW_DIR, "verification-evidence.jsonl")
 PRE_COMPACT = os.path.join(FLOW_DIR, "pre-compact-context.md")
 
 CRITICAL_FILES = [
     "workflow-state.json", "phase-context.md", "plans/plan-brief.md",
-    "task-graph.json", "modified-files.txt", "ui-research.md",
+    "task-graph.json", "modified-files.txt", "verification-evidence.jsonl",
+    "last-verification.json", "ui-research.md",
 ]
 
 def now():
@@ -38,6 +40,9 @@ def main():
     sections.append(f"- Tasks: {state.get('task_done', 0)}/{state.get('task_total', 0)}")
     sections.append(f"- Current agent: {state.get('current_agent', 'none')}")
     sections.append(f"- Retry count: {state.get('retry_count', 0)}")
+    last_verification = state.get("last_verification") or {}
+    if last_verification:
+        sections.append(f"- Last verification: {last_verification.get('status', '?')} {last_verification.get('kind', '?')} -- `{last_verification.get('command', '')}`")
     sections.append("")
 
     # 2. Task graph summary
@@ -73,7 +78,25 @@ def main():
         except Exception:
             pass
 
-    # 4. Key decisions from phase-context (last 30 lines if file is large)
+    # 4. Recent verification evidence (last 10 from verification-evidence.jsonl)
+    if os.path.exists(VERIFICATION_EVIDENCE):
+        try:
+            with open(VERIFICATION_EVIDENCE, "r", encoding="utf-8") as f:
+                lines = [l.strip() for l in f.readlines() if l.strip()]
+            recent = lines[-10:] if lines else []
+            if recent:
+                sections.append("## Recent Verification Evidence")
+                for line in reversed(recent):
+                    try:
+                        entry = json.loads(line)
+                        sections.append(f"- [{entry.get('status', '?')}] {entry.get('kind', '?')}: `{entry.get('command', '')}`")
+                    except json.JSONDecodeError:
+                        sections.append(f"- {line}")
+                sections.append("")
+        except Exception:
+            pass
+
+    # 5. Key decisions from phase-context (last 30 lines if file is large)
     if os.path.exists(PHASE_CONTEXT):
         try:
             with open(PHASE_CONTEXT, "r") as f:

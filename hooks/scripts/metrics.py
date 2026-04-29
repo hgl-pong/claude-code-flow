@@ -96,6 +96,16 @@ def collect(entries, session_id=None):
     # Review results
     reviews = [e for e in filtered if e.get("event") == "review_result"]
 
+    # Verification evidence
+    verifications = [e for e in filtered if e.get("event") == "verification_evidence"]
+    verification_counts = defaultdict(int)
+    verification_failures = 0
+    for e in verifications:
+        for kind in e.get("kind", []) if isinstance(e.get("kind"), list) else [e.get("kind", "unknown")]:
+            verification_counts[kind] += 1
+        if e.get("status") == "fail":
+            verification_failures += 1
+
     return {
         "session_id": session_id,
         "total_events": len(filtered),
@@ -103,6 +113,9 @@ def collect(entries, session_id=None):
         "phase_durations": phase_durations,
         "guard_blocks": len(guard_blocks),
         "review_count": len(reviews),
+        "verification_count": len(verifications),
+        "verification_failures": verification_failures,
+        "verification_by_kind": dict(verification_counts),
     }
 
 def aggregate(entries):
@@ -145,6 +158,8 @@ def aggregate(entries):
 
     # Guard blocks total
     guard_total = sum(1 for e in entries if e.get("event") == "tool_guard_block")
+    verification_total = sum(1 for e in entries if e.get("event") == "verification_evidence")
+    verification_failures = sum(1 for e in entries if e.get("event") == "verification_evidence" and e.get("status") == "fail")
 
     return {
         "total_sessions": total_sessions,
@@ -153,6 +168,8 @@ def aggregate(entries):
         "completion_rate": f"{completed / total_sessions * 100:.0f}%" if total_sessions > 0 else "N/A",
         "global_agent_stats": dict(global_agent),
         "guard_blocks_total": guard_total,
+        "verification_total": verification_total,
+        "verification_failures": verification_failures,
     }
 
 def main():

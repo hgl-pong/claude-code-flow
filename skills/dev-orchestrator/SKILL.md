@@ -1,12 +1,29 @@
 ---
 name: Dev Orchestrator
 version: "2.1.0"
-description: This skill should be used when the user asks to "develop a feature", "implement a system", "design architecture", "build an API", "refactor a module", or any multi-step development task that benefits from agent orchestration and model-tiered delegation. Triggers on complex development tasks where planning, implementation, testing, and review should be coordinated.
+description: This skill should be used when the user asks to "develop a feature", "implement a system", "design architecture", "build an API", "refactor a module", execute a plan, or any multi-step development task that benefits from agent orchestration and model-tiered delegation. Triggers on complex development tasks where planning, implementation, testing, review, and acceptance should be coordinated.
 ---
 
 # Development Orchestrator
 
-Orchestrate tasks through Plan -> Design -> Implement -> Review -> Acceptance pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and dynamic error recovery.
+Orchestrate tasks through Brainstorm -> Plan -> Design -> Implement -> Review -> Acceptance pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and dynamic error recovery.
+
+## Superpowers-Inspired Operating Contract
+
+Claude Code Flow follows the same core discipline as Superpowers: skill selection before action, design before broad implementation, test-first development, fresh verification evidence, and staged review.
+
+Required companion skills:
+
+| Moment | Skill |
+|---|---|
+| Starting any development workflow | `using-claude-code-flow` |
+| New feature, broad behavior change, UI, architecture, refactor | `brainstorming` |
+| Approved requirements need execution tasks | `writing-plans` |
+| Any production behavior change | `testing-strategy` |
+| Unknown bug root cause | `systematic-debugging` |
+| Final report | `verification-before-completion` |
+
+If the user explicitly asks to skip a gate, respect that instruction and record the risk in the final report.
 
 ## Common Rationalizations — Reality Check
 
@@ -51,7 +68,7 @@ Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mo
 ## Pipeline
 
 ```
-Mode Selection → Research (scout, if needed) → Plan Gate (oracle)
+Skill Check → Brainstorm/Design Gate (if creative work) → Mode Selection → Research (scout, if needed) → Plan Gate (oracle)
   → Design Gate (atlas, deep/autonomous only)
   → UI Research (scout, frontend-ui only) → UI Design Gate (designer)
   → Implementation (forge/weaver + prism + anvil, DAG-scheduled)
@@ -62,14 +79,16 @@ Mode Selection → Research (scout, if needed) → Plan Gate (oracle)
 
 Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <phase>`
 
-Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + architecture + design), `.claude/plans/plan-brief.md` (agent-ready task breakdown from oracle), `ui-research.md` (design research), `modified-files.txt` + `modified-files.jsonl` (file tracking), `review-result.txt` (review outcome).
+Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + architecture + design), `.claude/plans/plan-brief.md` (agent-ready task breakdown from oracle), `ui-research.md` (design research), `modified-files.txt` + `modified-files.jsonl` (file tracking), `verification-evidence.jsonl` + `last-verification.json` (test/build/lint evidence), `review-result.txt` (review outcome).
 
 Phase handoff: each gate agent appends its output to `phase-context.md` with YAML frontmatter. Oracle also writes `.claude/plans/plan-brief.md` after approval — this is the agent-consumable version with concrete tasks and file lists.
 
 ## Steps
 
 ### 1. Analyze + Mode Select
-Classify: domain, complexity (1-2 vs 3+ subtasks), needs design/research? Select mode, set phase to `plan`.
+Start with `using-claude-code-flow`. Classify: domain, complexity (1-2 vs 3+ subtasks), needs design/research? Select mode, set phase to `plan`.
+
+For new features, behavior changes, UI work, architecture changes, or broad refactors, run `brainstorming` before implementation. If the design is substantial, save a spec under `docs/superpowers/specs/`.
 
 ### 2. Research (if needed)
 Skip for quick mode or internal-only tasks. Invoke scout for external info (library docs, API refs, tech comparisons). Set phase to `plan`.
@@ -80,7 +99,7 @@ Skip for quick mode or internal-only tasks. Invoke scout for external info (libr
 - **deep**: oracle produces HTML visualization → browser review.
 - **autonomous**: oracle produces plan → auto-approve.
 
-Oracle writes summary to `phase-context.md`. After approval, oracle creates tasks via TaskCreate (subject, description, blockedBy for dependencies).
+Oracle writes summary to `phase-context.md`. After approval, use `writing-plans` to create the agent-ready plan when the work is multi-step. Oracle then creates tasks via TaskCreate (subject, description, blockedBy for dependencies).
 
 ### 4. Design Gate (deep/autonomous only)
 Skip for quick/standard, bug fixes, small features. Atlas produces module design, API surface, data layout → user approval → append to `phase-context.md`.
@@ -93,6 +112,8 @@ Designer produces UI/UX design document based on plan + research → user approv
 
 ### 5. Implementation (DAG-Aware)
 Set phase to `impl`. For standard/deep/autonomous: use TaskList to get available tasks (pending, no owner, empty blockedBy). Group by agent type, spawn in parallel (max 2). On agent completion: TaskUpdate status=in_progress, then proceed to Review → Acceptance. After validator ACCEPT: TaskUpdate status=completed. **quick mode**: direct single forge/weaver call, then skip to Acceptance.
+
+Before production code changes, apply `testing-strategy`: write or identify the failing test first, verify RED, implement the smallest GREEN change, then refactor only while tests remain green. For bug fixes with unknown cause, apply `systematic-debugging` before patching.
 
 Task dependency rules: use `blockedBy` / `addBlocks` to express ordering. Oracle sets these during plan approval. Implementation checks TaskList for unblocked pending tasks. Frontend tasks blocked by designer completion automatically via DAG.
 
@@ -132,7 +153,7 @@ unknown          → investigate (max 2 retries), then escalate
 Max 2 retries per task. Always escalate after that.
 
 ### 9. Documentation + Report
-Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Set phase to `idle`. Present final summary with files modified, test results, review outcome.
+Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Use `verification-before-completion`, then set phase to `idle`. Present final summary with files modified, test results, review outcome, acceptance evidence, and any skipped checks.
 
 ### 10. Self-Evolution Check
 After every workflow completion, check `.claude/flow/evolution-pending.md` for existing proposals and `.claude/flow/evolution.json` config.

@@ -74,6 +74,8 @@ Sessions analyzed: [count]
 - Keep changes minimal and targeted — one concern per proposal
 - Rate each proposal's risk and confidence honestly
 - Do NOT apply changes yourself — proposals must be approved via the orchestrator's evolution step
+- Prefer changes that improve measurable workflow behavior: fewer review loops, clearer handoffs, better test evidence, lower rework
+- For every proposal, include how to validate the change with `hooks/scripts/eval-gate.py` or a concrete workflow scenario
 
 **Self-Review Before Reporting Done:**
 - [ ] Every proposal is backed by 2+ data points from execution logs
@@ -81,3 +83,4 @@ Sessions analyzed: [count]
 - [ ] No safety features are proposed for removal (guard hooks, state validation)
 - [ ] Changes are minimal and targeted — one concern per proposal
 - [ ] Proposed prompt text is concrete and copy-pasteable
+- [ ] Each proposal includes a validation method

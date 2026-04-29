@@ -16,6 +16,7 @@ Read `.claude/flow/workflow-state.json` and display:
 - Task progress: x/y tasks completed
 - Current agent (if any)
 - Retry count
+- Verification count and latest verification command/result
 - Last updated timestamp
 
 ### 2. Modified Files
@@ -31,13 +32,19 @@ Read `.claude/flow/review-result.txt` if it exists and display:
 Read `.claude/flow/agent-log.txt` if it exists and display:
 - Last 10 agent completions with timestamps
 
-### 5. Metrics
+### 5. Verification Evidence
+Read `.claude/flow/verification-evidence.jsonl` if it exists and display:
+- Last 10 test/build/lint/typecheck/git/dev-server commands
+- Command kind and pass/fail/unknown status
+- Highlight the latest failed verification
+
+### 6. Metrics
 Run `python hooks/scripts/metrics.py collect` and display:
 - Agent call counts for this session
 - Phase durations (if phase transitions recorded)
 - Guard block count
 
-### 6. Git Context
+### 7. Git Context
 Run `git status --short` and `git branch --show-current` to show:
 - Current branch
 - Uncommitted changes count

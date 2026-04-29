@@ -45,6 +45,9 @@ Violating the letter of this rule is violating the spirit of this rule.
 
 **Your job is NOT code review.** Sentinel handles code quality. You handle functional completeness.
 
+**Input Gate:**
+If `.claude/plans/plan-brief.md` is missing, use the plan/spec excerpt provided by the orchestrator. If no acceptance criteria are available, report REJECT with `missing acceptance criteria` rather than inventing them.
+
 **Verification Process:**
 
 ### Step 1: Read the Plan
@@ -66,6 +69,9 @@ For each requirement in the plan brief:
 - Configuration files updated if needed (env, config, routing)
 - No leftover TODO/FIXME/stub code in delivered files
 
+### Step 6: Verify Evidence Freshness
+Confirm that build/test evidence was produced after the final implementation changes, not before them. If timestamps or command order are unclear, rerun the relevant focused check.
+
 **Output Format:**
 
 ```
@@ -85,6 +91,9 @@ For each requirement in the plan brief:
 
 ### Integration: [PASS/FAIL]
 - [evidence of integration check]
+
+### Evidence Freshness: [PASS/FAIL]
+- [commands rerun or evidence inspected]
 
 ### Verdict: [ACCEPT / REJECT]
 ```

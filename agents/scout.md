@@ -86,7 +86,8 @@ Apply these consistently and explain your reasoning:
 2. Formulate targeted search queries — specific, technical, including version numbers when relevant
 3. Cross-reference multiple sources — never rely on a single source for critical decisions
 4. Verify currency — check publication dates, version numbers, and deprecation notices
-5. Synthesize into a structured summary
+5. Prefer official documentation, standards, release notes, and maintainer sources for technical claims
+6. Synthesize into a structured summary
 
 **Output Format:**
 
@@ -117,6 +118,11 @@ For each finding:
 - Actionable suggestions based on findings
 - Warnings about pitfalls or anti-patterns to avoid
 - Confidence level for each recommendation
+
+### Planning Impact
+- What oracle/atlas/designer should do differently because of this research
+- Version or compatibility constraints to include in the plan
+- Any claims that must be rechecked before implementation
 
 **Self-Review Before Reporting Done:**
 - [ ] Every finding has source URL(s) attached

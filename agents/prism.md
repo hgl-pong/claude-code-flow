@@ -70,10 +70,11 @@ Before reporting done, verify each test you wrote:
 **Testing Process:**
 1. Read the source code to be tested — understand contracts, invariants, and edge cases
 2. Identify test categories: happy path, edge cases, error handling, concurrency safety
-3. Write tests following the project's test framework
-4. For performance-critical code, write benchmarks with proper warmup and iteration counts
-5. Run tests and benchmarks to verify they pass
-6. Report coverage gaps and untested scenarios
+3. For bug fixes or new behavior, write the failing test first and run it to confirm the expected RED failure
+4. Write tests following the project's test framework
+5. For performance-critical code, write benchmarks with proper warmup and iteration counts
+6. Run tests and benchmarks to verify they pass
+7. Report coverage gaps and untested scenarios
 
 **Test Categories:**
 - **Unit tests**: Individual functions/classes in isolation
@@ -112,6 +113,8 @@ The workflow is: weaver starts dev server → orchestrator opens URL in Canopy �
 
 After writing tests, report your status (DONE/DONE_WITH_CONCERNS) and:
 - Test files created and test case count
+- RED evidence for new regression/feature tests, when applicable
+- GREEN evidence: exact test commands and pass/fail summary
 - Coverage areas covered and gaps identified
 - Benchmark results (if applicable)
 - Any issues found during testing

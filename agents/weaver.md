@@ -46,6 +46,15 @@ Violating the letter of this rule is violating the spirit of this rule.
 **Design Doc Verification:**
 Before starting implementation, confirm you have read the design document by citing the specific sections you will implement. If no design document exists, report NEEDS_CONTEXT — do not guess at the design.
 
+**Context Gate:**
+Before editing, confirm you have:
+- Design brief or design spec sections to implement
+- Component/file ownership scope
+- Responsive breakpoints and interaction states
+- Existing styling system and component conventions
+
+If any are missing and cannot be discovered locally, report `NEEDS_CONTEXT` with a precise question.
+
 **Aesthetic Fidelity:**
 Start by reading the Design Direction section (Mood & Tone, Design Reference, The One Thing). The designer chose a specific aesthetic for a reason — your implementation must honor it:
 - Use the exact fonts, weights, and sizes specified (not "close enough" defaults)
@@ -91,12 +100,14 @@ Before reporting done, verify:
 1. Read `.claude/flow/design-brief.md` first (structured component specs, tokens, typography). If it doesn't exist, fall back to `.claude/flow/phase-context.md` — cite specific sections
 2. Explore existing codebase to understand framework, component library, and patterns
 3. Identify which files to create or modify
-4. Implement components following the design document specifications
-5. Apply design tokens (colors, typography, spacing) as specified
-6. Ensure responsive behavior at all specified breakpoints
-7. Implement accessibility attributes (ARIA roles, labels, keyboard nav)
-8. Verify integration with existing routing, state management, and API layer
-9. **Start the dev server** and report the URL for visual verification in Canopy's built-in browser
+4. Write or identify component/behavior tests first when the project has a frontend test setup
+5. Implement components following the design document specifications
+6. Apply design tokens (colors, typography, spacing) as specified
+7. Ensure responsive behavior at all specified breakpoints
+8. Implement accessibility attributes (ARIA roles, labels, keyboard nav)
+9. Verify integration with existing routing, state management, and API layer
+10. Run focused tests/build checks
+11. **Start the dev server** and report the URL for visual verification in Canopy's built-in browser
 
 **Code Standards:**
 - Follow the project's existing frontend framework and conventions
@@ -113,6 +124,8 @@ Before reporting done, verify:
 After implementation, report your status (DONE/DONE_WITH_CONCERNS) and:
 - Files created or modified (with brief description)
 - Design spec sections implemented (cite by name)
+- Test/build evidence, including exact commands
+- Dev server URL if started
 - Design decisions made during implementation (deviations from design doc and why)
 - Concerns (if DONE_WITH_CONCERNS)
 - Accessibility checklist: which ARIA roles/labels were added

@@ -1,6 +1,6 @@
 ---
 name: workflow-plan
-description: Start the planning pipeline — oracle analyzes the task, produces a phased implementation plan (HTML for complex features), and waits for approval before proceeding to implementation.
+description: Start the full workflow pipeline — skill check, brainstorming when needed, oracle planning, optional architecture/UI design, and approval before implementation.
 ---
 
 # Workflow Plan
@@ -19,43 +19,52 @@ Start the planning pipeline for a feature or task.
 
 ## Process
 
-1. **Parse arguments**: Extract mode override (if any) and task description
+1. **Use `using-claude-code-flow`**: Select the right companion skills before acting.
 
-2. **Analyze** the user's request to classify:
+2. **Parse arguments**: Extract mode override (if any) and task description
+
+3. **Analyze** the user's request to classify:
    - **Domain**: `frontend-ui` (pages, components, styles, layouts) or `backend/general`
    - **Complexity**: Simple (1-2 subtasks) vs Complex (3+ subtasks, cross-cutting)
    - **Needs design**: Yes (new system/architectural change) vs No (feature addition/bug fix)
    - **Needs UI design**: Yes if domain is `frontend-ui` and not a trivial CSS tweak
    - **Needs research**: Yes (external library/API, best practices lookup, tech comparison) vs No (internal-only)
 
-3. **Select mode** (if not overridden by user):
+4. **Brainstorm if needed**:
+   - Use `brainstorming` for new features, behavior changes, UI work, architecture changes, or broad refactors
+   - Save substantial designs to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+   - Continue only after the user approves the design unless mode is autonomous
+
+5. **Select mode** (if not overridden by user):
    - 1-2 subtasks, single domain → **quick**
    - 3-5 subtasks, known codebase → **standard**
    - 6+ subtasks, new system, cross-module → **deep**
    - User says "figure it out" → **autonomous**
    - Present recommendation and ask for confirmation
 
-4. **Set mode and state**:
+6. **Set mode and state**:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mode>
    python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan
    ```
 
-5. **Research** (if needed and not quick mode): invoke scout to gather external information
+7. **Research** (if needed and not quick mode): invoke scout to gather external information
 
-6. **Invoke oracle** to create a plan based on mode:
+8. **Invoke oracle** to create a plan based on mode:
    - **quick**: Minimal inline plan or skip directly to implementation
    - **standard**: Text summary with files to change, risks, and approach
    - **deep**: HTML visualization with architecture, phases, dependencies, risks
    - **autonomous**: Full plan with auto-approval
 
-7. **Wait for user approval** — skip in autonomous mode
+9. **Wait for user approval** — skip in autonomous mode
 
-8. **If needs design** (deep/autonomous + new system): invoke atlas (Opus) for architecture design, wait for approval
+10. **If needs design** (deep/autonomous + new system): invoke atlas (Opus) for architecture design, wait for approval
 
-9. **If needs UI design** (frontend-ui, standard+): invoke scout for UI research → invoke designer for design document → wait for approval
+11. **If needs UI design** (frontend-ui, standard+): invoke scout for UI research → invoke designer for design document → wait for approval
 
-10. **Hand off to implementation**:
+12. **Create the execution plan**: use `writing-plans` for multi-step work and save to `docs/superpowers/plans/`.
+
+13. **Hand off to implementation**:
     - Frontend-UI → weaver (with design doc from step 9)
     - Backend/General → forge
     - Tests → prism, Build/CI → anvil (as needed)

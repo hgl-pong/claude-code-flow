@@ -1,5 +1,37 @@
 # Claude Code Flow
 
+## 2026-04-29 Superpowers-Inspired Iteration
+
+This plugin now includes a Superpowers-inspired workflow layer while keeping the existing `scout/oracle/atlas/forge/weaver/prism/anvil/sentinel/validator/chronicler` agent architecture.
+
+New workflow skills:
+- `using-claude-code-flow` — choose the right workflow skill before acting.
+- `brainstorming` — turn rough ideas into approved designs.
+- `writing-plans` — create concrete, test-first implementation plans.
+- `systematic-debugging` — reproduce, localize, prove, then fix bugs.
+- `verification-before-completion` — require fresh evidence before reporting done.
+
+New commands:
+- `/brainstorm <idea>` — design gate for creative work.
+- `/write-plan <spec path or requirements>` — plan gate for multi-step delivery.
+- `/execute-plan <plan path>` — implementation, review, acceptance, and verification loop.
+
+Updated commands:
+- `/workflow-plan` now starts with skill selection and brainstorming when needed.
+- `/quick-fix` now routes unknown-cause bugs through systematic debugging and behavior changes through TDD.
+- `/write-tests` now emphasizes behavior-first tests and explicit coverage gaps.
+
+Agent prompts were also tightened around context gates, test-first implementation, two-stage review, acceptance evidence, and verified documentation.
+
+Hook updates:
+- Bash verification commands are now tracked in `.claude/flow/verification-evidence.jsonl`.
+- The latest test/build/lint/typecheck result is mirrored to `.claude/flow/last-verification.json`.
+- Workflow status, compact context, metrics, stop summaries, and statusline now surface verification evidence.
+
+Tests:
+- Run `python tests/run-tests.py` for fast local regression tests covering plugin metadata, frontmatter, hook references, hook syntax, shell LF compatibility, verification evidence, flow-state merging, and metrics.
+- Run `bash tests/claude-code/run-e2e-tests.sh` for optional Claude Code headless E2E tests.
+
 通用开发工作流插件，通过模型分层 Agent 编排 Plan -> Implement -> Review 流水线，支持会话持久化、DAG 任务调度、动态重规划和自我演化。
 
 ## 特性

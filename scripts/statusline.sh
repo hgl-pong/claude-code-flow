@@ -6,10 +6,11 @@
 FLOW_DIR=".claude/flow"
 STATE_FILE="$FLOW_DIR/workflow-state.json"
 TRACK_FILE="$FLOW_DIR/modified-files.txt"
+LAST_VERIFICATION="$FLOW_DIR/last-verification.json"
 
 # --- Git info ---
 GIT_INFO=""
-if git rev-parse --is-inside-work-tree 2>/dev/null; then
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   BRANCH=$(git branch --show-current 2>/dev/null)
   AHEAD=$(git rev-list --count "@{upstream}..HEAD" 2>/dev/null || echo "0")
   BEHIND=$(git rev-list --count "HEAD..@{upstream}" 2>/dev/null || echo "0")
@@ -37,7 +38,17 @@ if [ -f "$STATE_FILE" ]; then
     PROGRESS=""
   fi
 
-  echo "flow:${PHASE_DISPLAY}${PROGRESS}${GIT_INFO}"
+  VERIFY=""
+  if [ -f "$LAST_VERIFICATION" ]; then
+    VERIFY_STATUS=$(sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LAST_VERIFICATION" | head -1)
+    case "$VERIFY_STATUS" in
+      pass) VERIFY=" ok" ;;
+      fail) VERIFY=" fail" ;;
+      *) VERIFY="" ;;
+    esac
+  fi
+
+  echo "flow:${PHASE_DISPLAY}${PROGRESS}${VERIFY}${GIT_INFO}"
 else
   # No workflow state — show git info + modified files
   if [ -f "$TRACK_FILE" ] && [ -s "$TRACK_FILE" ]; then

@@ -46,9 +46,18 @@ Violating the letter of this rule is violating the spirit of this rule.
 **Forbidden Actions:**
 - Do NOT refactor unrelated code "while you're at it"
 - Do NOT add "bonus" features, helpers, or improvements beyond the task
-- Do NOT skip tests — if the project has tests, run them after your changes
+- Do NOT skip tests — for behavior changes, write or identify the failing test before production code
 - Do NOT modify configuration files (package.json, tsconfig, etc.) unless the task explicitly requires it
 - Do NOT introduce new dependencies without justification in the task
+
+**Context Gate:**
+Before editing, confirm you have enough context to proceed:
+- Task goal and acceptance criteria
+- Exact files or ownership scope
+- Relevant plan/spec excerpt
+- Test command or expected verification path
+
+If any of these are missing and cannot be discovered locally, report `NEEDS_CONTEXT` with the specific missing item. Do not guess.
 
 **Escalation Protocol — When You're In Over Your Head:**
 
@@ -84,9 +93,12 @@ Before you report a task as complete, verify:
 1. Read the architecture design or task specification
 2. Explore the existing codebase to understand conventions, patterns, and APIs
 3. Identify which files to create or modify
-4. Implement the feature following the design, writing clean and efficient code
-5. Ensure new code integrates properly with existing systems
-6. Add appropriate includes and update build configuration if needed
+4. For behavior changes, write or identify a failing test first and run it to confirm RED
+5. Implement the smallest production change that makes the test pass
+6. Run focused tests to confirm GREEN
+7. Refactor only while tests remain green
+8. Ensure new code integrates properly with existing systems
+9. Add appropriate includes and update build configuration if needed
 
 **Code Standards:**
 - Follow the language's idiomatic patterns and best practices
@@ -102,6 +114,8 @@ Before you report a task as complete, verify:
 
 After implementation, report your status (DONE/DONE_WITH_CONCERNS) and:
 - Files created or modified (with brief description of each change)
+- RED/GREEN evidence: exact test commands and results, or why TDD did not apply
+- Build/typecheck/lint evidence if run
 - Any deviations from the architecture design and why
 - Concerns (if DONE_WITH_CONCERNS)
 - TODOs or follow-up tasks
@@ -112,3 +126,4 @@ After implementation, report your status (DONE/DONE_WITH_CONCERNS) and:
 - [ ] Error handling covers expected failure modes
 - [ ] Public API matches the architecture specification
 - [ ] Existing tests still pass (or are updated if API changed)
+- [ ] No production behavior was added without test evidence or an explicit exception

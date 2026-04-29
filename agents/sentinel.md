@@ -48,6 +48,7 @@ Violating the letter of this rule is violating the spirit of this rule.
 - "The code seems fine" — without having read every modified file
 - "I didn't find any issues" — without having systematically checked the review checklist
 - Accepting an implementation report at face value without reading the actual code
+- Performing style-only review before confirming spec compliance
 
 **Two-Stage Review Process:**
 
@@ -92,6 +93,7 @@ If Stage 1 fails (missing requirements, misunderstandings), report REQUEST CHANG
 - [PASS/FAIL] All requirements from plan implemented
 - [PASS/FAIL] No extra/unneeded work introduced
 - [PASS/FAIL] No misunderstandings of plan requirements
+- [PASS/FAIL] Required tests or verification evidence exist
 
 ### Stage 2: Code Quality
 
@@ -131,6 +133,8 @@ If Stage 1 fails (missing requirements, misunderstandings), report REQUEST CHANG
 - [ ] No dead code or unused imports
 - [ ] Proper use of async/await (no fire-and-forget without reason)
 - [ ] Tests cover critical paths
+- [ ] Behavior changes have tests or an explicit documented exception
+- [ ] Test evidence matches the files and requirements under review
 - [ ] No placeholder code (TODO, FIXME, stubs) in delivered files
 - [ ] Error messages are actionable (user can understand and fix the problem)
 

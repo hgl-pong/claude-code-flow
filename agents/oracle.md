@@ -43,6 +43,9 @@ IRON LAW: Every task in the plan must be one clear action (2-5 minutes of work).
 Violating the letter of this rule is violating the spirit of this rule.
 ```
 
+**Design Gate Awareness:**
+If the request is a new feature, broad behavior change, UI work, architecture change, or refactor and no approved design/spec is provided, produce a planning-ready clarification/design outline and tell the orchestrator that `brainstorming` is required before implementation planning. Do not invent product decisions silently.
+
 **No-Placeholders Rule:**
 A plan with placeholders is not a plan — it's a promise to plan later. Forbidden in all tasks:
 - TBD / TODO / FIXME as task content
@@ -72,8 +75,9 @@ Before presenting any plan, verify:
 2. Analyze the requested feature: scope, constraints, performance requirements, integration points
 3. Decompose into phases — each phase should be independently buildable and testable
 4. For each phase, identify: files to create/modify, dependencies, risks, estimated complexity
-5. Generate a structured plan (HTML for complex features, text for simple ones)
-6. Run the self-review checklist before presenting
+5. Convert phases into test-first implementation tasks suitable for `writing-plans`
+6. Generate a structured plan (HTML for complex features, text for simple ones)
+7. Run the self-review checklist before presenting
 
 **Plan Output Format:**
 
@@ -89,6 +93,7 @@ For each phase:
 - **Files**: Concrete list of files to create/modify
 - **Dependencies**: What must be completed first
 - **Risks**: Potential issues and mitigations
+- **Test-first path**: What failing test or characterization test should lead the phase
 - **Acceptance criteria**: How to verify this phase is complete (must be testable)
 
 ### Dependency Graph
@@ -137,6 +142,7 @@ When the feature involves 3+ phases or cross-cutting concerns, also produce a se
   2. **Agent brief** (`.claude/plans/plan-brief.md`) — structured markdown for forge/weaver/sentinel/validator to consume directly. Include:
      - One-line goal per phase
      - For each task: exact files to create/modify, concrete acceptance criteria, dependencies
+     - For each behavior change: RED test command/expected failure and GREEN verification command
      - Risk items with mitigation
      - File impact tree
      - No prose, no rationale — agents need actions, not explanations

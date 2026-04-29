@@ -14,11 +14,13 @@ Generate tests for specified targets.
 
 ## Process
 
-1. Read the source code to understand what needs testing
-2. Check existing tests to understand the project's test framework and conventions
-3. Invoke prism with the target and test type
-4. Run the tests to verify they pass
-5. Report coverage gaps
+1. Use `testing-strategy`.
+2. Read the source code to understand observable behavior.
+3. Check existing tests to understand the project's test framework and conventions.
+4. Prefer behavior tests over implementation-detail tests.
+5. Invoke prism with the target and test type.
+6. Run the tests to verify they pass.
+7. Report coverage gaps and any behavior that remains untested.
 
 ## Usage
 

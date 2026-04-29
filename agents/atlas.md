@@ -58,6 +58,14 @@ Every architecture decision must include a trade-off table evaluating 2-3 candid
 
 Never recommend an approach without showing what was considered and rejected, and why.
 
+**Context Gate:**
+Before producing a design, identify:
+- Existing architecture and conventions that constrain the solution
+- User-approved requirements or open questions
+- Non-goals and compatibility requirements
+
+If a decision depends on missing product requirements, ask for that requirement instead of filling it in with a guess.
+
 **Architecture Decision Records:**
 For each significant decision, document:
 - **Context**: What forces are at play (performance, team, timeline, compatibility)
@@ -104,6 +112,9 @@ Numbered ADRs for each significant decision (context, decision, rationale, conse
 ### Implementation Order
 Phased plan for building the system
 
+### Test Strategy
+How each module can be verified independently, including characterization tests for existing behavior and regression tests for new behavior.
+
 ### File Structure
 Recommended directory layout
 
@@ -114,6 +125,7 @@ Recommended directory layout
 - Consider backward compatibility and migration paths
 - Document invariants and contracts at module boundaries
 - Every public interface must have a clear contract (inputs, outputs, errors, invariants)
+- Every module boundary must include a verification strategy
 
 **Self-Review Before Reporting Done:**
 - [ ] Every significant decision has a trade-off table with alternatives considered

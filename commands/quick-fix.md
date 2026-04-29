@@ -9,14 +9,20 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
 
 ## Process
 
-1. Set workflow mode to quick:
+1. Use `using-claude-code-flow` and classify whether this is truly quick.
+
+2. If this is a bug with unknown cause, use `systematic-debugging` first.
+
+3. Set workflow mode to quick:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode quick
    ```
 
-2. **Analyze**: Read the relevant code, identify the issue or change needed
+4. **Analyze**: Read the relevant code, identify the issue or change needed
 
-3. **Implement**: Directly invoke forge with a focused prompt:
+5. **Test first when behavior changes**: Use `testing-strategy` to write or identify the failing regression test before production edits.
+
+6. **Implement**: Directly invoke forge with a focused prompt:
    ```
    Agent({
      name: "fix",
@@ -26,7 +32,7 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
    })
    ```
 
-4. **Optional review**: If the change affects critical paths or the user wants verification:
+7. **Optional review**: If the change affects critical paths or the user wants verification:
    ```
    Agent({
      name: "reviewer",
@@ -36,7 +42,7 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
    })
    ```
 
-5. **Report**: Summarize what was changed and any caveats
+8. **Verify and report**: Use `verification-before-completion`; summarize what changed, what passed, and any caveats.
 
 ## When to Use
 

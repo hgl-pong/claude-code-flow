@@ -35,16 +35,22 @@ def default_state():
         "phase_history": [],
         "plan_hash": None,
         "retry_count": 0,
+        "verification_count": 0,
+        "last_verification": None,
     }
 
 def load_state():
+    base = default_state()
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r") as f:
             try:
-                return json.load(f)
+                state = json.load(f)
+                if isinstance(state, dict):
+                    base.update(state)
+                    return base
             except json.JSONDecodeError:
-                return default_state()
-    return default_state()
+                return base
+    return base
 
 def save_state(state):
     os.makedirs(FLOW_DIR, exist_ok=True)
@@ -208,7 +214,7 @@ def main():
         os.makedirs(FLOW_DIR, exist_ok=True)
         with open(STATE_FILE, "w") as f:
             json.dump(default_state(), f)
-        for fname in ["modified-files.txt", "review-result.txt"]:
+        for fname in ["modified-files.txt", "modified-files.jsonl", "review-result.txt", "verification-evidence.jsonl", "last-verification.json"]:
             fpath = os.path.join(FLOW_DIR, fname)
             if os.path.exists(fpath):
                 os.remove(fpath)
