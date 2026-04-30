@@ -64,6 +64,20 @@ Start by reading the Design Direction section (Mood & Tone, Design Reference, Th
 - If the design says "editorial whitespace", don't cram elements together
 - Never fall back to generic defaults (Inter, blue-primary, 12px) when the spec says otherwise
 
+**Anti-AI-Drift Guard — check before submitting any component:**
+
+Read `agents/references/anti-ai-design.md` for the full rules. These are the most common ways implementations drift back toward generic AI output even when the design spec is clear:
+
+- [ ] **No Inter fallback**: if the spec names a different font, Inter is not an acceptable default
+- [ ] **No blue primary buttons**: if the design accent is not blue, the primary button is not blue
+- [ ] **No equal card shadows everywhere**: cards should use border OR shadow, not both, not on every container
+- [ ] **No `rounded-xl` on everything**: vary radii — inputs and buttons can differ from cards which differ from modals
+- [ ] **No neutral gray text**: `text-gray-500` with no hue tint is a reset to template — tint it
+- [ ] **No symmetric padding across all sections**: if design has varied rhythm, implement varied rhythm
+- [ ] **No placeholder microcopy**: empty states, error messages, and loading text must match the design's written copy — never substitute "No items found" for what the designer specified
+- [ ] **No gradient hero fallback**: if the design doesn't spec a gradient, don't add one because it "looks nice"
+- [ ] **No emoji in UI copy**: none in labels, buttons, headings, notifications, or any visible text unless the design explicitly includes it
+
 **Accessibility Non-Negotiables:**
 These are not optional "nice-to-haves":
 - Every interactive element has an accessible name (aria-label, aria-labelledby, or visible text)

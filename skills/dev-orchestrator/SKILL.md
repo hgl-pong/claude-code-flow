@@ -44,6 +44,7 @@ If the user explicitly asks to skip a gate, respect that instruction and record 
 | `oracle` | opus | Implementation planning, HTML visualization | Plan |
 | `atlas` | opus | Architecture design, module decomposition | Design |
 | `designer` | sonnet | UI/UX interaction design documents | UI Design |
+| `pd` | sonnet | Product Manager — proposes requirements each ULI iteration | ULI only |
 | `forge` | sonnet | Code implementation (backend, general) | -- |
 | `weaver` | sonnet | Frontend implementation (React/Vue/Svelte) | -- |
 | `prism` | sonnet | Test frameworks, benchmarks | -- |
@@ -61,10 +62,13 @@ If the user explicitly asks to skip a gate, respect that instruction and record 
 | **deep** | New system, architecture refactor | Yes | Yes | Yes (HTML) | Yes | Yes |
 | **autonomous** | User gives goal, full delivery | Auto | Auto | Auto | Auto (max 3) | Yes |
 | **ultrawork** | `ulw`/`ultrawork` keyword in prompt | Auto | Auto | Auto (no user) | Auto (max 3) | Yes |
+| **uli** | `uli` keyword — product iteration loop | PD auto | Auto | Auto (no user) | Auto (max 2) | Yes (max 2/iter) |
 
-Auto-recommend: 1-2 subtasks single domain → quick; 3-5 subtasks → standard; 6+ or cross-module → deep; "just ship it" → autonomous; user writes `ulw`/`ultrawork` → ultrawork.
+Auto-recommend: 1-2 subtasks single domain → quick; 3-5 subtasks → standard; 6+ or cross-module → deep; "just ship it" → autonomous; user writes `ulw`/`ultrawork` → ultrawork; user writes `uli` → uli.
 
 **ultrawork vs autonomous:** Both skip all human gates. `ultrawork` is keyword-triggered (zero friction), adds an Intent Gate to classify the request before acting, and activates the ralph-loop for continuous execution. Use `ultrawork` skill — not `dev-orchestrator` autonomous — when `ulw`/`ultrawork` is detected.
+
+**uli vs ultrawork:** `uli` is for continuous product iteration (multiple dev cycles), not single-task execution. Each ULI iteration has a PD agent proposing requirements, a full dev pipeline, and a hard acceptance gate. `ultrawork` runs once; `uli` runs until `max_iterations` or the product goal is achieved. Use `ultrawork` skill (ULI branch) when `uli` is detected.
 
 Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mode>`
 

@@ -49,9 +49,11 @@ Fast tests (always run):
   test-skill-systematic-debugging.sh
   test-skill-verification-before-completion.sh
   test-skill-dev-orchestrator.sh
+  test-skill-uli.sh
 
 Integration tests (--integration only):
   test-integration-dev-orchestrator.sh
+  test-integration-uli.sh
 HELP
       exit 0
       ;;
@@ -120,11 +122,13 @@ fast_tests=(
   "test-skill-systematic-debugging.sh"
   "test-skill-verification-before-completion.sh"
   "test-skill-dev-orchestrator.sh"
+  "test-skill-uli.sh"
 )
 
 # Integration tests — actually execute a plan (slow, costs tokens)
 integration_tests=(
   "test-integration-dev-orchestrator.sh"
+  "test-integration-uli.sh"
 )
 
 tests=("${fast_tests[@]}")
