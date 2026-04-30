@@ -395,10 +395,12 @@ class UliAgentFrontmatterTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class UliSkillBranchTests(unittest.TestCase):
-    """Verify ultrawork SKILL.md contains a complete ULI branch."""
+    """Verify ultrawork SKILL.md and ULI.md contain a complete ULI branch."""
 
     def setUp(self):
-        self.content = (ROOT / "skills" / "ultrawork" / "SKILL.md").read_text(encoding="utf-8")
+        self.skill_content = (ROOT / "skills" / "ultrawork" / "SKILL.md").read_text(encoding="utf-8")
+        self.uli_content = (ROOT / "skills" / "ultrawork" / "ULI.md").read_text(encoding="utf-8")
+        self.content = self.skill_content + "\n" + self.uli_content
 
     def test_uli_branch_header_present(self):
         self.assertIn("ULI — Ultra Loop Iteration Branch", self.content)
@@ -443,8 +445,8 @@ class UliSkillBranchTests(unittest.TestCase):
         self.assertIn("product-state.md", self.content)
 
     def test_uli_and_ulw_coexist(self):
-        self.assertIn("<ulw-done>", self.content, "ULW branch must still be present")
-        self.assertIn("<uli-done>", self.content, "ULI branch must be present")
+        self.assertIn("<ulw-done>", self.skill_content, "ULW branch must be in SKILL.md")
+        self.assertIn("<uli-done>", self.uli_content, "ULI branch must be in ULI.md")
 
 
 # ---------------------------------------------------------------------------

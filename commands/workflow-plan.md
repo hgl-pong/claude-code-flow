@@ -1,6 +1,6 @@
 ---
 name: workflow-plan
-description: Start the full workflow pipeline — skill check, brainstorming when needed, oracle planning, optional architecture/UI design, and approval before implementation.
+description: "Start the full workflow pipeline — skill check, brainstorming, oracle planning, optional architecture/UI design, and approval before implementation."
 ---
 
 # Workflow Plan
@@ -11,99 +11,29 @@ Start the planning pipeline for a feature or task.
 
 ```
 /workflow-plan [--mode quick|standard|deep|autonomous] <task description>
-/workflow-plan <task description>
 ```
-
-- `--mode`: Override automatic mode selection. If omitted, the orchestrator auto-recommends based on task analysis.
-- `task description`: What to build, fix, or implement.
 
 ## Process
 
-1. **Use `using-claude-code-flow`**: Select the right companion skills before acting.
-
-2. **Parse arguments**: Extract mode override (if any) and task description
-
-3. **Analyze** the user's request to classify:
-   - **Domain**: `frontend-ui` (pages, components, styles, layouts) or `backend/general`
-   - **Complexity**: Simple (1-2 subtasks) vs Complex (3+ subtasks, cross-cutting)
-   - **Needs design**: Yes (new system/architectural change) vs No (feature addition/bug fix)
-   - **Needs UI design**: Yes if domain is `frontend-ui` and not a trivial CSS tweak
-   - **Needs research**: Yes (external library/API, best practices lookup, tech comparison) vs No (internal-only)
-
-4. **Brainstorm if needed**:
-   - Use `brainstorming` for new features, behavior changes, UI work, architecture changes, or broad refactors
-   - Save substantial designs to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
-   - Continue only after the user approves the design unless mode is autonomous
-
-5. **Select mode** (if not overridden by user):
-   - 1-2 subtasks, single domain → **quick**
-   - 3-5 subtasks, known codebase → **standard**
-   - 6+ subtasks, new system, cross-module → **deep**
-   - User says "figure it out" → **autonomous**
-   - Present recommendation and ask for confirmation
-
-6. **Set mode and state**:
-   ```bash
-   python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mode>
-   python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan
-   ```
-
-7. **Research** (if needed and not quick mode): invoke scout to gather external information
-
-8. **Invoke oracle** to create a plan based on mode:
-   - **quick**: Minimal inline plan or skip directly to implementation
-   - **standard**: Text summary with files to change, risks, and approach
-   - **deep**: HTML visualization with architecture, phases, dependencies, risks
-   - **autonomous**: Full plan with auto-approval
-
-9. **Wait for user approval** — skip in autonomous mode
-
-10. **If needs design** (deep/autonomous + new system): invoke atlas (Opus) for architecture design, wait for approval
-
-11. **If needs UI design** (frontend-ui, standard+): invoke scout for UI research → invoke designer for design document → wait for approval
-
-12. **Create the execution plan**: use `writing-plans` for multi-step work and save to `docs/superpowers/plans/`.
-
-13. **Hand off to implementation**:
-    - Frontend-UI → weaver (with design doc from step 9)
-    - Backend/General → forge
-    - Tests → prism, Build/CI → anvil (as needed)
+1. Use `using-claude-code-flow` to select companion skills.
+2. **Analyze**: domain (frontend-ui / backend), complexity (1-2 vs 3+ subtasks), needs design/research?
+3. **Brainstorm** if needed: new features, behavior changes, UI work, architecture, broad refactors. Save substantial designs to `docs/superpowers/specs/`.
+4. **Select mode**: 1-2 subtasks → quick; 3-5 → standard; 6+ or cross-module → deep; "figure it out" → autonomous.
+5. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`
+6. **Research** (if needed, not quick): invoke scout for external info.
+7. **Oracle**: quick→inline plan; standard→text summary→user approval; deep→HTML viz→review; autonomous→auto-approve. Oracle creates tasks via TaskCreate.
+8. **Design** (deep/autonomous + new system): atlas for architecture → approval.
+9. **UI Design** (frontend-ui, standard+): scout research → designer spec → approval.
+10. **Create execution plan**: `writing-plans` for multi-step work.
+11. **Hand off**: frontend-UI→weaver; backend→forge; tests→prism; build→anvil.
 
 ## Usage
 
 ```
 /workflow-plan Add user authentication with OAuth and JWT
-/workflow-plan --mode deep Refactor the database layer to use repository pattern
-/workflow-plan --mode quick Fix the memory leak in the connection pool
-/workflow-plan --mode autonomous Build a REST API for the user management module
+/workflow-plan --mode deep Refactor the database layer
+/workflow-plan --mode quick Fix the memory leak
+/workflow-plan --mode autonomous Build a REST API
 ```
 
-## After Plan Approval
-
-### Domain Routing
-
-Distribute work to agents based on task domain and mode:
-
-**Frontend-UI tasks** (new pages, UI components, layout changes, visual features):
-1. **UI Research** (standard+): invoke scout to research similar product patterns, design trends → save to `ui-research.md`
-2. **UI Design Gate** (standard+): invoke designer to produce design document → user approval
-3. **Implementation** → weaver (with design doc as context)
-4. **Tests** → prism
-5. **Build/CI** → anvil
-6. **Review** → sentinel (code quality)
-7. **Acceptance** → validator (functional verification) → TaskUpdate completed
-
-**Backend/General tasks**:
-1. **Implementation** → forge
-2. **Tests** → prism
-3. **Build/CI** → anvil
-4. **Review** → sentinel (code quality)
-5. **Acceptance** → validator (functional verification) → TaskUpdate completed
-
-### Scheduling
-
-- For standard/deep/autonomous, use TaskCreate/TaskList for task tracking with blockedBy dependencies
-- Group tasks by agent type, dispatch multiple Agent calls in a single message (max 2 concurrent)
-- Check for shared file conflicts before parallel dispatch — serialize overlapping tasks
-- Weaver tasks blocked by designer completion (set via blockedBy)
-- On agent completion: TaskUpdate status=completed, then check TaskList for newly unblocked tasks
+After plan approval, see `dev-orchestrator` for DAG-aware implementation scheduling.
