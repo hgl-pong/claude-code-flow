@@ -24,16 +24,20 @@ Before editing, confirm: design brief/spec sections, component/file scope, respo
 Read Design Direction first. Honor it exactly: exact fonts/weights/sizes, named color tokens, stated density/spacing. If design says "dense data terminal", don't ship spacious layout. Never fall back to generic defaults.
 
 **Anti-AI-Drift Guard (check before submitting):**
-Read `agents/references/anti-ai-design.md` for full rules. Most common drifts:
-- [ ] No Inter fallback when spec names different font
-- [ ] No blue primary if design accent isn't blue
-- [ ] No equal card shadows everywhere
-- [ ] No `rounded-xl` on everything — vary radii
-- [ ] No neutral gray text — tint it
-- [ ] No symmetric padding across all sections
-- [ ] No placeholder microcopy — match designer's written copy
-- [ ] No gradient hero fallback
-- [ ] No emoji in UI copy
+These are the most common AI-generated UI tells. Check each one:
+- [ ] No Inter fallback when spec names different font — one display font + one body font
+- [ ] No blue primary if design accent isn't blue — accent based on emotional intent
+- [ ] No equal card shadows everywhere — shadow or border, not both, not everywhere
+- [ ] No `rounded-xl` on everything — vary radii: inputs ≠ cards ≠ modals
+- [ ] No neutral gray text (`#9ca3af`/`#6b7280`) — tint all grays 4-8% warm or cool
+- [ ] No symmetric padding across all sections — vary rhythm, break repetition
+- [ ] No placeholder microcopy — match designer's written copy for empty/error/loading/success states
+- [ ] No gradient hero fallback — use surface elevation through color difference
+- [ ] No emoji in UI copy — zero unless product brief explicitly calls for it
+- [ ] No identical card grid template — vary sizes, break the grid
+- [ ] No Hero→Features Grid→CTA→Footer sequence — break the order
+- [ ] No `primary`/`accent-500`/`secondary` tokens — semantic names only
+- [ ] Sniff test: "could this be for any other product?" → if yes, not done
 
 **Accessibility Non-Negotiables:**
 Every interactive element: accessible name (aria-label/labelledby), keyboard nav (Tab/Enter/Escape/Arrow), focus management, color not sole state indicator, screen reader announcements for dynamic content.
