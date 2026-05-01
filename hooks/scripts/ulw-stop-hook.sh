@@ -53,7 +53,7 @@ TASK_TOTAL=$(jq -r '.task_total // 0' "$ULW_STATE_FILE")
 
 # ── 3. Max iterations guard ────────────────────────────────────────────────
 if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
-  echo "🛑 ULW: Max iterations ($MAX_ITERATIONS) reached. Stopping."
+  echo "ULW: Max iterations ($MAX_ITERATIONS) reached. Stopping."
   jq '.active = false' "$ULW_STATE_FILE" > "${ULW_STATE_FILE}.tmp" && mv "${ULW_STATE_FILE}.tmp" "$ULW_STATE_FILE"
   exit 0
 fi
@@ -62,7 +62,7 @@ fi
 TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // ""')
 
 if [[ -z "$TRANSCRIPT_PATH" ]] || [[ ! -f "$TRANSCRIPT_PATH" ]]; then
-  echo "⚠️  ULW: Transcript not found, stopping." >&2
+  echo "WARNING: ULW: Transcript not found, stopping." >&2
   jq '.active = false' "$ULW_STATE_FILE" > "${ULW_STATE_FILE}.tmp" && mv "${ULW_STATE_FILE}.tmp" "$ULW_STATE_FILE"
   exit 0
 fi
@@ -76,7 +76,7 @@ set -e
 
 if [[ $JQ_EXIT -ne 0 ]]; then
   # Parse error — let Claude continue rather than blocking forever
-  echo "⚠️  ULW: Could not parse transcript, letting Claude continue." >&2
+  echo "WARNING: ULW: Could not parse transcript, letting Claude continue." >&2
   exit 0
 fi
 
@@ -85,7 +85,7 @@ if echo "$LAST_OUTPUT" | grep -q '<ulw-done>'; then
   # Extract summary for the final message
   DONE_SUMMARY=$(echo "$LAST_OUTPUT" | \
     perl -0777 -pe 's/.*?<ulw-done>(.*?)<\/ulw-done>.*/$1/s; s/^\s+|\s+$//g' 2>/dev/null || echo "complete")
-  echo "✅ ULW: Task complete — $DONE_SUMMARY"
+  echo "ULW: Task complete — $DONE_SUMMARY"
   # Mark inactive and record completion time
   jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      '.active = false | .completed_at = $ts' \
@@ -95,7 +95,7 @@ fi
 
 # ── 5. Not done yet — block exit and re-inject prompt ─────────────────────
 if [[ -z "$PROMPT_TEXT" ]]; then
-  echo "⚠️  ULW: No prompt in state file, stopping." >&2
+  echo "WARNING: ULW: No prompt in state file, stopping." >&2
   jq '.active = false' "$ULW_STATE_FILE" > "${ULW_STATE_FILE}.tmp" && mv "${ULW_STATE_FILE}.tmp" "$ULW_STATE_FILE"
   exit 0
 fi
@@ -113,7 +113,34 @@ else
   PROGRESS_MSG="tasks in progress"
 fi
 
-SYSTEM_MSG="⚡ ULW iteration $NEXT_ITERATION | intent:${INTENT} | ${PROGRESS_MSG} | Keep working until ALL tasks have fresh verification evidence. Output <ulw-done>SUMMARY</ulw-done> ONLY when everything is verified complete."
+# ── 5a. Stuck detection ──────────────────────────────────────────────────────
+STUCK_FILE=".claude/flow/ulw-stuck-tracker.json"
+STUCK_MSG=""
+
+if [[ "$TASK_TOTAL" -gt 0 ]]; then
+  # Read last known task_done count
+  PREV_DONE=0
+  STUCK_COUNT=0
+  if [[ -f "$STUCK_FILE" ]]; then
+    PREV_DONE=$(jq -r '.task_done // 0' "$STUCK_FILE")
+    STUCK_COUNT=$(jq -r '.stuck_count // 0' "$STUCK_FILE")
+  fi
+
+  if [[ "$TASK_DONE" -eq "$PREV_DONE" ]] && [[ "$TASK_DONE" -lt "$TASK_TOTAL" ]]; then
+    STUCK_COUNT=$((STUCK_COUNT + 1))
+    if [[ $STUCK_COUNT -ge 3 ]]; then
+      STUCK_MSG=" WARNING: Task progress has stalled for ${STUCK_COUNT} iterations. Consider breaking down the current task or escalating. Do NOT emit <ulw-done> until tasks are complete."
+    fi
+  else
+    STUCK_COUNT=0
+  fi
+
+  # Update stuck tracker
+  jq -n --argjson d "$TASK_DONE" --argjson s "$STUCK_COUNT" \
+    '{task_done: $d, stuck_count: $s}' > "$STUCK_FILE"
+fi
+
+SYSTEM_MSG="ULW iteration $NEXT_ITERATION | intent:${INTENT} | ${PROGRESS_MSG} | Keep working until ALL tasks have fresh verification evidence. Output <ulw-done>SUMMARY</ulw-done> ONLY when everything is verified complete.${STUCK_MSG}"
 
 # Re-inject the original prompt (Claude sees its prior file-system work via context)
 jq -n \

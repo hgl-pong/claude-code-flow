@@ -1,7 +1,7 @@
 ---
 name: Using Claude Code Flow
 version: "1.0.0"
-description: "Entry point skill. Use at the start of any development conversation to select the right workflow skill before acting."
+description: "Use at the start of any development conversation to select the right workflow skill before acting."
 ---
 
 # Using Claude Code Flow

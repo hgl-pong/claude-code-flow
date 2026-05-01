@@ -1,7 +1,7 @@
 ---
 name: Dev Orchestrator
 version: "2.1.0"
-description: "Orchestrate multi-step development through Brainstorm→Plan→Design→Implement→Review→Acceptance pipeline with model-tiered agents. Triggers on complex development tasks."
+description: "Triggers on complex development tasks requiring multi-step orchestration with specialized agents."
 ---
 
 # Development Orchestrator
@@ -180,6 +180,16 @@ Outcomes: APPROVE→proceed; REQUEST CHANGES→back to implementer (max 3 rounds
 
 For frontend: prism uses browser automation to verify against design spec.
 
+#### Subagent-Driven Review (deep/autonomous mode)
+
+For deep and autonomous modes, dispatch each review stage as a **separate sentinel subagent** for zero context contamination between stages:
+
+1. Dispatch sentinel with `review_focus: spec_compliance` in the context envelope → spec-only review
+2. If APPROVE: dispatch a **fresh** sentinel with `review_focus: code_quality` → quality-only review
+3. If Stage 1 REQUEST CHANGES: back to implementer (max 3 rounds)
+
+For quick/standard: single sentinel run with both stages (no `review_focus` parameter) — backward compatible.
+
 ### 7. Acceptance Gate
 After sentinel APPROVE, invoke validator. **quick**: optional. **standard/deep**: mandatory. **autonomous**: auto.
 
@@ -209,6 +219,15 @@ Invoke chronicler if: new public APIs, user requested docs, or existing docs/ di
 - TaskUpdate status=completed only after validator ACCEPT
 
 Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run Stage 2 before Stage 1 passes.
+
+### Red Flags — STOP and re-read the pipeline if you catch yourself:
+
+- "I'll skip review for this small change"
+- "The agent output looks fine, I don't need to verify FILES_MODIFIED"
+- "I'll carry this context into the next agent dispatch"
+- "Stage 1 and Stage 2 can run together"
+- "I'll skip the Context Envelope, the agent has enough context"
+- "I can skip TaskCreate and just do it inline"
 
 ## Subagent Prompt Construction
 

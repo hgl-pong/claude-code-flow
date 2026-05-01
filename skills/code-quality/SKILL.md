@@ -6,7 +6,27 @@ description: This skill should be used when the user asks about "code quality", 
 
 # Code Quality Standards
 
-Guidelines for writing clean, maintainable, production-quality code.
+## IRON LAW
+
+**EVERY CHANGE MUST LEAVE THE CODE CLEANER THAN YOU FOUND IT.**
+
+You are not just writing code — you are improving the codebase. If your change introduces a smell, a workaround, or a shortcut, you are making the next person's job harder.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "Not my module, not my problem" | You touched it, you own the change's impact. Clean up what you disturb. |
+| "I'll clean it up later" | Later never comes. Do it now or add a TODO with a ticket number. |
+| "Deadline pressure" | Rushed code creates bugs that cost more time than doing it right. |
+| "The existing code was already messy" | That's a reason to clean, not an excuse to add more mess. |
+
+### Red Flags — STOP if you catch yourself thinking:
+
+- "This is good enough for now"
+- "Nobody will look at this code anyway"
+- "I'll add a comment to explain the hack"
+- "It works, ship it"
 
 ## Core Principles
 

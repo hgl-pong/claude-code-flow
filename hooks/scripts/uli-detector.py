@@ -36,7 +36,7 @@ ULI_PATTERN = re.compile(r'\buli\b', re.IGNORECASE)
 
 SYSTEM_APPEND = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔄 ULI MODE ACTIVE — ULTRA LOOP ITERATION
+ULI MODE ACTIVE — ULTRA LOOP ITERATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 The user activated ULI (Ultra Loop Iteration) mode. You MUST:

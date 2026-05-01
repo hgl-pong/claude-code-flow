@@ -32,7 +32,7 @@ ULW_PATTERN = re.compile(r'\bulw\b|ultrawork', re.IGNORECASE)
 
 SYSTEM_APPEND = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ULW MODE ACTIVE — ULTRAWORK
+ULW MODE ACTIVE — ULTRAWORK
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 The user activated Ultrawork (ULW) mode. You MUST:

@@ -6,7 +6,29 @@ description: Use before declaring work complete, especially after implementation
 
 # Verification Before Completion
 
-Never report completion from intent. Report completion from fresh evidence.
+## IRON LAW
+
+**NEVER CLAIM COMPLETION WITHOUT FRESH VERIFICATION EVIDENCE.**
+
+"Tests pass" requires actual test output. "Build succeeds" requires actual build output. "Bug fixed" requires a passing regression test. Intent is not evidence. Memory is not evidence.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "I just ran tests a minute ago" | A minute ago is not now. Re-run. |
+| "It's a trivial change, can't break anything" | Trivial changes break things constantly. Run the suite. |
+| "The code looks correct" | Looking correct and being correct are different. Execute it. |
+| "I'll verify after this next change" | There is no "next change" — verify now or don't claim done. |
+| "Build passed in CI" | CI is not your machine. Verify locally before claiming done. |
+
+### Red Flags — STOP if you catch yourself thinking:
+
+- "I'm pretty sure this works"
+- "The tests should pass"
+- "It worked in my head"
+- "I don't need to check, I've done this before"
+- "Verification is someone else's job"
 
 ## Process
 

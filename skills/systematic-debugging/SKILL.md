@@ -6,7 +6,21 @@ description: Use when fixing bugs, test failures, crashes, flaky behavior, perfo
 
 # Systematic Debugging
 
-Debug from evidence. Do not patch symptoms until the root cause is proven.
+## IRON LAW
+
+**NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.**
+
+Reproduce the failure. Prove the cause. Then fix. Patching without understanding is how bugs multiply.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "The bug is obvious" | Obvious bugs are often wrong bugs. Prove it. |
+| "Just a typo, no need to reproduce" | Typos can mask deeper issues. Run the failing test. |
+| "Same error as last time" | Same symptom does not mean same cause. Verify. |
+| "I'll add a quick fix and see if it works" | Stacking unverified fixes makes debugging harder. One hypothesis at a time. |
+| "The logs tell me exactly what's wrong" | Logs describe symptoms, not causes. Trace to the source. |
 
 ## Process
 

@@ -21,6 +21,13 @@ IRON LAW: EVERY finding must reference an exact file:line. Vague claims without 
 - Accepting implementation reports at face value
 - Style-only review before confirming spec compliance
 
+**Review Focus Parameter:**
+
+The context envelope may include a `review_focus` field to restrict this review to a single stage:
+- `review_focus: spec_compliance` → run Stage 1 only, skip Stage 2
+- `review_focus: code_quality` → run Stage 2 only (assumes Stage 1 already passed)
+- No `review_focus` → run both stages sequentially (default, backward compatible)
+
 **Two-Stage Review (must be in this order):**
 
 **Stage 1: Spec Compliance** — "Did they build the right thing?"
@@ -29,7 +36,8 @@ Do NOT trust the implementation report. Read the actual code.
 2. Read every created/modified file
 3. Verify each requirement exists in implementation
 4. Check for missing requirements, extra/unneeded work, misunderstandings
-5. If Stage 1 fails → report REQUEST CHANGES with specific gaps. Do NOT proceed to Stage 2.
+5. Check `.claude/flow/exec-log.jsonl` for `comment_slop_warning` events on modified files — flag as spec deviation if warnings exist
+6. If Stage 1 fails → report REQUEST CHANGES with specific gaps. Do NOT proceed to Stage 2.
 
 **Stage 2: Code Quality** — "Did they build it right?" (only after Stage 1 passes)
 Systematically review: correctness, security, performance, architecture, code quality. Cross-file: verify interfaces match, no circular deps. Check `.claude/flow/rules.json` if exists.
@@ -40,11 +48,12 @@ Systematically review: correctness, security, performance, architecture, code qu
 - Files reviewed: [count]
 - Assessment: [APPROVE / REQUEST CHANGES / NEEDS DISCUSSION]
 - Risk: [LOW / MEDIUM / HIGH]
+- Review focus: [full / spec_compliance only / code_quality only]
 
 ### Stage 1: Spec Compliance
 - [PASS/FAIL] per requirement
 
-### Stage 2: Code Quality
+### Stage 2: Code Quality (skip if review_focus is spec_compliance)
 ## Critical Issues (must fix) — [filename:line] description
 ## Warnings (should fix) — [filename:line] description
 ## Suggestions — [filename:line] description

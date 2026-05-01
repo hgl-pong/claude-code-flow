@@ -59,7 +59,7 @@ CURRENT_PHASE=$(jq -r '.current_phase // "pd_generating"' "$ULI_STATE_FILE")
 
 # ── 3. Max iterations guard ────────────────────────────────────────────────
 if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -gt $MAX_ITERATIONS ]]; then
-  echo "🛑 ULI: Max iterations ($MAX_ITERATIONS) reached. Stopping."
+  echo "ULI: Max iterations ($MAX_ITERATIONS) reached. Stopping."
   jq '.active = false' "$ULI_STATE_FILE" > "${ULI_STATE_FILE}.tmp" && mv "${ULI_STATE_FILE}.tmp" "$ULI_STATE_FILE"
   exit 0
 fi
@@ -68,7 +68,7 @@ fi
 TRANSCRIPT_PATH=$(echo "$HOOK_INPUT" | jq -r '.transcript_path // ""')
 
 if [[ -z "$TRANSCRIPT_PATH" ]] || [[ ! -f "$TRANSCRIPT_PATH" ]]; then
-  echo "⚠️  ULI: Transcript not found, stopping." >&2
+  echo "WARNING: ULI: Transcript not found, stopping." >&2
   jq '.active = false' "$ULI_STATE_FILE" > "${ULI_STATE_FILE}.tmp" && mv "${ULI_STATE_FILE}.tmp" "$ULI_STATE_FILE"
   exit 0
 fi
@@ -81,7 +81,7 @@ JQ_EXIT=$?
 set -e
 
 if [[ $JQ_EXIT -ne 0 ]]; then
-  echo "⚠️  ULI: Could not parse transcript, letting Claude continue." >&2
+  echo "WARNING: ULI: Could not parse transcript, letting Claude continue." >&2
   exit 0
 fi
 
@@ -89,7 +89,7 @@ fi
 if echo "$LAST_OUTPUT" | grep -q '<uli-done>'; then
   DONE_SUMMARY=$(echo "$LAST_OUTPUT" | \
     perl -0777 -pe 's/.*?<uli-done>(.*?)<\/uli-done>.*/$1/s; s/^\s+|\s+$//g' 2>/dev/null || echo "complete")
-  echo "✅ ULI: All iterations complete — $DONE_SUMMARY"
+  echo "ULI: All iterations complete — $DONE_SUMMARY"
   jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      '.active = false | .completed_at = $ts' \
      "$ULI_STATE_FILE" > "${ULI_STATE_FILE}.tmp" && mv "${ULI_STATE_FILE}.tmp" "$ULI_STATE_FILE"
@@ -121,7 +121,40 @@ case "$CURRENT_PHASE" in
     ;;
 esac
 
-SYSTEM_MSG="🔄 ULI iteration ${ITERATION}/${MAX_ITERATIONS} | goal: ${GOAL} | phase: ${CURRENT_PHASE} | ${PHASE_MSG} | Output <uli-done>SUMMARY</uli-done> ONLY when all iterations are complete or the product goal is fully delivered."
+# ── 5a. Stuck detection ──────────────────────────────────────────────────────
+STUCK_FILE=".claude/flow/uli-stuck-tracker.json"
+STUCK_MSG=""
+
+PREV_PHASE=""
+STUCK_COUNT=0
+if [[ -f "$STUCK_FILE" ]]; then
+  PREV_PHASE=$(jq -r '.current_phase // ""' "$STUCK_FILE")
+  STUCK_COUNT=$(jq -r '.stuck_count // 0' "$STUCK_FILE")
+fi
+
+if [[ "$CURRENT_PHASE" == "$PREV_PHASE" ]] && [[ "$CURRENT_PHASE" != "complete" ]]; then
+  STUCK_COUNT=$((STUCK_COUNT + 1))
+  if [[ $STUCK_COUNT -ge 3 ]]; then
+    STUCK_MSG=" WARNING: Stuck in '${CURRENT_PHASE}' phase for ${STUCK_COUNT} iterations. Consider escalating or adjusting the approach. Do NOT emit <uli-done> unless the product goal is fully delivered."
+  fi
+else
+  STUCK_COUNT=0
+fi
+
+jq -n --arg p "$CURRENT_PHASE" --argjson s "$STUCK_COUNT" \
+  '{current_phase: $p, stuck_count: $s}' > "$STUCK_FILE"
+
+# ── 5b. Product state summary ────────────────────────────────────────────────
+PRODUCT_STATE_MSG=""
+PRODUCT_STATE_FILE=".claude/flow/uli/product-state.md"
+if [[ -f "$PRODUCT_STATE_FILE" ]]; then
+  PRODUCT_SUMMARY=$(head -c 500 "$PRODUCT_STATE_FILE" 2>/dev/null || echo "")
+  if [[ -n "$PRODUCT_SUMMARY" ]]; then
+    PRODUCT_STATE_MSG=" | Product state: $(echo "$PRODUCT_SUMMARY" | head -3 | tr '\n' ' ')"
+  fi
+fi
+
+SYSTEM_MSG="ULI iteration ${ITERATION}/${MAX_ITERATIONS} | goal: ${GOAL} | phase: ${CURRENT_PHASE} | ${PHASE_MSG}${PRODUCT_STATE_MSG}${STUCK_MSG} | Output <uli-done>SUMMARY</uli-done> ONLY when all iterations are complete or the product goal is fully delivered."
 
 CONTINUATION_PROMPT="Continue ULI iteration loop. Goal: ${GOAL}. Current iteration: ${ITERATION}. Phase: ${CURRENT_PHASE}. Read .claude/flow/uli-state.json and .claude/flow/uli-acceptance-report.md to understand where to resume, then continue the ultrawork skill ULI branch from where it left off."
 

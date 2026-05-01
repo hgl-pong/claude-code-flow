@@ -1,7 +1,7 @@
 ---
 name: Ultrawork
 version: "1.2.0"
-description: "Fully autonomous execution mode. Triggers when user includes ulw/ultrawork in prompt or invokes /ulw. Classifies intent → executes pipeline → verifies → signals done. Stop Hook prevents exit until complete."
+description: "Triggers when user includes ulw/ultrawork in prompt or invokes /ulw."
 ---
 
 # Ultrawork (ULW)
@@ -56,7 +56,7 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
    - **Parallel scheduler** (see dev-orchestrator Step 5): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge/weaver, 2 prism, 1 anvil.
    - Each agent prompt must use the **Context Envelope** format (Goal, Task, Dependencies, File Scope, Test Command, Acceptance Criteria, Constraints).
    - Each agent: test-first RED → implement GREEN → refactor → verify → record evidence → increment done.
-4. Review (auto, sentinel — two-stage) — Stage 1: spec compliance → Stage 2: code quality (only if Stage 1 passes). APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate.
+4. Review (auto, sentinel — two-stage) — Stage 1: spec compliance → Stage 2: code quality (only if Stage 1 passes). APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate. Use subagent-driven review: dispatch sentinel with `review_focus: spec_compliance`, then a fresh sentinel with `review_focus: code_quality`.
 5. Acceptance (auto, validator) — ACCEPT→TaskUpdate completed; REJECT→back to implementer with gap list (max 2 loops).
 
 ### `fix`
@@ -120,3 +120,13 @@ After max retries: **escalate**. Never loop infinitely.
 7. **Dynamic parallelism** — dispatch up to 3 forge/weaver, 2 prism, 1 anvil. Use worktree isolation for file conflicts.
 8. **No feature creep** — implement exactly what was asked.
 9. **Ralph Loop: stateless dispatch** — every agent prompt is self-contained. Never carry prior agent output into the next dispatch.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "I'm 90% done, close enough to emit `<ulw-done>`" | 90% is not 100%. The remaining 10% is what the user asked for. |
+| "The tests are flaky, not my fault" | Flaky tests are your problem in autonomous mode. Fix or isolate them. |
+| "I'll verify in the next iteration" | There is no next iteration. Verify now. |
+| "The remaining task is trivial" | Trivial means 2 minutes, not skippable. Do it. |
+| "I ran out of retries" | Escalate. Never silently skip. |

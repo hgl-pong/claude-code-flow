@@ -6,7 +6,27 @@ description: Use after requirements or a design are approved and before executin
 
 # Writing Plans
 
-Create an implementation plan that a fresh agent can execute without guessing. Plans should be small, concrete, test-first, and easy to review.
+## IRON LAW
+
+**NO PLACEHOLDERS. NO VAGUE INSTRUCTIONS. EVERY TASK STANDS ALONE.**
+
+A plan is written for a fresh agent with zero project context, zero judgment, and zero ability to "figure it out." If a task cannot be executed by reading it alone, the plan is incomplete.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "The developer can figure it out" | If they could, they wouldn't need a plan. Be explicit. |
+| "Similar to the previous task" | Similar is not identical. Repeat the details. |
+| "I'll add TODOs for the tricky parts" | TODOs in a plan mean the plan is not done. Resolve them now. |
+| "The file path is obvious from context" | Context is what the plan creates. Write every path explicitly. |
+
+### Red Flags — STOP if you catch yourself thinking:
+
+- "They'll know what I mean"
+- "I'll skip the test command, it's standard"
+- "I'll just reference the design doc"
+- "The exact file doesn't matter at this stage"
 
 ## Plan Location
 

@@ -1,7 +1,7 @@
 ---
 name: Brainstorming
 version: "1.0.0"
-description: Use before creative development work: new features, behavior changes, UI work, architecture changes, or broad refactors. Turns a rough idea into an approved design before implementation.
+description: Use before creative development work: new features, behavior changes, UI work, architecture changes, or broad refactors.
 ---
 
 # Brainstorming
@@ -11,6 +11,16 @@ Use this skill to turn an idea into a clear design. The goal is not ceremony; it
 ## Hard Gate
 
 Do not implement until there is an approved design. For tiny work, the design can be two or three sentences. For larger work, write it as a spec.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "It's too simple for a design" | Simple things go wrong in simple ways. A 2-sentence design takes 10 seconds. |
+| "I'll figure it out as I code" | That's called debugging, not designing. Design first, code second. |
+| "The requirements are already clear" | Clear requirements are not a design. How you implement them is the design. |
+| "Design slows us down" | Skipping design guarantees rework. Rework is slower than design. |
+| "I can refactor later" | Refactoring a wrong architecture costs 10x more than designing it right. |
 
 ## Process
 
