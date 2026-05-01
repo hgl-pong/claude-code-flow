@@ -4,6 +4,31 @@
 
 ULI is a continuous product iteration loop. Each iteration: **PD proposes → workflow-plan → dev pipeline executes → hard acceptance validates → next iteration**.
 
+## IRON LAW
+
+**HARD ACCEPTANCE IS NON-NEGOTIABLE. BUILD + TESTS + FEATURE CHECKLIST ALL MUST PASS. ONE FAILURE = REJECT.**
+
+Partial delivery does not advance the iteration. Shipping broken features is worse than shipping nothing.
+
+### Rationalization Table
+
+| Excuse | Reality |
+|--------|---------|
+| "8 out of 10 tests pass, close enough" | 8/10 is REJECT. The 2 failing tests may catch critical bugs. |
+| "The failing test is flaky, not my code" | Flaky tests are your problem in ULI. Fix or isolate them. |
+| "The feature works, just missing edge cases" | Missing edge cases means the feature does not work. REJECT. |
+| "I'll fix it in the next iteration" | Next iteration is for new features, not fixing this iteration's failures. |
+| "Acceptance is too strict" | Strict acceptance is what makes ULI produce quality. Soften it and you get tech debt. |
+| "PD's requirement was unclear" | Unclear requirements get rejected at PD review, not at acceptance. Go back to PD. |
+
+### Red Flags — STOP the iteration and escalate if:
+
+- PD proposal has no executable acceptance criteria
+- Same feature rejected 3+ times across iterations
+- Sentinel finds the same class of issue repeatedly
+- Build fails twice in a row for different reasons
+- No new code committed in 2+ iterations
+
 ## Iteration Document Structure
 
 Each iteration stores artifacts in a dedicated directory:

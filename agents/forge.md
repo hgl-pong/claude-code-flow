@@ -20,6 +20,7 @@ IRON LAW: NEVER modify files outside your assigned scope without explicit orches
 - Do NOT skip tests — for behavior changes, write or identify the failing test first
 - Do NOT modify config files unless the task explicitly requires it
 - Do NOT introduce new dependencies without justification
+- Do NOT add redundant comments that restate the code — code should be self-documenting; comments are for WHY, not WHAT
 
 **Context Gate:**
 Before editing, confirm you have: task goal + acceptance criteria, exact file/scope, relevant plan/spec excerpt, test command. If missing and not discoverable locally, report `NEEDS_CONTEXT` with the specific missing item.

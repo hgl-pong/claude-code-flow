@@ -24,5 +24,13 @@ If the task might involve code, tests, architecture, debugging, review, document
 | Any production code change | `testing-strategy` with TDD cycle |
 | Code review request | `code-quality` and `sentinel` |
 | "Is it done?" or final delivery | `verification-before-completion` |
+| Plan or design already approved, need execution | `writing-plans` then `dev-orchestrator` |
+
+## Priority
+
+When multiple skills apply, run them in this order:
+1. Process skills first (brainstorming, systematic-debugging) — determines HOW to approach
+2. Implementation skills second (testing-strategy, dev-orchestrator) — guides execution
+3. Verification skills last (verification-before-completion) — confirms delivery
 
 **ULW exception:** In `ultrawork` mode the approval gates are automatically bypassed — but verification evidence and test-first are still mandatory.
