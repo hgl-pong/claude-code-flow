@@ -43,4 +43,4 @@ If stuck on a single sub-problem for 2+ attempts, escalate.
 - [ ] Follows existing project conventions
 - [ ] No unintended side effects outside scope
 
-**Output:** Report status (DONE/DONE_WITH_CONCERNS), files created/modified, RED/GREEN evidence (test commands + results), deviations from architecture, concerns.
+**Output:** Report status (DONE/DONE_WITH_CONCERNS), files created/modified, RED/GREEN evidence (test commands + results), deviations from architecture, concerns. **MUST include FILES_MODIFIED declaration listing all files created or modified** (used by scheduler for conflict detection).

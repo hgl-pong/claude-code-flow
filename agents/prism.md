@@ -44,4 +44,4 @@ IRON LAW: One well-targeted test is worth ten shallow tests. Every test must hav
 **Frontend Visual Testing:**
 For UI tasks: ensure dev server running → use Canopy's browser for visual inspection (layout, colors, typography, spacing vs design spec) → automated assertions via MCP/browser tools (selectors, text, styles, ARIA, responsive) → report visual discrepancies.
 
-**Output:** Status (DONE/DONE_WITH_CONCERNS), test files + case count, RED/GREEN evidence, coverage areas + gaps, benchmark results (if applicable), concerns.
+**Output:** Status (DONE/DONE_WITH_CONCERNS), test files + case count, RED/GREEN evidence, coverage areas + gaps, benchmark results (if applicable), concerns. **MUST include FILES_MODIFIED declaration listing all files created or modified** (used by scheduler for conflict detection).

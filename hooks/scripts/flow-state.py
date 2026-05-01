@@ -223,6 +223,91 @@ def main():
         state = load_state()
         print(json.dumps(state, indent=2))
 
+    elif action == "ulw-init":
+        prompt = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else ""
+        state = load_state()
+        state["ulw"] = {
+            "active": True,
+            "prompt": prompt,
+            "intent": None,
+            "task_done": 0,
+            "task_total": 0,
+        }
+        state["mode"] = "autonomous"
+        state["phase"] = "plan"
+        save_state(state)
+        print(f"ULW_INIT: mode=autonomous phase=plan")
+
+    elif action == "ulw-set-intent":
+        intent = sys.argv[2] if len(sys.argv) > 2 else "implement"
+        state = load_state()
+        if "ulw" in state:
+            state["ulw"]["intent"] = intent
+        save_state(state)
+        print(f"ULW_INTENT: {intent}")
+
+    elif action == "ulw-set-total":
+        total = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+        state = load_state()
+        if "ulw" in state:
+            state["ulw"]["task_total"] = total
+        state["task_done"] = state.get("task_done", 0)
+        state["task_total"] = total
+        save_state(state)
+        print(f"ULW_TOTAL: {total}")
+
+    elif action == "ulw-inc-done":
+        state = load_state()
+        if "ulw" in state:
+            state["ulw"]["task_done"] = state["ulw"].get("task_done", 0) + 1
+        done = state.get("task_done", 0)
+        state["task_done"] = done + 1
+        save_state(state)
+        print(done + 1)
+
+    elif action == "uli-init":
+        goal = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else ""
+        max_iter = 10
+        state = load_state()
+        state["uli"] = {
+            "active": True,
+            "goal": goal,
+            "iteration": 1,
+            "max_iterations": max_iter,
+            "current_phase": "init",
+            "pd_proposal_ready": False,
+            "acceptance_status": None,
+            "retry_count": 0,
+        }
+        state["mode"] = "autonomous"
+        state["phase"] = "plan"
+        save_state(state)
+        uli_dir = os.path.join(FLOW_DIR, "uli", "iterations")
+        os.makedirs(uli_dir, exist_ok=True)
+        print(f"ULI_INIT: iteration=1 max={max_iter} dir={uli_dir}")
+
+    elif action == "uli-set-phase":
+        phase = sys.argv[2] if len(sys.argv) > 2 else "plan"
+        state = load_state()
+        if "uli" in state:
+            state["uli"]["current_phase"] = phase
+        save_state(state)
+
+    elif action == "uli-next":
+        state = load_state()
+        if "uli" in state:
+            state["uli"]["iteration"] += 1
+            state["uli"]["current_phase"] = "pd_generating"
+            state["uli"]["pd_proposal_ready"] = False
+            state["uli"]["acceptance_status"] = None
+            state["uli"]["retry_count"] = 0
+        save_state(state)
+        print(state["uli"]["iteration"])
+
+    elif action == "uli-get":
+        state = load_state()
+        print(json.dumps(state.get("uli", {}), indent=2))
+
     else:
         print(f"Unknown action: {action}", file=sys.stderr)
         sys.exit(1)

@@ -46,4 +46,4 @@ Every interactive element: accessible name (aria-label/labelledby), keyboard nav
 - [ ] No placeholder content
 - [ ] No console errors/warnings
 
-**Output:** Status (DONE/DONE_WITH_CONCERNS), files modified, design spec sections implemented, test/build evidence, dev server URL, deviations, accessibility checklist, concerns.
+**Output:** Status (DONE/DONE_WITH_CONCERNS), files modified, design spec sections implemented, test/build evidence, dev server URL, deviations, accessibility checklist, concerns. **MUST include FILES_MODIFIED declaration listing all files created or modified** (used by scheduler for conflict detection).

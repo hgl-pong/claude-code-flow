@@ -84,17 +84,97 @@ Scout researches similar product patterns, design trends → `ui-research.md`. E
 ### 4b. UI Design Gate (frontend-ui, standard+)
 Designer produces design document → user approval → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — weaver's input).
 
-### 5. Implementation (DAG-Aware)
-Set phase to `impl`. Use TaskList for available tasks. Group by agent type, spawn max 2 in parallel. Apply `testing-strategy` before production code. For bugs with unknown cause, apply `systematic-debugging` first.
+### 5. Implementation (Parallel Scheduler + Ralph Loop)
+Set phase to `impl`. Apply `testing-strategy` before production code. For bugs with unknown cause, apply `systematic-debugging` first.
 
-Task dependency: use `blockedBy`/`addBlocks`. Frontend tasks blocked by designer via DAG.
+#### Ralph Loop (Stateless-Iterative Execution)
 
-Before parallel dispatch: check for overlapping file paths — serialize conflicting tasks.
+Each agent dispatch is **stateless** — the prompt must be fully self-contained. Do NOT carry outputs from agent N into agent N+1. Cross-task dependencies flow through `plan-brief.md` and git state, not through session context.
+
+```
+FOR each task batch:
+  1. PICK — TaskList → filter pending, unblocked tasks
+  2. ANALYZE — extract file paths, build conflict graph
+  3. ENVELOPE — construct self-contained prompt for each task
+  4. DISPATCH — fire all non-conflicting agents in one message
+  5. WAIT — system notifies on completion (do NOT poll/sleep)
+  6. VERIFY — check output status + FILES_MODIFIED
+  7. RECORD — TaskUpdate + evidence
+  8. LOOP — back to step 1 (fresh context, no prior agent output)
+```
+
+**Why:** Accumulating agent outputs in session context causes hallucination in later tasks. Each agent gets exactly what it needs — nothing more, nothing less.
+
+#### Parallel Limits
+
+| Agent Type | Max Parallel | Isolation |
+|---|---|---|
+| forge / weaver (code) | 3 | worktree if file conflict |
+| prism (tests) | 2 | worktree if file conflict |
+| anvil (build) | 1 | never parallel |
+
+#### File Conflict Analysis
+
+Before dispatching multiple agents simultaneously:
+1. Use `TaskGet` on each candidate task to read its description
+2. Extract file paths mentioned in "Files:" section or description text
+3. If two tasks share any file path → **conflict detected**
+4. Conflicting tasks: dispatch with `isolation: "worktree"` (each gets its own branch)
+5. Non-conflicting tasks: dispatch without isolation (share worktree)
+
+#### Context Envelope (Required for Every Dispatch)
+
+Every agent prompt MUST contain this envelope. Omitting fields = incomplete dispatch.
+
+```markdown
+## Envelope
+- **Goal:** <one-line project goal from plan-brief>
+- **Your Task:** <exact task subject from TaskGet>
+- **Completed Dependencies:** <summary of what blockedBy tasks produced — read git diff or plan-brief>
+- **File Scope:** <exact files to create/modify>
+- **Test Command:** `<exact command to run for verification>`
+- **Acceptance Criteria:** <from task description>
+- **Constraints:** <project conventions, banned patterns from plan-brief>
+
+## FILES_MODIFIED (required on completion)
+List ALL files you created or modified: <path1>, <path2>, ...
+```
+
+#### Agent Dispatch Call
+
+```
+Agent({
+  description: "<task_subject>",
+  subagent_type: "claude-code-flow:<agent>",
+  model: "<agent_model>",
+  prompt: "<full context envelope + task details>",
+  isolation: "<worktree if conflict detected, else omit>",
+  run_in_background: true
+})
+```
+
+**Dispatch all non-conflicting agents in a single message** (multiple Agent calls).
+
+#### Completion Handling
+
+When an agent completes:
+1. Read its output — verify status is DONE
+2. Check FILES_MODIFIED declaration against task scope
+3. If worktree was used: review changes, merge if clean
+4. `TaskUpdate` status=completed
+5. Record evidence in `verification-evidence.jsonl`
+6. Check if new tasks are now unblocked → dispatch next batch
 
 After every 3 tasks: write key decisions to `phase-context.md`.
 
-### 6. Review Gate
+### 6. Review Gate (Two-Stage)
 Set phase to `review`. **quick**: optional. **standard/deep**: mandatory sentinel. **autonomous**: auto.
+
+**Two-stage review — always in this order:**
+1. **Stage 1: Spec Compliance** — does the implementation match the plan? Check every requirement from plan-brief.
+2. **Stage 2: Code Quality** — only runs if Stage 1 passes. Check naming, structure, error handling, test coverage.
+
+NEVER reverse the order. If Stage 1 fails, Stage 2 is skipped.
 
 Outcomes: APPROVE→proceed; REQUEST CHANGES→back to implementer (max 3 rounds); NEEDS DISCUSSION→escalate.
 
@@ -132,7 +212,9 @@ Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run
 
 ## Subagent Prompt Construction
 
-Subagents get fresh context — give them everything:
-1. Paste relevant plan sections directly (never let subagent read plan file themselves)
-2. Include: Context, Scope, Constraints, Dependencies, Output format
-3. Specify expected output: status + deliverables
+Subagents are **stateless** — each dispatch is a fresh agent with zero memory of prior tasks. Construct fully self-contained prompts using the Context Envelope:
+
+1. Include the full envelope (Goal, Task, Dependencies, File Scope, Test Command, Acceptance Criteria, Constraints)
+2. Paste relevant plan sections directly (never let subagent read plan file themselves)
+3. Specify expected output: status + FILES_MODIFIED + deliverables
+4. Do NOT reference prior agent outputs — the agent has no access to them

@@ -51,8 +51,12 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 
 1. Brainstorm (auto) — select simplest approach, write 2-3 line decision to `phase-context.md`. Do NOT present options.
 2. Plan (auto) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
-3. Implementation (DAG-aware, max 2 agents parallel) — for each unblocked task: test-first RED → implement GREEN → refactor → verify → record evidence in `verification-evidence.jsonl` → increment done.
-4. Review (auto, sentinel) — APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate.
+3. Implementation (Ralph Loop + parallel scheduler):
+   - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
+   - **Parallel scheduler** (see dev-orchestrator Step 5): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge/weaver, 2 prism, 1 anvil.
+   - Each agent prompt must use the **Context Envelope** format (Goal, Task, Dependencies, File Scope, Test Command, Acceptance Criteria, Constraints).
+   - Each agent: test-first RED → implement GREEN → refactor → verify → record evidence → increment done.
+4. Review (auto, sentinel — two-stage) — Stage 1: spec compliance → Stage 2: code quality (only if Stage 1 passes). APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate.
 5. Acceptance (auto, validator) — ACCEPT→TaskUpdate completed; REJECT→back to implementer with gap list (max 2 loops).
 
 ### `fix`
@@ -113,5 +117,6 @@ After max retries: **escalate**. Never loop infinitely.
 4. **Never emit `<ulw-done>` without evidence** — the Stop Hook trusts this tag.
 5. **Branch off main** — never commit directly to `main`/`master`.
 6. **Escalate, don't loop forever** — max retries are hard limits.
-7. **Parallel max 2** — dispatch at most 2 agents simultaneously.
+7. **Dynamic parallelism** — dispatch up to 3 forge/weaver, 2 prism, 1 anvil. Use worktree isolation for file conflicts.
 8. **No feature creep** — implement exactly what was asked.
+9. **Ralph Loop: stateless dispatch** — every agent prompt is self-contained. Never carry prior agent output into the next dispatch.

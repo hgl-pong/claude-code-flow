@@ -1,6 +1,6 @@
 ---
 name: pd
-description: "Product Manager agent for ULI mode. Analyzes product state and proposes ≤3 testable CORE requirements per iteration. Writes to .claude/flow/uli-proposal.md. ULI-only — not for regular planning."
+description: "Product Manager agent for ULI mode. Analyzes product state and proposes ≤3 testable CORE requirements per iteration. Writes to .claude/flow/uli/iterations/<N>/proposal.md with working copy at .claude/flow/uli-proposal.md. ULI-only — not for regular planning."
 model: sonnet
 color: purple
 tools: ["Read", "Grep", "Glob", "Bash"]
@@ -31,7 +31,13 @@ If `product-state.md` doesn't exist, infer goal from README and ULI prompt. Writ
 
 ## Proposal Format
 
-Write `.claude/flow/uli-proposal.md`:
+Read `.claude/flow/uli-state.json` (or run `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-get`) to get the current iteration number `N`.
+
+Write proposal to **two locations**:
+1. **Iteration archive**: `.claude/flow/uli/iterations/<N>/proposal.md`
+2. **Working copy**: `.claude/flow/uli-proposal.md` (for agents that reference the fixed path)
+
+Create the iterations directory if needed: `mkdir -p .claude/flow/uli/iterations/<N>`
 
 ```markdown
 ## Iteration N Proposal
@@ -68,7 +74,7 @@ Write `.claude/flow/uli-proposal.md`:
 
 ## Output
 
-Write proposal to `.claude/flow/uli-proposal.md`. Report: product state read, gaps addressed, CORE count, NICE count, deferred items.
+Write proposal to `.claude/flow/uli/iterations/<N>/proposal.md`, then copy to `.claude/flow/uli-proposal.md`. Report: iteration number, product state read, gaps addressed, CORE count, NICE count, deferred items.
 
 **Self-Review:**
 - [ ] product-state.md read or created
