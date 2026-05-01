@@ -1,6 +1,6 @@
 ---
 name: Ultrawork
-version: "1.2.0"
+version: "1.3.0"
 description: "Triggers when user includes ulw/ultrawork in prompt or invokes /ulw."
 ---
 
@@ -37,6 +37,34 @@ Ambiguous signals: pick the less destructive action first. **Never ask for clari
 
 Update state: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-intent <CLASSIFIED_INTENT>`
 
+## Step 1b — Domain Detection + Gate Checklist
+
+After classifying intent, detect the task domain using the same rules as `dev-orchestrator`:
+- Does the task involve frontend files (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html`)?
+- Does the task involve UI components, pages, layouts, styling, or visual elements?
+- Does the task involve user-facing interaction?
+
+If ANY are true → task domain is **frontend-UI**.
+
+Then evaluate the mandatory gates. In ULW autonomous mode, ALL gates are auto-approved, but they ALL must still RUN:
+
+```
+ULW GATE CHECKLIST (all gates auto-approve but all must execute):
+
+[ ] Brainstorm — always for implement/refactor
+[ ] Research (scout) — always for implement/refactor (auto-skip if pure internal)
+[ ] Plan (oracle) — ALWAYS mandatory
+[ ] Architecture (atlas) — mandatory when: new system, 3+ modules, cross-cutting change
+[ ] UI Research (scout) — mandatory when task domain is frontend-UI
+[ ] UI Design (designer) — mandatory when task domain is frontend-UI
+[ ] Review (sentinel) — ALWAYS mandatory
+[ ] Acceptance (validator) — ALWAYS mandatory
+```
+
+Record checked gates in `phase-context.md` under `## Gate Checklist`.
+
+**CRITICAL: A checked gate MUST execute, even in autonomous mode. Auto-approve means no user confirmation needed, NOT that the gate is skipped.**
+
 ## Step 2 — Pre-flight
 
 1. Read `workflow-state.json` for in-progress work. Warn if mid-flight (do not block).
@@ -49,15 +77,19 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 
 ### `implement` / `refactor`
 
-1. Brainstorm (auto) — select simplest approach, write 2-3 line decision to `phase-context.md`. Do NOT present options.
-2. Plan (auto) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
-3. Implementation (Ralph Loop + parallel scheduler):
+1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `phase-context.md`. Do NOT present options.
+2. Research (auto-approve, if checked) — invoke scout for external info. Skip only for pure internal logic tasks.
+3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
+4. Architecture (auto-approve, if checked) — atlas produces design. Append to `phase-context.md`.
+5. UI Research (auto-approve, if checked) — scout researches design patterns. Write `ui-research.md`.
+6. UI Design (auto-approve, if checked) — designer produces `DESIGN.md`. **weaver MAY NOT be dispatched until DESIGN.md exists.**
+7. Implementation (Ralph Loop + parallel scheduler):
    - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
-   - **Parallel scheduler** (see dev-orchestrator Step 5): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge/weaver, 2 prism, 1 anvil.
+   - **Parallel scheduler** (see dev-orchestrator Step 9): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge/weaver, 2 prism, 1 anvil.
    - Each agent prompt must use the **Context Envelope** format (Goal, Task, Dependencies, File Scope, Test Command, Acceptance Criteria, Constraints).
    - Each agent: test-first RED → implement GREEN → refactor → verify → record evidence → increment done.
-4. Review (auto, sentinel — two-stage) — Stage 1: spec compliance → Stage 2: code quality (only if Stage 1 passes). APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate. Use subagent-driven review: dispatch sentinel with `review_focus: spec_compliance`, then a fresh sentinel with `review_focus: code_quality`.
-5. Acceptance (auto, validator) — ACCEPT→TaskUpdate completed; REJECT→back to implementer with gap list (max 2 loops).
+8. Review (auto, sentinel — two-stage) — Stage 1: spec compliance → Stage 2: code quality (only if Stage 1 passes). APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate. Use subagent-driven review: dispatch sentinel with `review_focus: spec_compliance`, then a fresh sentinel with `review_focus: code_quality`.
+9. Acceptance (auto, validator) — ACCEPT→TaskUpdate completed; REJECT→back to implementer with gap list (max 2 loops).
 
 ### `fix`
 
@@ -113,13 +145,15 @@ After max retries: **escalate**. Never loop infinitely.
 
 1. **Write ulw-state.json first** — Stop Hook needs it.
 2. **Classify intent first** — never start before Intent Gate completes.
-3. **Write the failing test first** — no exceptions, even in autonomous mode.
-4. **Never emit `<ulw-done>` without evidence** — the Stop Hook trusts this tag.
-5. **Branch off main** — never commit directly to `main`/`master`.
-6. **Escalate, don't loop forever** — max retries are hard limits.
-7. **Dynamic parallelism** — dispatch up to 3 forge/weaver, 2 prism, 1 anvil. Use worktree isolation for file conflicts.
-8. **No feature creep** — implement exactly what was asked.
-9. **Ralph Loop: stateless dispatch** — every agent prompt is self-contained. Never carry prior agent output into the next dispatch.
+3. **Detect domain and evaluate gate checklist** — every checked gate MUST execute.
+4. **Write the failing test first** — no exceptions, even in autonomous mode.
+5. **Never emit `<ulw-done>` without evidence** — the Stop Hook trusts this tag.
+6. **Branch off main** — never commit directly to `main`/`master`.
+7. **Escalate, don't loop forever** — max retries are hard limits.
+8. **Dynamic parallelism** — dispatch up to 3 forge/weaver, 2 prism, 1 anvil. Use worktree isolation for file conflicts.
+9. **No feature creep** — implement exactly what was asked.
+10. **Ralph Loop: stateless dispatch** — every agent prompt is self-contained. Never carry prior agent output into the next dispatch.
+11. **Auto-approve does not mean skip** — autonomous mode skips user confirmation, NOT gate execution.
 
 ### Rationalization Table
 
@@ -130,3 +164,5 @@ After max retries: **escalate**. Never loop infinitely.
 | "I'll verify in the next iteration" | There is no next iteration. Verify now. |
 | "The remaining task is trivial" | Trivial means 2 minutes, not skippable. Do it. |
 | "I ran out of retries" | Escalate. Never silently skip. |
+| "This frontend task doesn't need designer" | If Gate Checklist checked UI Design, run it. No exceptions. |
+| "Auto-approve means I can skip this gate" | Auto-approve means no user prompt. The gate still executes. |

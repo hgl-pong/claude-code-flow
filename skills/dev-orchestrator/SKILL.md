@@ -1,6 +1,6 @@
 ---
 name: Dev Orchestrator
-version: "2.1.0"
+version: "3.0.0"
 description: "Triggers on complex development tasks requiring multi-step orchestration with specialized agents."
 ---
 
@@ -12,12 +12,14 @@ Orchestrate tasks through the development pipeline with model-tiered agents, mod
 
 Auto-recommend: 1-2 subtasks single domain → **quick**; 3-5 subtasks → **standard**; 6+ or cross-module → **deep**; "just ship it" → **autonomous**; `ulw`/`ultrawork` → **ultrawork** (use ultrawork skill); `uli` → **uli** (use ultrawork skill ULI branch).
 
-| Mode | Research | Design | Plan Approval | Review | Auto-retry |
-|------|----------|--------|---------------|--------|------------|
-| quick | No | No | No | Optional | No |
-| standard | If needed | No (Yes for UI) | Yes | Yes | No |
-| deep | Yes | Yes | Yes (HTML) | Yes | Yes |
-| autonomous | Auto | Auto | Auto | Auto (max 3) | Yes |
+| Mode | Research | Architecture (atlas) | UI Research (scout) | UI Design (designer) | Plan Approval | Review | Auto-retry |
+|------|----------|---------------------|--------------------|--------------------|---------------|--------|------------|
+| quick | No | No | No | No | No | Optional | No |
+| standard | If needed | If needed | Yes for UI tasks | Yes for UI tasks | Yes | Yes | No |
+| deep | Yes | Yes | Yes for UI tasks | Yes for UI tasks | Yes (HTML) | Yes | Yes |
+| autonomous | Auto | Auto | Auto for UI tasks | Auto for UI tasks | Auto | Auto (max 3) | Yes |
+
+"If needed" means: evaluate the condition. If the condition is true, the gate is MANDATORY, not optional.
 
 If user explicitly asks to skip a gate, respect that and record the risk.
 
@@ -40,51 +42,131 @@ Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mo
 | `validator` | sonnet | Functional acceptance testing | Acceptance |
 | `chronicler` | sonnet | Documentation, changelogs | -- |
 
+## Task Domain Detection
+
+Before entering the pipeline, classify the task into a domain. This determines which gates are mandatory.
+
+**Frontend-UI task** — ANY of these conditions is true:
+- Task creates or modifies `.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html` files
+- Task involves UI components, pages, layouts, styling, or visual elements
+- Task mentions "design", "UI", "frontend", "component", "page", "layout", "responsive"
+- Task involves user-facing interaction (forms, buttons, navigation, modals)
+- Task output will be seen by end users
+
+**Backend task** — ANY of these:
+- Task creates or modifies API endpoints, database queries, server logic
+- Task involves `.py`, `.go`, `.rs`, `.java`, `.rb`, `.ts` (non-frontend) files
+- Task mentions "API", "database", "server", "auth", "backend"
+
+**Cross-domain** — BOTH frontend and backend conditions are true.
+
+If cross-domain: treat each subtask according to its own domain. The pipeline runs ALL applicable gates.
+
+## Mandatory Gate Checklist
+
+After mode selection, use this checklist to determine which gates MUST run. Check EVERY item. If a gate is marked mandatory, it is NOT optional — it MUST complete before proceeding.
+
+```
+GATE CHECKLIST (evaluate for this specific task):
+
+[ ] Gate 1: Brainstorm — mandatory for: new features, behavior changes, UI work,
+    architecture changes, broad refactors. Skip only for: narrow bug fixes with
+    known root cause, config changes, single-file edits with clear spec.
+
+[ ] Gate 2: Research (scout) — see mode table above. If mandatory: scout MUST
+    produce findings before plan gate.
+
+[ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
+    Oracle MUST produce plan-brief.md with TaskCreate tasks.
+
+[ ] Gate 4: Architecture (atlas) — see mode table above. If mandatory: atlas
+    MUST produce design document before implementation.
+
+[ ] Gate 5: UI Research (scout) — mandatory when task domain is frontend-UI
+    AND mode is standard+. Scout MUST produce ui-research.md.
+
+[ ] Gate 6: UI Design (designer) — mandatory when task domain is frontend-UI
+    AND mode is standard+. Designer MUST produce DESIGN.md before weaver
+    can be dispatched.
+
+[ ] Gate 7: Review (sentinel) — see mode table above. If mandatory: sentinel
+    MUST approve before acceptance.
+
+[ ] Gate 8: Acceptance (validator) — mandatory for standard/deep/autonomous.
+    Validator MUST accept before completion.
+
+EXECUTION RULE: After evaluating this checklist, you MUST execute gates in
+order (1→2→3→4→5→6→7→8), skipping only gates that are unchecked. You MAY NOT
+skip a checked gate. You MAY NOT reorder gates.
+```
+
 ## Pipeline
 
 ```
-Skill Check → Brainstorm/Design (if creative) → Mode Select → Research (scout, if needed)
-→ Plan (oracle) → Design (atlas, deep/autonomous) → UI Research + Design (frontend-ui)
-→ Implementation (forge/weaver + prism + anvil, DAG-scheduled)
-→ Review (sentinel) → Acceptance (validator) → Documentation (chronicler) → Done
+1. Skill Check → 2. Mode Select → 3. Domain Detect → 4. Gate Checklist
+→ 5. Brainstorm Gate (if checked) → 6. Research Gate (if checked)
+→ 7. Plan Gate (if checked) → 8. Architecture Gate (if checked)
+→ 9. UI Research Gate (if checked) → 10. UI Design Gate (if checked)
+→ 11. Implementation → 12. Review Gate (if checked)
+→ 13. Acceptance Gate (if checked) → 14. Documentation → Done
 ```
 
 ## State Machine
 
 Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <phase>`
 
-Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + design), `plan-brief.md` (agent-ready tasks from oracle), `ui-research.md`, `modified-files.txt`, `verification-evidence.jsonl` + `last-verification.json`, `review-result.txt`.
+Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + design), `plan-brief.md` (agent-ready tasks from oracle), `ui-research.md`, `DESIGN.md`, `modified-files.txt`, `verification-evidence.jsonl` + `last-verification.json`, `review-result.txt`.
 
 Phase handoff: each gate agent appends output to `phase-context.md`. Oracle writes `plan-brief.md` after approval.
 
 ## Steps
 
-### 1. Analyze + Mode Select
-Start with `using-claude-code-flow`. Classify: domain, complexity, needs design/research? Select mode, set phase to `plan`.
+### 1. Analyze + Mode Select + Domain Detect
+Start with `using-claude-code-flow`. Classify: domain (using Task Domain Detection rules), complexity, needs design/research? Select mode, set phase to `plan`.
 
 For new features, behavior changes, UI work, architecture changes, or broad refactors, run `brainstorming` first. Save substantial specs to `docs/superpowers/specs/`.
 
-### 2. Research (if needed)
-Skip for quick mode or internal-only tasks. Invoke scout for external info.
+### 2. Evaluate Gate Checklist
+Run the Mandatory Gate Checklist above. Record which gates are mandatory in `phase-context.md` under a `## Gate Checklist` section. Example:
+```
+## Gate Checklist
+- [x] Brainstorm — new feature
+- [x] Research — deep mode
+- [x] Plan — deep mode
+- [x] Architecture — deep mode
+- [x] UI Research — frontend-UI task
+- [x] UI Design — frontend-UI task
+- [x] Review — deep mode
+- [x] Acceptance — deep mode
+```
 
-### 3. Plan Gate
-- **quick**: Skip or 2-line inline plan.
+This section is the execution contract. You MAY NOT skip a checked gate.
+
+### 3. Brainstorm Gate (if checked)
+Run `brainstorming` skill. Output approved design to `phase-context.md`.
+
+### 4. Research Gate (if checked)
+Invoke scout for external info. Output to `phase-context.md`.
+
+### 5. Plan Gate (if checked)
 - **standard**: oracle text summary → user approval.
 - **deep**: oracle HTML visualization → browser review.
 - **autonomous**: oracle plan → auto-approve.
 
 Oracle writes summary to `phase-context.md`. After approval, use `writing-plans` for multi-step work. Oracle creates tasks via TaskCreate with blockedBy dependencies.
 
-### 4. Design Gate (deep/autonomous only)
-Atlas produces module design, API surface, data layout → user approval → append to `phase-context.md`.
+### 6. Architecture Gate (if checked)
+Atlas produces module design, API surface, data layout → user approval (auto for autonomous) → append to `phase-context.md`.
 
-### 4a. UI Research (frontend-ui, standard+)
+### 7. UI Research Gate (if checked)
 Scout researches similar product patterns, design trends → `ui-research.md`. Extract reusable knowledge. Append summary to `phase-context.md`.
 
-### 4b. UI Design Gate (frontend-ui, standard+)
-Designer produces design document → user approval → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — weaver's input).
+### 8. UI Design Gate (if checked)
+Designer produces design document → user approval (auto for autonomous) → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — weaver's input).
 
-### 5. Implementation (Parallel Scheduler + Ralph Loop)
+**IRON LAW for UI tasks: weaver MAY NOT be dispatched until DESIGN.md exists.** If DESIGN.md is missing and the task is frontend-UI, STOP and run designer first.
+
+### 9. Implementation (Parallel Scheduler + Ralph Loop)
 Set phase to `impl`. Apply `testing-strategy` before production code. For bugs with unknown cause, apply `systematic-debugging` first.
 
 #### Ralph Loop (Stateless-Iterative Execution)
@@ -167,8 +249,8 @@ When an agent completes:
 
 After every 3 tasks: write key decisions to `phase-context.md`.
 
-### 6. Review Gate (Two-Stage)
-Set phase to `review`. **quick**: optional. **standard/deep**: mandatory sentinel. **autonomous**: auto.
+### 10. Review Gate (if checked)
+Set phase to `review`. Two-stage sentinel review.
 
 **Two-stage review — always in this order:**
 1. **Stage 1: Spec Compliance** — does the implementation match the plan? Check every requirement from plan-brief.
@@ -190,14 +272,12 @@ For deep and autonomous modes, dispatch each review stage as a **separate sentin
 
 For quick/standard: single sentinel run with both stages (no `review_focus` parameter) — backward compatible.
 
-### 7. Acceptance Gate
-After sentinel APPROVE, invoke validator. **quick**: optional. **standard/deep**: mandatory. **autonomous**: auto.
-
-Validator reads `plan-brief.md`, runs build+tests, checks feature delivery.
+### 11. Acceptance Gate (if checked)
+After sentinel APPROVE, invoke validator. Validator reads `plan-brief.md`, runs build+tests, checks feature delivery.
 
 Outcomes: ACCEPT→TaskUpdate completed; REJECT→back to implementer (max 2 rounds).
 
-### 8. Error Recovery
+### 12. Error Recovery
 ```
 syntax error     → auto-correct, retry
 dependency error → install, retry
@@ -206,7 +286,7 @@ environment error → escalate to user
 unknown          → investigate (max 2 retries), escalate
 ```
 
-### 9. Documentation + Report
+### 13. Documentation + Report
 Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Use `verification-before-completion`. Set phase to `idle`. Present final summary.
 
 ## Verification
@@ -228,6 +308,8 @@ Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run
 - "Stage 1 and Stage 2 can run together"
 - "I'll skip the Context Envelope, the agent has enough context"
 - "I can skip TaskCreate and just do it inline"
+- "This frontend task doesn't need designer" ← WRONG. If Gate Checklist checked UI Design, run it.
+- "I'll dispatch weaver without DESIGN.md" ← WRONG. UI Design gate must complete first.
 
 ## Subagent Prompt Construction
 
