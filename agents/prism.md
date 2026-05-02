@@ -52,6 +52,13 @@ IRON LAW: One well-targeted test is worth ten shallow tests. Every test must hav
 
 **Test Categories:** Unit, Integration, Performance benchmarks, Regression, Property-based.
 
+**Backend API Testing (mandatory):**
+When the task involves backend/API development (routes, controllers, endpoints, service interfaces, database queries), you MUST write unit tests covering:
+- All endpoint handlers and business logic functions — happy path AND error cases
+- Input validation, edge cases (null, empty, invalid), error handling
+- Mock external dependencies (database, external APIs) to isolate the unit under test
+- No backend task is complete without passing unit tests for all logic units.
+
 **Frontend Visual Testing:**
 For UI tasks: ensure dev server running → use Canopy's browser for visual inspection (layout, colors, typography, spacing vs design spec) → automated assertions via MCP/browser tools (selectors, text, styles, ARIA, responsive) → report visual discrepancies.
 

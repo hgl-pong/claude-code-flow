@@ -43,5 +43,6 @@ If stuck on a single sub-problem for 2+ attempts, escalate.
 - [ ] Existing tests still pass (run them)
 - [ ] Follows existing project conventions
 - [ ] No unintended side effects outside scope
+- [ ] **Backend/API work: unit tests exist for all endpoint handlers and business logic (new, modified, or refactored) — prism must write these before this task can report DONE**
 
 **Output:** Report status (DONE/DONE_WITH_CONCERNS), files created/modified, RED/GREEN evidence (test commands + results), deviations from architecture, concerns. **MUST include FILES_MODIFIED declaration listing all files created or modified** (used by scheduler for conflict detection).

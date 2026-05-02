@@ -16,7 +16,7 @@ Auto-recommend: 1-2 subtasks single domain → **quick**; 3-5 subtasks → **sta
 |------|----------|---------------------|--------------------|--------------------|---------------|--------|------------|
 | quick | No | No | No | No | No | Optional | No |
 | standard | If needed | If needed | Yes for UI tasks | Yes for UI tasks | Yes | Yes | No |
-| deep | Yes | Yes | Yes for UI tasks | Yes for UI tasks | Yes (HTML) | Yes | Yes |
+| deep | Yes | Yes | Yes for UI tasks | Yes for UI tasks | Yes (MD) | Yes | Yes |
 | autonomous | Auto | Auto | Auto for UI tasks | Auto for UI tasks | Auto | Auto (max 3) | Yes |
 
 "If needed" means: evaluate the condition. If the condition is true, the gate is MANDATORY, not optional.
@@ -149,8 +149,8 @@ Run `brainstorming` skill. Output approved design to `phase-context.md`.
 Invoke scout for external info. Output to `phase-context.md`.
 
 ### 5. Plan Gate (if checked)
-- **standard**: oracle text summary → user approval.
-- **deep**: oracle HTML visualization → browser review.
+- **standard**: oracle markdown plan → user approval.
+- **deep**: oracle markdown plan → user approval. (Use HTML visualization only when user explicitly requests it.)
 - **autonomous**: oracle plan → auto-approve.
 
 Oracle writes summary to `phase-context.md`. After approval, use `writing-plans` for multi-step work. Oracle creates tasks via TaskCreate with blockedBy dependencies.
@@ -165,6 +165,11 @@ Scout researches similar product patterns, design trends → `ui-research.md`. E
 Designer produces design document → user approval (auto for autonomous) → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — weaver's input).
 
 **IRON LAW for UI tasks: weaver MAY NOT be dispatched until DESIGN.md exists.** If DESIGN.md is missing and the task is frontend-UI, STOP and run designer first.
+
+**Hard enforcement for deep mode:** In deep mode with frontend-UI tasks, designer is MANDATORY — no exceptions. Before proceeding to Implementation (step 9), explicitly verify:
+1. Task domain includes frontend-UI → YES? → designer MUST have run
+2. `.claude/flow/DESIGN.md` exists and is non-empty → YES? → proceed; NO? → STOP, dispatch designer
+3. If designer was somehow skipped, DO NOT proceed to Implementation. Go back and run designer now.
 
 ### 9. Implementation (Parallel Scheduler + Ralph Loop)
 Set phase to `impl`. Apply `testing-strategy` before production code. For bugs with unknown cause, apply `systematic-debugging` first.
@@ -309,6 +314,7 @@ Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run
 - "I'll skip the Context Envelope, the agent has enough context"
 - "I can skip TaskCreate and just do it inline"
 - "This frontend task doesn't need designer" ← WRONG. If Gate Checklist checked UI Design, run it.
+- "I can skip designer and go straight to Implementation" ← WRONG. In deep mode with frontend-UI, designer is mandatory — verify DESIGN.md exists before step 9.
 - "I'll dispatch weaver without DESIGN.md" ← WRONG. UI Design gate must complete first.
 
 ## Subagent Prompt Construction

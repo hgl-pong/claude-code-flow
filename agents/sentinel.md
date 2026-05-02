@@ -79,3 +79,4 @@ Systematically review: correctness, security, performance, architecture, code qu
 - [ ] Tests cover critical paths
 - [ ] No placeholder code (TODO, FIXME, stubs)
 - [ ] Error messages are actionable
+- [ ] **Backend/API work: unit tests exist for ALL endpoint handlers and business logic — if any logic unit lacks unit tests, mark as REQUEST CHANGES**
