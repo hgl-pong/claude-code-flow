@@ -98,26 +98,22 @@ fi
 
 # ── 5. Not done yet — block exit and re-inject ULI continuation ────────────
 
-# Increment iteration counter
-NEXT_ITERATION=$((ITERATION + 1))
-jq --argjson i "$NEXT_ITERATION" \
-   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-   '.iteration = $i | .last_iteration_at = $ts' \
-   "$ULI_STATE_FILE" > "${ULI_STATE_FILE}.tmp" && mv "${ULI_STATE_FILE}.tmp" "$ULI_STATE_FILE"
+# Do NOT increment iteration here — iteration only advances after acceptance passes.
+# The iteration counter is managed by flow-state.py uli-next, called only after ACCEPT.
 
 # Build phase-aware re-injection message
 case "$CURRENT_PHASE" in
   "pd_generating")
-    PHASE_MSG="The PD agent has not finished generating the proposal yet. Continue: spawn pd agent, wait for uli-proposal.md, then proceed to dev pipeline."
+    PHASE_MSG="PD must generate a NEW proposal for this iteration. Continue: spawn pd agent (it reads product-state.md and uli-acceptance-report.md), wait for uli-proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
     ;;
   "dev_pipeline")
-    PHASE_MSG="The dev pipeline is still in progress. Continue: complete the implementation, run sentinel review, then run validator acceptance."
+    PHASE_MSG="The dev pipeline is still in progress for iteration ${ITERATION}. Continue: complete ALL implementation tasks for this iteration, run sentinel review (two-stage), then run validator acceptance. Do NOT advance to next iteration until acceptance passes."
     ;;
   "acceptance")
-    PHASE_MSG="The acceptance gate is still pending. Continue: run validator, check build + tests + feature checklist, record result in uli-acceptance-report.md."
+    PHASE_MSG="Acceptance gate is pending for iteration ${ITERATION}. Continue: run validator, check build + tests + feature checklist against uli-proposal.md, record result. Only on ACCEPT: commit, update product-state.md, increment iteration via uli-next, then spawn PD for next iteration."
     ;;
   *)
-    PHASE_MSG="Continue the ULI iteration loop: PD generates requirements → dev pipeline executes → hard acceptance validation → next iteration."
+    PHASE_MSG="Continue the ULI iteration loop for iteration ${ITERATION}: PD proposal exists → implement ALL tasks → sentinel review → hard acceptance → commit → increment → PD for next iteration."
     ;;
 esac
 
@@ -156,7 +152,7 @@ fi
 
 SYSTEM_MSG="ULI iteration ${ITERATION}/${MAX_ITERATIONS} | goal: ${GOAL} | phase: ${CURRENT_PHASE} | ${PHASE_MSG}${PRODUCT_STATE_MSG}${STUCK_MSG} | Output <uli-done>SUMMARY</uli-done> ONLY when all iterations are complete or the product goal is fully delivered."
 
-CONTINUATION_PROMPT="Continue ULI iteration loop. Goal: ${GOAL}. Current iteration: ${ITERATION}. Phase: ${CURRENT_PHASE}. Read .claude/flow/uli-state.json and .claude/flow/uli-acceptance-report.md to understand where to resume, then continue the ultrawork skill ULI branch from where it left off."
+CONTINUATION_PROMPT="Continue ULI iteration ${ITERATION}. Goal: ${GOAL}. Phase: ${CURRENT_PHASE}. ONE ITERATION = one PD proposal + all tasks delivered + acceptance passed + commit. Do NOT treat individual tasks as iterations. Read .claude/flow/uli-state.json, .claude/flow/uli-proposal.md, and .claude/flow/uli-acceptance-report.md to understand where to resume, then continue the ultrawork skill ULI branch."
 
 jq -n \
   --arg prompt "$CONTINUATION_PROMPT" \
