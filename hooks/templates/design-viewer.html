@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design System Viewer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --v-bg:#0e0e10;--v-surface:#1a1a1f;--v-surface2:#242429;--v-border:#333338;
+  --v-text:#e4e4e7;--v-text2:#a1a1aa;--v-accent:#22d3ee;--v-accent2:#06b6d4;
+  --v-danger:#f87171;--v-success:#4ade80;--v-radius:8px;
+}
+.light{
+  --v-bg:#fafaf9;--v-surface:#ffffff;--v-surface2:#f4f4f5;--v-border:#e4e4e7;
+  --v-text:#18181b;--v-text2:#71717a;--v-accent:#0891b2;--v-accent2:#0e7490;
+  --v-danger:#dc2626;--v-success:#16a34a;
+}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--v-bg);color:var(--v-text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--v-surface);border-bottom:1px solid var(--v-border);flex-shrink:0}
+header h1{font-size:14px;font-weight:600;letter-spacing:-0.01em}
+header .actions{display:flex;gap:8px;align-items:center}
+.btn{padding:6px 14px;border-radius:var(--v-radius);border:1px solid var(--v-border);background:var(--v-surface2);color:var(--v-text);cursor:pointer;font-size:12px;font-weight:500;transition:background .15s}
+.btn:hover{background:var(--v-border)}
+.btn-primary{background:var(--v-accent);color:#000;border-color:var(--v-accent)}
+.btn-primary:hover{background:var(--v-accent2)}
+.toggle{width:36px;height:20px;border-radius:10px;background:var(--v-border);cursor:pointer;position:relative;border:none;transition:background .2s}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.on{background:var(--v-accent)}
+.toggle.on::after{transform:translateX(16px)}
+.layout{display:flex;flex:1;overflow:hidden}
+nav{width:180px;background:var(--v-surface);border-right:1px solid var(--v-border);overflow-y:auto;flex-shrink:0;padding:8px 0}
+nav a{display:block;padding:8px 16px;font-size:12px;color:var(--v-text2);text-decoration:none;cursor:pointer;transition:color .15s,background .15s}
+nav a:hover,nav a.active{color:var(--v-text);background:var(--v-surface2)}
+main{flex:1;overflow-y:auto;padding:20px 24px}
+aside{width:320px;background:var(--v-surface);border-left:1px solid var(--v-border);overflow-y:auto;padding:16px;flex-shrink:0}
+aside h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--v-text2);margin-bottom:12px}
+.section{display:none}
+.section.active{display:block}
+.section h2{font-size:16px;font-weight:600;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--v-border)}
+.token-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--v-border)}
+.token-row:last-child{border-bottom:none}
+.token-name{width:140px;font-size:12px;font-family:'Cascadia Code',Consolas,monospace;color:var(--v-text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis}
+.token-value{flex:1;display:flex;align-items:center;gap:6px}
+.token-value input[type="text"],.token-value input[type="number"],.token-value select{background:var(--v-surface2);border:1px solid var(--v-border);color:var(--v-text);padding:4px 8px;border-radius:4px;font-size:12px;font-family:inherit;width:100%}
+.token-value input[type="text"]:focus,.token-value input[type="number"]:focus{outline:none;border-color:var(--v-accent)}
+.token-value input[type="color"]{width:32px;height:28px;border:1px solid var(--v-border);border-radius:4px;cursor:pointer;padding:2px;background:var(--v-surface2)}
+.swatch{width:28px;height:28px;border-radius:4px;border:1px solid var(--v-border);flex-shrink:0}
+.bar-preview{height:16px;background:var(--v-accent);border-radius:3px;transition:width .2s}
+.box-radius{width:48px;height:48px;background:var(--v-surface2);border:1px solid var(--v-border);flex-shrink:0}
+.box-shadow{width:64px;height:40px;background:var(--v-surface2);border-radius:4px;flex-shrink:0}
+.sample-text{padding:12px;margin-top:4px;background:var(--v-surface2);border-radius:var(--v-radius);font-size:14px;min-height:40px;display:flex;align-items:center}
+.typo-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
+.typo-controls label{font-size:10px;color:var(--v-text2);display:flex;flex-direction:column;gap:2px}
+.typo-controls input,.typo-controls select{background:var(--v-surface2);border:1px solid var(--v-border);color:var(--v-text);padding:4px 6px;border-radius:4px;font-size:11px;width:100%}
+.typo-controls input:focus{outline:none;border-color:var(--v-accent)}
+.preview-component{padding:16px;margin-bottom:12px;background:var(--v-surface2);border-radius:var(--v-radius);border:1px solid var(--v-border)}
+.preview-component .label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--v-text2);margin-bottom:8px}
+.preview-btn{padding:8px 20px;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:default}
+.preview-card{padding:16px;border-radius:8px;border:1px solid var(--v-border)}
+.preview-card h4{font-size:15px;margin-bottom:4px}
+.preview-card p{font-size:13px}
+.preview-input{padding:8px 12px;border:1px solid var(--v-border);border-radius:6px;font-size:13px;background:var(--v-surface);color:var(--v-text);width:100%}
+.preview-heading{font-size:28px;font-weight:700;letter-spacing:-0.02em;line-height:1.15}
+.preview-body{font-size:14px;line-height:1.55}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:var(--v-radius);font-size:13px;font-weight:500;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#065f46;color:#6ee7b7}
+.toast.error{background:#7f1d1d;color:#fca5a5}
+.empty-state{text-align:center;padding:40px;color:var(--v-text2)}
+.empty-state p{font-size:14px;margin-top:8px}
+.token-usage{font-size:10px;color:var(--v-text2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:1024px){
+  .layout{flex-direction:column}
+  nav{width:100%;height:auto;display:flex;overflow-x:auto;border-right:none;border-bottom:1px solid var(--v-border)}
+  aside{width:100%;border-left:none;border-top:1px solid var(--v-border)}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Design System Viewer</h1>
+  <div class="actions">
+    <span style="font-size:11px;color:var(--v-text2)">Dark</span>
+    <button class="toggle on" id="themeToggle" title="Toggle theme"></button>
+    <button class="btn btn-primary" id="saveBtn">Save</button>
+  </div>
+</header>
+<div class="layout">
+  <nav id="sidebar"></nav>
+  <main id="editor">
+    <div class="empty-state" id="emptyState">
+      <h2>Loading design tokens...</h2>
+      <p>Fetching DESIGN.md</p>
+    </div>
+  </main>
+  <aside id="preview">
+    <h3>Live Preview</h3>
+    <div class="preview-component">
+      <div class="label">Button</div>
+      <button class="preview-btn" id="prevBtn">Confirm Action</button>
+    </div>
+    <div class="preview-component">
+      <div class="label">Card</div>
+      <div class="preview-card" id="prevCard">
+        <h4>Card Title</h4>
+        <p>Supporting description text for context.</p>
+      </div>
+    </div>
+    <div class="preview-component">
+      <div class="label">Input</div>
+      <input class="preview-input" id="prevInput" placeholder="Enter value..." readonly>
+    </div>
+    <div class="preview-component">
+      <div class="label">Heading</div>
+      <div class="preview-heading" id="prevHeading">Display Heading</div>
+    </div>
+    <div class="preview-component">
+      <div class="label">Body</div>
+      <div class="preview-body" id="prevBody">Body text at default reading size with comfortable line height for longer content passages.</div>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const SECTION_META = {
+  color:     { label:'Colors',        icon:'●' },
+  typography:{ label:'Typography',    icon:'Aa' },
+  spacing:   { label:'Spacing',       icon:'↔' },
+  radius:    { label:'Border Radius', icon:'▢' },
+  shadow:    { label:'Shadows',       icon:'■' },
+};
+let tokens = {};
+let activeSection = null;
+
+// --- Parser ---
+async function loadDesignMd() {
+  try {
+    const r = await fetch('./DESIGN.md');
+    if (!r.ok) throw new Error(r.statusText);
+    const text = await r.text();
+    tokens = parseDesignMd(text);
+    return true;
+  } catch(e) {
+    console.error('Failed to load DESIGN.md:', e);
+    return false;
+  }
+}
+
+function parseDesignMd(text) {
+  const result = {};
+  const HEADER_WORDS = new Set(['token','name','property','value','usage','description','variable']);
+  function isHeader(cells) {
+    const first = (cells[0]||'').toLowerCase().trim();
+    if (!HEADER_WORDS.has(first)) return false;
+    return cells.slice(0,3).filter(c=>c.trim()).every(c => HEADER_WORDS.has(c.toLowerCase().trim()));
+  }
+  let curType = null;
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('## ')) {
+      curType = detectType(trimmed.slice(3));
+      continue;
+    }
+    if (curType && trimmed.startsWith('|') && !/^\|\s*[-:]/.test(trimmed)) {
+      const cells = trimmed.split('|').slice(1, -1).map(c => c.trim());
+      if (cells.length >= 2 && cells[0] && !isHeader(cells)) {
+        result[curType] = result[curType] || [];
+        const entry = { name: cells[0], value: cells[1] };
+        if (cells.length >= 3) entry.usage = cells[2];
+        entry._original = cells[1];
+        result[curType].push(entry);
+      }
+    }
+  }
+  return result;
+}
+
+function detectType(header) {
+  const h = header.toLowerCase();
+  const map = {
+    color:['color','palette'], typography:['typograph','font','type scale'],
+    spacing:['spacing','space'], radius:['radius','border-radius','corner'],
+    shadow:['shadow','elevation']
+  };
+  for (const [type, kws] of Object.entries(map))
+    for (const kw of kws) if (h.includes(kw)) return type;
+  return null;
+}
+
+// --- Rendering ---
+function render() {
+  const sidebar = $('#sidebar');
+  const editor = $('#editor');
+  const sections = Object.keys(tokens);
+  if (!sections.length) {
+    $('#emptyState').innerHTML = '<h2>No design tokens found</h2><p>DESIGN.md has no parseable token tables.</p>';
+    return;
+  }
+  $('#emptyState').style.display = 'none';
+
+  sidebar.innerHTML = sections.map(s => {
+    const meta = SECTION_META[s] || {label:s, icon:'•'};
+    return `<a data-section="${s}" class="${s===activeSection?'active':''}">${meta.icon} ${meta.label}</a>`;
+  }).join('');
+
+  editor.innerHTML = sections.map(s => {
+    const meta = SECTION_META[s] || {label:s, icon:'•'};
+    return `<div class="section ${s===activeSection?'active':''}" data-section="${s}">
+      <h2>${meta.icon} ${meta.label}</h2>
+      ${renderSection(s)}
+    </div>`;
+  }).join('');
+
+  sidebar.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      activeSection = a.dataset.section;
+      sidebar.querySelectorAll('a').forEach(x => x.classList.toggle('active', x === a));
+      editor.querySelectorAll('.section').forEach(x => x.classList.toggle('active', x.dataset.section === activeSection));
+    });
+  });
+
+  if (!activeSection) {
+    activeSection = sections[0];
+    sidebar.querySelector('a').classList.add('active');
+    editor.querySelector('.section').classList.add('active');
+  }
+  updatePreview();
+}
+
+function renderSection(type) {
+  const items = tokens[type];
+  if (!items) return '<p>No tokens</p>';
+  switch(type) {
+    case 'color': return items.map(renderColor).join('');
+    case 'typography': return items.map(renderTypography).join('');
+    case 'spacing': return items.map(renderSpacing).join('');
+    case 'radius': return items.map(renderRadius).join('');
+    case 'shadow': return items.map(renderShadow).join('');
+    default: return items.map(renderGeneric).join('');
+  }
+}
+
+function renderColor(t) {
+  const hex = toHex(t.value);
+  return `<div class="token-row">
+    <div class="token-name" title="${t.name}">${t.name}</div>
+    <div class="token-value">
+      <div class="swatch" style="background:${t.value}" data-name="${t.name}"></div>
+      <input type="color" value="${hex}" data-name="${t.name}" data-type="color">
+      <input type="text" value="${t.value}" data-name="${t.name}" data-type="color-text">
+      <span class="token-usage" title="${t.usage||''}">${t.usage||''}</span>
+    </div>
+  </div>`;
+}
+
+function renderTypography(t) {
+  const p = parseTypoValue(t.value);
+  return `<div class="token-row" style="flex-wrap:wrap">
+    <div class="token-name" title="${t.name}">${t.name}</div>
+    <div class="typo-controls">
+      <label>Family<input type="text" value="${p.family||''}" data-name="${t.name}" data-field="family"></label>
+      <label>Size<input type="text" value="${p.size||''}" data-name="${t.name}" data-field="size"></label>
+      <label>Weight<input type="text" value="${p.weight||''}" data-name="${t.name}" data-field="weight"></label>
+      <label>Line-H<input type="text" value="${p.lineHeight||''}" data-name="${t.name}" data-field="lineHeight"></label>
+      <label>Spacing<input type="text" value="${p.spacing||''}" data-name="${t.name}" data-field="spacing"></label>
+    </div>
+    <div class="sample-text" data-name="${t.name}" style="font-family:${p.family||'inherit'};font-size:${p.size||'14px'};font-weight:${p.weight||400};line-height:${p.lineHeight||1.5};letter-spacing:${p.spacing||'normal'}">
+      The quick brown fox jumps over the lazy dog.
+    </div>
+  </div>`;
+}
+
+function renderSpacing(t) {
+  const px = parsePx(t.value);
+  return `<div class="token-row">
+    <div class="token-name" title="${t.name}">${t.name}</div>
+    <div class="token-value">
+      <div class="bar-preview" style="width:${Math.min(px*2,200)}px"></div>
+      <input type="text" value="${t.value}" data-name="${t.name}" data-type="spacing" style="width:80px">
+      <span class="token-usage">${t.usage||''}</span>
+    </div>
+  </div>`;
+}
+
+function renderRadius(t) {
+  return `<div class="token-row">
+    <div class="token-name" title="${t.name}">${t.name}</div>
+    <div class="token-value">
+      <div class="box-radius" style="border-radius:${t.value}"></div>
+      <input type="text" value="${t.value}" data-name="${t.name}" data-type="radius" style="width:80px">
+      <span class="token-usage">${t.usage||''}</span>
+    </div>
+  </div>`;
+}
+
+function renderShadow(t) {
+  return `<div class="token-row">
+    <div class="token-name" title="${t.name}">${t.name}</div>
+    <div class="token-value">
+      <div class="box-shadow" style="box-shadow:${t.value}"></div>
+      <input type="text" value="${t.value}" data-name="${t.name}" data-type="shadow" style="width:160px">
+      <span class="token-usage">${t.usage||''}</span>
+    </div>
+  </div>`;
+}
+
+function renderGeneric(t) {
+  return `<div class="token-row">
+    <div class="token-name" title="${t.name}">${t.name}</div>
+    <div class="token-value">
+      <input type="text" value="${t.value}" data-name="${t.name}" data-type="generic" style="width:160px">
+      <span class="token-usage">${t.usage||''}</span>
+    </div>
+  </div>`;
+}
+
+// --- Helpers ---
+function toHex(v) {
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v;
+  if (/^#[0-9a-f]{3}$/i.test(v)) return '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3];
+  const d = document.createElement('div');
+  d.style.color = v;
+  document.body.appendChild(d);
+  const c = getComputedStyle(d).color;
+  document.body.removeChild(d);
+  const m = c.match(/\d+/g);
+  if (m) return '#' + m.slice(0,3).map(x => (+x).toString(16).padStart(2,'0')).join('');
+  return '#000000';
+}
+
+function parsePx(v) {
+  const m = (v||'').match(/([\d.]+)/);
+  return m ? parseFloat(m[1]) : 0;
+}
+
+function parseTypoValue(v) {
+  const p = {};
+  const fm = v.match(/font-family:\s*([^;]+)/i);  if (fm) p.family = fm[1].trim().replace(/['"]/g,'');
+  const sm = v.match(/font-size:\s*([^;]+)/i);     if (sm) p.size = sm[1].trim();
+  const wm = v.match(/font-weight:\s*([^;]+)/i);   if (wm) p.weight = wm[1].trim();
+  const lm = v.match(/line-height:\s*([^;]+)/i);   if (lm) p.lineHeight = lm[1].trim();
+  const spm = v.match(/letter-spacing:\s*([^;]+)/i);if(spm) p.spacing = spm[1].trim();
+  if (!p.family && !p.size) {
+    const parts = v.split('|').map(s=>s.trim()).filter(Boolean);
+    parts.forEach(part => {
+      if (/^\d+(\.\d+)?(px|rem|em)$/.test(part) && !p.size) p.size = part;
+      else if (/^\d{2,3}$/.test(part) && !p.weight) p.weight = part;
+      else if (/^\d+(\.\d+)?$/.test(part) && !p.lineHeight) p.lineHeight = part;
+      else if (!p.family) p.family = part;
+    });
+  }
+  return p;
+}
+
+// --- Edit Handlers ---
+document.addEventListener('input', e => {
+  const el = e.target;
+  const name = el.dataset.name;
+  if (!name) return;
+
+  if (el.dataset.type === 'color') {
+    const hex = el.value;
+    const row = el.closest('.token-row');
+    const textInput = row.querySelector('[data-type="color-text"]');
+    const swatch = row.querySelector('.swatch');
+    if (textInput) textInput.value = hex;
+    if (swatch) swatch.style.background = hex;
+    updateTokenValue('color', name, hex);
+  } else if (el.dataset.type === 'color-text') {
+    const row = el.closest('.token-row');
+    const colorInput = row.querySelector('[data-type="color"]');
+    const swatch = row.querySelector('.swatch');
+    if (colorInput && /^#[0-9a-f]{6}$/i.test(el.value)) colorInput.value = el.value;
+    if (swatch) swatch.style.background = el.value;
+    updateTokenValue('color', name, el.value);
+  } else if (el.dataset.type === 'spacing') {
+    const row = el.closest('.token-row');
+    const bar = row.querySelector('.bar-preview');
+    if (bar) bar.style.width = Math.min(parsePx(el.value)*2, 200) + 'px';
+    updateTokenValue('spacing', name, el.value);
+  } else if (el.dataset.type === 'radius') {
+    const row = el.closest('.token-row');
+    const box = row.querySelector('.box-radius');
+    if (box) box.style.borderRadius = el.value;
+    updateTokenValue('radius', name, el.value);
+  } else if (el.dataset.type === 'shadow') {
+    const row = el.closest('.token-row');
+    const box = row.querySelector('.box-shadow');
+    if (box) box.style.boxShadow = el.value;
+    updateTokenValue('shadow', name, el.value);
+  } else if (el.dataset.type === 'generic') {
+    updateTokenValue(null, name, el.value);
+  } else if (el.dataset.field) {
+    updateTypoField(name, el.dataset.field, el.value);
+  }
+  updatePreview();
+});
+
+function updateTokenValue(type, name, value) {
+  for (const sec of Object.values(tokens)) {
+    const t = sec.find(x => x.name === name);
+    if (t) { t.value = value; break; }
+  }
+}
+
+function updateTypoField(name, field, value) {
+  for (const sec of Object.values(tokens)) {
+    const t = sec.find(x => x.name === name);
+    if (t) {
+      const p = parseTypoValue(t.value);
+      p[field] = value;
+      const parts = [];
+      if (p.family) parts.push(`font-family: ${p.family}`);
+      if (p.size) parts.push(`font-size: ${p.size}`);
+      if (p.weight) parts.push(`font-weight: ${p.weight}`);
+      if (p.lineHeight) parts.push(`line-height: ${p.lineHeight}`);
+      if (p.spacing) parts.push(`letter-spacing: ${p.spacing}`);
+      t.value = parts.join('; ');
+      const sample = document.querySelector(`.sample-text[data-name="${name}"]`);
+      if (sample) {
+        if (p.family) sample.style.fontFamily = p.family;
+        if (p.size) sample.style.fontSize = p.size;
+        if (p.weight) sample.style.fontWeight = p.weight;
+        if (p.lineHeight) sample.style.lineHeight = p.lineHeight;
+        if (p.spacing) sample.style.letterSpacing = p.spacing;
+      }
+      break;
+    }
+  }
+}
+
+// --- Preview ---
+function updatePreview() {
+  const findByUsage = (type, hint) => {
+    const items = tokens[type] || [];
+    return items.find(t => (t.usage||'').toLowerCase().includes(hint) || t.name.toLowerCase().includes(hint));
+  };
+  const getColor = (hint) => { const t = findByUsage('color', hint); return t ? t.value : ''; };
+  const getTypo = (hint) => { const t = findByUsage('typography', hint); return t ? parseTypoValue(t.value) : {}; };
+  const getSpacing = (hint) => { const t = findByUsage('spacing', hint); return t ? t.value : ''; };
+  const getRadius = (hint) => { const t = findByUsage('radius', hint); return t ? t.value : ''; };
+  const getShadow = (hint) => { const t = findByUsage('shadow', hint); return t ? t.value : ''; };
+
+  const accent = getColor('accent') || getColor('interaction') || getColor('focus');
+  const bg = getColor('background') || getColor('canvas') || getColor('surface');
+  const text = getColor('text') || getColor('heading') || getColor('foreground');
+  const cardBg = getColor('card') || getColor('surface');
+  const heading = getTypo('heading') || getTypo('display');
+  const body = getTypo('body') || getTypo('text');
+  const radius = getRadius('button') || getRadius('default') || getRadius('medium');
+  const shadow = getShadow('card') || getShadow('default');
+
+  if (accent) { const btn = $('#prevBtn'); btn.style.background = accent; btn.style.color = '#fff'; }
+  if (radius) {
+    $('#prevBtn').style.borderRadius = radius;
+    $('#prevCard').style.borderRadius = radius;
+    $('#prevInput').style.borderRadius = radius;
+  }
+  if (shadow) $('#prevCard').style.boxShadow = shadow;
+  if (cardBg) $('#prevCard').style.background = cardBg;
+  if (bg) {
+    document.querySelector('aside').style.background = '';
+    $('#prevInput').style.background = bg;
+  }
+  if (text) {
+    $('#prevCard').querySelector('h4').style.color = text;
+    $('#prevInput').style.color = text;
+  }
+  if (heading.family) $('#prevHeading').style.fontFamily = heading.family;
+  if (heading.size) $('#prevHeading').style.fontSize = heading.size;
+  if (heading.weight) $('#prevHeading').style.fontWeight = heading.weight;
+  if (body.family) $('#prevBody').style.fontFamily = body.family;
+  if (body.size) $('#prevBody').style.fontSize = body.size;
+}
+
+// --- Save ---
+$('#saveBtn').addEventListener('click', async () => {
+  const updates = {};
+  for (const sec of Object.values(tokens)) {
+    for (const t of sec) {
+      if (t.value !== t._original) updates[t.name] = t.value;
+    }
+  }
+  if (!Object.keys(updates).length) {
+    showToast('No changes to save', 'success');
+    return;
+  }
+  try {
+    const r = await fetch('/api/save', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({tokens: updates})
+    });
+    const data = await r.json();
+    if (data.success) {
+      for (const sec of Object.values(tokens))
+        for (const t of sec)
+          if (updates[t.name]) t._original = t.value;
+      showToast(data.message, 'success');
+    } else {
+      showToast(data.error || data.message || 'Save failed', 'error');
+    }
+  } catch(e) {
+    showToast('Server not reachable. Start: python hooks/scripts/design-server.py', 'error');
+  }
+});
+
+function showToast(msg, type) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// --- Theme Toggle ---
+const toggle = $('#themeToggle');
+toggle.addEventListener('click', () => {
+  toggle.classList.toggle('on');
+  document.body.classList.toggle('light');
+});
+
+// --- Init ---
+loadDesignMd().then(ok => {
+  if (ok) render();
+  else {
+    $('#emptyState').innerHTML = '<h2>Could not load DESIGN.md</h2><p>Make sure the design server is running and DESIGN.md exists in .claude/flow/</p>';
+  }
+});
+</script>
+</body>
+</html>

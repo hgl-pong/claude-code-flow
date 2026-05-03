@@ -164,6 +164,14 @@ Scout researches similar product patterns, design trends → `ui-research.md`. E
 ### 8. UI Design Gate (if checked)
 Designer produces design document → user approval (auto for autonomous) → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — weaver's input).
 
+After DESIGN.md is written, inform the user:
+```
+Design viewer available. To review and edit tokens interactively:
+  python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/design-server.py
+Then open http://localhost:8765 in your browser.
+```
+If the user edits tokens via the viewer, wait for their confirmation before proceeding to Implementation so DESIGN.md changes are picked up by weaver.
+
 **IRON LAW for UI tasks: weaver MAY NOT be dispatched until DESIGN.md exists.** If DESIGN.md is missing and the task is frontend-UI, STOP and run designer first.
 
 **Hard enforcement for deep mode:** In deep mode with frontend-UI tasks, designer is MANDATORY — no exceptions. Before proceeding to Implementation (step 9), explicitly verify:
