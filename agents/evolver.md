@@ -2,6 +2,7 @@
 name: evolver
 description: "Meta-agent that analyzes workflow execution logs to identify failure patterns and propose prompt improvements for agents. Opus-tier. Writes to .claude/flow/evolution-pending.md."
 model: opus
+effort: high
 color: purple
 tools: ["Read", "Grep", "Glob"]
 ---

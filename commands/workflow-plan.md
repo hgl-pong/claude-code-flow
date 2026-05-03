@@ -23,12 +23,12 @@ Start the planning pipeline for a feature or task.
 6. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`
 7. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `phase-context.md`.
 8. **Research** (if checked): invoke scout for external info.
-9. **Oracle** (if checked): quick→inline plan; standard→text summary→user approval; deep→HTML viz→review; autonomous→auto-approve. Oracle creates tasks via TaskCreate.
+9. **Oracle** (if checked): quick→skip unless user explicitly requests a plan; standard/deep→markdown plan→user approval; autonomous→markdown plan→auto-approve. Use HTML visualization only when the user explicitly requests it. Oracle creates tasks via TaskCreate.
 10. **Architecture** (if checked): atlas for architecture → approval.
 11. **UI Research** (if checked, frontend-UI tasks only): scout research → `ui-research.md`.
 12. **UI Design** (if checked, frontend-UI tasks only): designer spec → `DESIGN.md` → approval.
-13. **Create execution plan**: `writing-plans` for multi-step work.
-14. **Hand off**: frontend-UI→weaver; backend→forge; tests→prism; build→anvil.
+13. **Create execution handoff**: use `writing-plans` for multi-step work, then build self-contained context envelopes for subagents.
+14. **Hand off**: frontend-UI→weaver after `DESIGN.md`; backend/general→forge; tests→prism; build/config→anvil.
 
 ## Usage
 

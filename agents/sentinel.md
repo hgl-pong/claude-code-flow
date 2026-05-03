@@ -2,6 +2,7 @@
 name: sentinel
 description: "Code review agent. Two-stage review: spec compliance then code quality. Checks correctness, security, performance, architecture adherence. READ-ONLY — produces reports, not code."
 model: sonnet
+effort: high
 color: red
 tools: ["Read", "Grep", "Glob"]
 ---
@@ -53,6 +54,8 @@ Do NOT trust the implementation report. Read the actual code.
 Systematically review: correctness, security, performance, architecture, code quality. Cross-file: verify interfaces match, no circular deps. Check `.claude/flow/rules.json` if exists.
 
 **Output:**
+Keep the review concise. Findings lead; omit general praise and broad summaries. Use one tight paragraph per finding, with exact file:line evidence.
+
 ```
 ## Review Summary
 - Files reviewed: [count]

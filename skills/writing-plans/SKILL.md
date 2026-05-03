@@ -82,7 +82,7 @@ Each task should be independently understandable:
 - Expected output for tests that should fail or pass.
 - No placeholders.
 - No "similar to previous task"; repeat the needed details.
-- Each task should normally take 2-15 minutes.
+- Each implementation task should normally take 2-5 minutes; split anything larger into test, implementation, and verification tasks.
 - Prefer fewer abstractions until duplication or complexity proves the need.
 
 ## Self-Review

@@ -53,7 +53,7 @@ Before saying work is done:
 
 ## Final Report
 
-Keep it short:
+Keep it short. Default to 3-5 bullets or 1-2 short paragraphs. Do not recap the whole workflow unless the user asks.
 
 - What changed.
 - Files touched.

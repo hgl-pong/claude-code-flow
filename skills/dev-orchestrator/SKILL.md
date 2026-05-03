@@ -8,6 +8,10 @@ description: "Triggers on complex development tasks requiring multi-step orchest
 
 Orchestrate tasks through the development pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and error recovery.
 
+## Communication Style
+
+Keep user-facing updates and final reports concise. Report outcomes, changed files, verification, and blockers. Avoid explaining the whole pipeline unless the user asks. For routine successful work, use 3-6 bullets or 1-2 short paragraphs.
+
 ## Mode Selection
 
 Auto-recommend: 1-2 subtasks single domain → **quick**; 3-5 subtasks → **standard**; 6+ or cross-module → **deep**; "just ship it" → **autonomous**; `ulw`/`ultrawork` → **ultrawork** (use ultrawork skill); `uli` → **uli** (use ultrawork skill ULI branch).
@@ -27,20 +31,20 @@ Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mo
 
 ## Agent Roster
 
-| Agent | Model | Role | Gate |
-|-------|-------|------|------|
-| `scout` | sonnet | Web research, docs lookup | Research |
-| `oracle` | opus | Implementation planning, HTML viz | Plan |
-| `atlas` | opus | Architecture design | Design |
-| `designer` | sonnet | UI/UX design documents | UI Design |
-| `pd` | sonnet | Product Manager (ULI only) | ULI |
-| `forge` | sonnet | Code implementation (backend/general) | -- |
-| `weaver` | sonnet | Frontend implementation | -- |
-| `prism` | sonnet | Test frameworks, benchmarks | -- |
-| `anvil` | haiku | Build, CI/CD, dependencies | -- |
-| `sentinel` | sonnet | Code review | Review |
-| `validator` | sonnet | Functional acceptance testing | Acceptance |
-| `chronicler` | sonnet | Documentation, changelogs | -- |
+| Agent | Model | Effort | Role | Gate |
+|-------|-------|--------|------|------|
+| `scout` | sonnet | medium | Web research, docs lookup | Research |
+| `oracle` | opus | xhigh | Implementation planning, HTML viz | Plan |
+| `atlas` | opus | xhigh | Architecture design | Design |
+| `designer` | sonnet | high | UI/UX design documents | UI Design |
+| `pd` | sonnet | medium | Product Manager (ULI only) | ULI |
+| `forge` | sonnet | high | Code implementation (backend/general) | -- |
+| `weaver` | sonnet | high | Frontend implementation | -- |
+| `prism` | sonnet | high | Test frameworks, benchmarks | -- |
+| `anvil` | haiku | default | Build, CI/CD, dependencies | -- |
+| `sentinel` | sonnet | high | Code review | Review |
+| `validator` | haiku | default | Functional acceptance testing | Acceptance |
+| `chronicler` | haiku | default | Documentation, changelogs | -- |
 
 ## Task Domain Detection
 
@@ -219,20 +223,36 @@ Before dispatching multiple agents simultaneously:
 
 #### Context Envelope (Required for Every Dispatch)
 
-Every agent prompt MUST contain this envelope. Omitting fields = incomplete dispatch.
+Every agent prompt MUST be self-contained. The orchestrator may read files to build the prompt, but the subagent must not be asked to infer missing requirements from a plan file, prior agent output, or chat history. Paste the relevant excerpts directly.
+
+Omitting fields = incomplete dispatch. If a field truly does not apply, write `N/A - <reason>` instead of leaving it blank.
 
 ```markdown
 ## Envelope
-- **Goal:** <one-line project goal from plan-brief>
+- **Goal:** <one-line project goal>
 - **Your Task:** <exact task subject from TaskGet>
-- **Completed Dependencies:** <summary of what blockedBy tasks produced — read git diff or plan-brief>
+- **Working Directory:** `<absolute or project-relative cwd>`
+- **Completed Dependencies:** <specific outputs now present in git/filesystem>
 - **File Scope:** <exact files to create/modify>
 - **Test Command:** `<exact command to run for verification>`
 - **Acceptance Criteria:** <from task description>
-- **Constraints:** <project conventions, banned patterns from plan-brief>
+- **Relevant Excerpts:** <requirements/design/code snippets needed to act without reading a separate plan>
+- **Constraints:** <project conventions, banned patterns, dependency limits>
+- **Out of Scope:** <nearby work the agent must not touch>
 
 ## FILES_MODIFIED (required on completion)
 List ALL files you created or modified: <path1>, <path2>, ...
+```
+
+For implementation agents, append the expected completion schema:
+
+```markdown
+## Completion Schema
+- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
+- Files modified: <same list as FILES_MODIFIED>
+- Verification: `<command>` -> <pass/fail + key output>
+- RED/GREEN evidence: <required for behavior changes>
+- Concerns: <specific risks, or "none">
 ```
 
 #### Agent Dispatch Call
@@ -253,12 +273,14 @@ Agent({
 #### Completion Handling
 
 When an agent completes:
-1. Read its output — verify status is DONE
-2. Check FILES_MODIFIED declaration against task scope
-3. If worktree was used: review changes, merge if clean
-4. `TaskUpdate` status=completed
-5. Record evidence in `verification-evidence.jsonl`
-6. Check if new tasks are now unblocked → dispatch next batch
+1. Read its output — verify status is `DONE` or `DONE_WITH_CONCERNS`
+2. Check `FILES_MODIFIED` declaration against task scope
+3. Check verification evidence includes command, status, and key output
+4. If behavior changed, confirm RED/GREEN evidence or dispatch prism/forge correction
+5. If worktree was used: review changes, merge if clean
+6. `TaskUpdate` status=completed only after scope and evidence checks pass
+7. Record evidence in `verification-evidence.jsonl`
+8. Check if new tasks are now unblocked → dispatch next batch
 
 After every 3 tasks: write key decisions to `phase-context.md`.
 
@@ -300,7 +322,7 @@ unknown          → investigate (max 2 retries), escalate
 ```
 
 ### 13. Documentation + Report
-Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Use `verification-before-completion`. Set phase to `idle`. Present final summary.
+Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Use `verification-before-completion`. Set phase to `idle`. Present a concise final summary: outcome, files, verification, caveats.
 
 ## Verification
 
@@ -329,7 +351,7 @@ Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run
 
 Subagents are **stateless** — each dispatch is a fresh agent with zero memory of prior tasks. Construct fully self-contained prompts using the Context Envelope:
 
-1. Include the full envelope (Goal, Task, Dependencies, File Scope, Test Command, Acceptance Criteria, Constraints)
-2. Paste relevant plan sections directly (never let subagent read plan file themselves)
-3. Specify expected output: status + FILES_MODIFIED + deliverables
-4. Do NOT reference prior agent outputs — the agent has no access to them
+1. Include the full envelope (Goal, Task, Working Directory, Dependencies, File Scope, Test Command, Acceptance Criteria, Relevant Excerpts, Constraints, Out of Scope)
+2. Paste relevant plan/design/code sections directly (never make subagents hunt for requirements in a separate plan)
+3. Specify expected output using the Completion Schema
+4. Do NOT reference prior agent outputs — summarize durable filesystem/git results instead

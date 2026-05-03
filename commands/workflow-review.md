@@ -19,9 +19,10 @@ Start the code review pipeline for recent or specified changes.
 
 3. **Invoke sentinel** with:
    - Task description
-   - Plan reference (if available)
-   - Files to review
+   - Plan/spec excerpt (paste the relevant requirements; do not only reference the path)
+   - Files to review and diff summary
    - Focus areas (if specified)
+   - Required output: `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION`, with exact `file:line` for every finding
 
 4. **Handle review outcome**:
    - **APPROVE**: Report success

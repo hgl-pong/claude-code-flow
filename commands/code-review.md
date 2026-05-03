@@ -15,8 +15,9 @@ Perform a focused code review on specified targets.
 ## Process
 
 1. Identify files to review from arguments or git diff
-2. Invoke sentinel with the target files and focus area
-3. Present the review report to the user
+2. Read the target files or diff enough to give sentinel concrete context
+3. Invoke sentinel with the target files, relevant diff excerpts, focus area, and any available requirements
+4. Present the review report to the user
 
 ## Usage
 
@@ -34,3 +35,4 @@ Structured review report with:
 - Warnings (should fix)
 - Suggestions (nice to have)
 - Architecture compliance check
+- Exact `file:line` evidence for every finding

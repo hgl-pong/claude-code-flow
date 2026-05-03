@@ -2,6 +2,7 @@
 name: forge
 description: "Backend/general code implementation agent. Implements features, API endpoints, business logic, database queries. For UI/frontend tasks use weaver instead."
 model: sonnet
+effort: high
 color: blue
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 ---

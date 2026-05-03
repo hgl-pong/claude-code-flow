@@ -1,5 +1,31 @@
 # Claude Code Flow
 
+## 2026-05-03 Agent Model Tuning
+
+Version `1.6.4` adds explicit `effort` tiers to Claude Code agent frontmatter while keeping portable model aliases:
+
+- `opus` + `xhigh`: oracle, atlas for planning and architecture.
+- `opus` + `high`: evolver for evidence-backed prompt evolution.
+- `sonnet` + `high`: forge, weaver, prism, sentinel, designer for implementation, tests, review, and UI specs.
+- `sonnet` + `medium`: scout, pd for research and product proposals.
+- `haiku`: anvil, validator, chronicler stay fast and low-cost for build/CI, acceptance checks, and docs.
+
+These aliases can still be overridden through Claude Code environment settings such as `CLAUDE_CODE_SUBAGENT_MODEL` or the `ANTHROPIC_DEFAULT_*_MODEL` variables.
+
+## 2026-05-03 Concise Response Defaults
+
+Version `1.6.2` adds a default concise-answer policy: user-facing replies should lead with results, avoid routine process narration, and keep normal final reports to 3-6 bullets or 1-2 short paragraphs unless the user asks for more detail.
+
+## 2026-05-03 Prompt Contract Tightening
+
+Version `1.6.1` tightens subagent prompt construction across quick fixes, plan execution, workflow planning, and review commands.
+
+- Subagent dispatches now use a complete context envelope with goal, task, working directory, dependencies, file scope, test command, acceptance criteria, relevant excerpts, constraints, and out-of-scope boundaries.
+- Implementation prompts now require a consistent completion schema with `FILES_MODIFIED`, verification output, RED/GREEN evidence for behavior changes, and explicit concerns.
+- Quick-fix routing now chooses `forge`, `weaver`, `prism`, or `anvil` by task domain instead of defaulting every task to backend/general implementation.
+- Workflow planning now aligns quick/deep behavior with the orchestrator: quick skips oracle unless explicitly requested, and HTML visualization is opt-in.
+- Metrics collection now tolerates older log entries without `session_id`, keeping `/workflow-status` usable with mixed historical logs.
+
 ## 2026-04-29 Superpowers-Inspired Iteration
 
 This plugin now includes a Superpowers-inspired workflow layer while keeping the existing `scout/oracle/atlas/forge/weaver/prism/anvil/sentinel/validator/chronicler` agent architecture.
@@ -73,17 +99,21 @@ Tests:
 
 ## Agent
 
-| Agent | 模型 | 职责 |
-|-------|------|------|
-| `oracle` | Opus | 实现规划, 分阶段路线图, HTML 可视化 |
-| `atlas` | Opus | 架构设计, 模块拆分, API 设计 |
-| `evolver` | Opus | 元代理, 分析日志提出 prompt 改进 |
-| `forge` | Sonnet | 代码实现 |
-| `prism` | Sonnet | 测试框架, 单元/集成/性能测试 |
-| `sentinel` | Sonnet | 代码审查, 正确性/安全/架构合规 |
-| `scout` | Sonnet | Web 调研, 文档查找, 技术对比 |
-| `chronicler` | Sonnet | 文档生成, 变更日志, API 文档 |
-| `anvil` | Haiku | 构建, CI/CD, 依赖管理 |
+| Agent | 模型 | Effort | 职责 |
+|-------|------|--------|------|
+| `oracle` | Opus | xhigh | 实现规划, 分阶段路线图, HTML 可视化 |
+| `atlas` | Opus | xhigh | 架构设计, 模块拆分, API 设计 |
+| `evolver` | Opus | high | 元代理, 分析日志提出 prompt 改进 |
+| `forge` | Sonnet | high | 代码实现 |
+| `weaver` | Sonnet | high | 前端实现 |
+| `prism` | Sonnet | high | 测试框架, 单元/集成/性能测试 |
+| `sentinel` | Sonnet | high | 代码审查, 正确性/安全/架构合规 |
+| `designer` | Sonnet | high | UI/UX 设计规格 |
+| `scout` | Sonnet | medium | Web 调研, 文档查找, 技术对比 |
+| `validator` | Haiku | default | 功能验收 |
+| `pd` | Sonnet | medium | ULI 产品需求提案 |
+| `chronicler` | Haiku | default | 文档生成, 变更日志, API 文档 |
+| `anvil` | Haiku | default | 构建, CI/CD, 依赖管理 |
 
 ## Commands
 
@@ -237,7 +267,8 @@ claude-code-flow/
 │   ├── prism.md           # Sonnet — 测试
 │   ├── sentinel.md        # Sonnet — 审查
 │   ├── scout.md           # Sonnet — 调研
-│   ├── chronicler.md      # Sonnet — 文档生成
+│   ├── validator.md       # Haiku — 验收
+│   ├── chronicler.md      # Haiku — 文档生成
 │   └── anvil.md           # Haiku — 构建
 ├── commands/
 │   ├── workflow-plan.md   # 规划流水线 (支持 --mode)

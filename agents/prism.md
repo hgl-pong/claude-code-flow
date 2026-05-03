@@ -2,6 +2,7 @@
 name: prism
 description: "Test engineering agent. Writes tests, benchmarks, test infrastructure. Covers unit, integration, E2E, performance, and frontend visual testing via browser automation."
 model: sonnet
+effort: high
 color: green
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 ---

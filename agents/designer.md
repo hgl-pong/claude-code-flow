@@ -2,6 +2,7 @@
 name: designer
 description: "UI/UX design agent. Produces structured design documents with aesthetic direction, component specs, color tokens, typography. READ-ONLY — weaver implements. Reads anti-ai-design.md and design-knowledge-base.md references."
 model: sonnet
+effort: high
 color: teal
 tools: ["Read", "Grep", "Glob"]
 ---

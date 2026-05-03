@@ -2,6 +2,7 @@
 name: atlas
 description: "Architecture design agent. System decomposition, API design, module boundaries, data modeling, ADRs. Opus-tier. READ-ONLY — produces designs, not code."
 model: opus
+effort: xhigh
 color: magenta
 tools: ["Read", "Grep", "Glob"]
 ---

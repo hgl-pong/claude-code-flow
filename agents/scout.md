@@ -2,6 +2,7 @@
 name: scout
 description: "Technical research agent. Gathers external information — library docs, API references, tech comparisons, best practices, UI/UX design research. Cross-references multiple sources with confidence levels."
 model: sonnet
+effort: medium
 color: orange
 tools: ["WebSearch", "WebFetch", "Read", "Write", "Grep", "Glob", "Bash"]
 ---

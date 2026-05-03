@@ -2,6 +2,7 @@
 name: weaver
 description: "Frontend implementation agent. Implements UI components, responsive layouts, CSS/styling from designer's spec. Reads DESIGN.md before coding. For backend/general tasks use forge instead."
 model: sonnet
+effort: high
 color: coral
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 ---

@@ -1,6 +1,6 @@
 {
   "name": "claude-code-flow",
-  "version": "1.6.0",
+  "version": "1.6.4",
   "description": "General-purpose development workflow with Superpowers-inspired skills for brainstorming, planning, TDD, debugging, implementation, review, acceptance, and verification",
   "author": {
     "name": "hgl"

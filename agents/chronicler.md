@@ -1,7 +1,7 @@
 ---
 name: chronicler
 description: "Documentation agent. Generates API docs, changelogs, READMEs, migration guides. READ-ONLY — produces text, not code changes. Coordinates with forge for inline docs."
-model: sonnet
+model: haiku
 color: purple
 tools: ["Read", "Grep", "Glob"]
 ---

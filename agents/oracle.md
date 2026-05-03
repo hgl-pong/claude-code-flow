@@ -2,6 +2,7 @@
 name: oracle
 description: "Implementation planning agent. Decomposes features into phased plans, produces agent-ready task breakdowns. Opus-tier for complex system decomposition."
 model: opus
+effort: xhigh
 color: cyan
 tools: ["Read", "Write", "Grep", "Glob", "Bash"]
 ---

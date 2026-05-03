@@ -22,6 +22,16 @@ def frontmatter(path):
     return match.group(1)
 
 
+def frontmatter_dict(path):
+    data = {}
+    for line in frontmatter(path).splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        data[key.strip()] = value.strip().strip('"')
+    return data
+
+
 class PluginIntegrityTests(unittest.TestCase):
     def test_plugin_metadata_and_hooks_json_parse(self):
         for rel in [
@@ -84,6 +94,50 @@ class PluginIntegrityTests(unittest.TestCase):
     def test_gitattributes_pins_shell_scripts_to_lf(self):
         content = read_text(ROOT / ".gitattributes")
         self.assertIn("*.sh text eol=lf", content)
+
+    def test_agent_model_effort_configuration_is_valid(self):
+        expected_model = {
+            "atlas": "opus",
+            "chronicler": "haiku",
+            "designer": "sonnet",
+            "evolver": "opus",
+            "forge": "sonnet",
+            "oracle": "opus",
+            "pd": "sonnet",
+            "prism": "sonnet",
+            "scout": "sonnet",
+            "sentinel": "sonnet",
+            "validator": "haiku",
+            "weaver": "sonnet",
+            "anvil": "haiku",
+        }
+        expected_effort = {
+            "atlas": "xhigh",
+            "designer": "high",
+            "evolver": "high",
+            "forge": "high",
+            "oracle": "xhigh",
+            "pd": "medium",
+            "prism": "high",
+            "scout": "medium",
+            "sentinel": "high",
+            "weaver": "high",
+        }
+        allowed_effort = {"low", "medium", "high", "xhigh", "max"}
+
+        for path in sorted((ROOT / "agents").glob("*.md")):
+            with self.subTest(file=path.relative_to(ROOT).as_posix()):
+                fm = frontmatter_dict(path)
+                name = fm["name"]
+                model = fm.get("model")
+                effort = fm.get("effort")
+
+                self.assertEqual(model, expected_model[name])
+                if model == "haiku":
+                    self.assertIsNone(effort, "haiku agents should stay fast and omit effort")
+                else:
+                    self.assertEqual(effort, expected_effort[name])
+                    self.assertIn(effort, allowed_effort)
 
     def test_flow_state_get_merges_partial_state_with_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -162,6 +216,34 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertEqual(metrics["verification_failures"], 1)
             self.assertEqual(metrics["verification_by_kind"]["test"], 1)
             self.assertEqual(metrics["verification_by_kind"]["build"], 1)
+
+    def test_metrics_collect_ignores_entries_without_session_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            flow_dir = Path(tmp) / ".claude" / "flow"
+            flow_dir.mkdir(parents=True)
+            entries = [
+                {"ts": "2026-04-29T00:00:00Z", "session_id": None, "event": "session_start"},
+                {"ts": "2026-04-29T00:00:01Z", "session_id": None, "event": "verification_evidence", "kind": ["git"], "status": "unknown"},
+                {"ts": "2026-04-29T00:00:02Z", "session_id": "s1", "event": "session_start"},
+                {"ts": "2026-04-29T00:00:03Z", "session_id": "s1", "event": "verification_evidence", "kind": ["test"], "status": "pass"},
+            ]
+            (flow_dir / "exec-log.jsonl").write_text(
+                "\n".join(json.dumps(entry) for entry in entries) + "\n",
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "hooks/scripts/metrics.py"), "collect"],
+                cwd=tmp,
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            metrics = json.loads(result.stdout)
+            self.assertEqual(metrics["session_id"], "s1")
+            self.assertEqual(metrics["verification_count"], 1)
+            self.assertEqual(metrics["verification_by_kind"]["test"], 1)
 
 
 if __name__ == "__main__":

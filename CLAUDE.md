@@ -30,12 +30,14 @@ bash tests/skill-triggering/run-all.sh
 
 ### Model-Tiered Agent Pipeline
 
-Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `model` tier:
-- **Opus** (oracle, atlas, evolver): Planning, architecture, meta-analysis
-- **Sonnet** (forge, weaver, prism, sentinel, scout, chronicler, validator, designer, pd): Implementation, testing, review, docs
-- **Haiku** (anvil): Build systems, CI/CD
+Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `model` alias and, for Opus/Sonnet agents, an `effort` level:
+- **Opus xhigh** (oracle, atlas): Planning and architecture
+- **Opus high** (evolver): Data-backed meta-analysis
+- **Sonnet high** (forge, weaver, prism, sentinel, designer): Implementation, testing, review, UI design
+- **Sonnet medium** (scout, pd): Research, product proposals
+- **Haiku default** (validator, chronicler, anvil): Acceptance checks, docs, build/CI
 
-Some agents are **READ-ONLY** (atlas, sentinel, chronicler, designer) — they produce reports/designs only, never modify code.
+Some agents are **READ-ONLY** (atlas, sentinel, validator, chronicler, designer) — they produce reports/designs only, never modify code.
 
 ### Workflow Pipeline
 

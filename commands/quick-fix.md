@@ -22,27 +22,33 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
 
 5. **Test first when behavior changes**: Use `testing-strategy` to write or identify the failing regression test before production edits.
 
-6. **Implement**: Directly invoke forge with a focused prompt:
+6. **Choose agent**:
+   - `forge` for backend/general code.
+   - `weaver` for UI/frontend files, but only after a lightweight design note exists.
+   - `prism` for test-only work.
+   - `anvil` for build/config/dependency work.
+
+7. **Implement**: Invoke the chosen agent with a complete context envelope. Do not use a one-line fix prompt.
    ```
    Agent({
-     name: "fix",
-     subagent_type: "claude-code-flow:forge",
+     description: "quick fix: [specific issue]",
+     subagent_type: "claude-code-flow:<agent>",
      model: "sonnet",
-     prompt: "Fix: [specific issue]. File: [path]. Context: [relevant code]."
+     prompt: "## Envelope\n- Goal: <user-visible outcome>\n- Your Task: <one concrete fix>\n- Working Directory: <cwd>\n- Completed Dependencies: N/A - quick fix\n- File Scope: <exact files allowed>\n- Test Command: `<focused verification command>`\n- Acceptance Criteria: <observable result>\n- Relevant Excerpts: <bug, stack trace, code snippets, or design note>\n- Constraints: keep change minimal; no unrelated refactors; follow repo style\n- Out of Scope: <files/features not to touch>\n\n## FILES_MODIFIED (required on completion)\nList ALL files created or modified.\n\n## Completion Schema\n- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED\n- Files modified:\n- Verification:\n- RED/GREEN evidence:\n- Concerns:"
    })
    ```
 
-7. **Optional review**: If the change affects critical paths or the user wants verification:
+8. **Optional review**: If the change affects critical paths or the user wants verification:
    ```
    Agent({
-     name: "reviewer",
+     description: "quick fix review",
      subagent_type: "claude-code-flow:sentinel",
      model: "sonnet",
-     prompt: "Review the change in [files]. Focus: correctness, no regressions."
+     prompt: "Review the change in <files>. First check the quick-fix acceptance criteria, then correctness/regression risk. Cite exact file:line for every finding."
    })
    ```
 
-8. **Verify and report**: Use `verification-before-completion`; summarize what changed, what passed, and any caveats.
+9. **Verify and report**: Use `verification-before-completion`; summarize what changed, what passed, and any caveats.
 
 ## When to Use
 

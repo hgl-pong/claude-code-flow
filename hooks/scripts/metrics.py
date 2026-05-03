@@ -11,7 +11,7 @@ def load_exec_log():
     if not os.path.exists(EXEC_LOG):
         return []
     entries = []
-    with open(EXEC_LOG, "r") as f:
+    with open(EXEC_LOG, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
@@ -42,11 +42,16 @@ def collect(entries, session_id=None):
     if session_id:
         filtered = [e for e in entries if e.get("session_id") == session_id]
     else:
-        # Use latest session
-        sessions = set(e.get("session_id") for e in entries)
-        if not sessions:
+        # Use the latest non-empty session by timestamp. Older logs may contain
+        # entries without session_id; do not let those break comparison.
+        session_entries = [e for e in entries if e.get("session_id")]
+        if not session_entries:
             return None
-        latest_sid = max(sessions)
+        latest_entry = max(
+            session_entries,
+            key=lambda e: parse_ts(e.get("ts", "")) or datetime.min.replace(tzinfo=timezone.utc),
+        )
+        latest_sid = latest_entry.get("session_id")
         filtered = [e for e in entries if e.get("session_id") == latest_sid]
         session_id = latest_sid
 
@@ -122,7 +127,7 @@ def aggregate(entries):
     """Aggregate metrics across all sessions."""
     sessions = defaultdict(list)
     for e in entries:
-        sessions[e.get("session_id", "unknown")].append(e)
+        sessions[e.get("session_id") or "unknown"].append(e)
 
     total_sessions = len(sessions)
     if total_sessions == 0:

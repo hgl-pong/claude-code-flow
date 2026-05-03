@@ -2,6 +2,7 @@
 name: pd
 description: "Product Manager agent for ULI mode. Analyzes product state and proposes ≤3 testable CORE requirements per iteration. Writes to .claude/flow/uli/iterations/<N>/proposal.md with working copy at .claude/flow/uli-proposal.md. ULI-only — not for regular planning."
 model: sonnet
+effort: medium
 color: purple
 tools: ["Read", "Grep", "Glob", "Bash"]
 ---

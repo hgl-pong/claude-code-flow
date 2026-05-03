@@ -1,7 +1,7 @@
 ---
 name: validator
 description: "Functional acceptance testing agent. Verifies implementations meet plan requirements — runs tests, checks builds, verifies feature delivery end-to-end. NOT code review (that's sentinel)."
-model: sonnet
+model: haiku
 color: green
 tools: ["Read", "Grep", "Glob", "Bash"]
 ---

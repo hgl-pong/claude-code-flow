@@ -12,6 +12,12 @@ This skill is the entry point for the plugin. Before acting, check whether one o
 
 If the task might involve code, tests, architecture, debugging, review, documentation, or delivery, pick the matching skill first. User instructions still win.
 
+## Response Style
+
+Default to concise answers. Lead with the result, include only the decisions, files, commands, risks, and next steps the user needs. Do not narrate routine process. Expand only when the user asks for details, when trade-offs are genuinely important, or when a failure/blocker needs explanation.
+
+Routine final replies should usually be 3-6 bullets or 1-2 short paragraphs.
+
 ## Skill Selection
 
 | Situation | Use |
