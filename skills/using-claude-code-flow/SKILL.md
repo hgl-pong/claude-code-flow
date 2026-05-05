@@ -24,13 +24,16 @@ Routine final replies should usually be 3-6 bullets or 1-2 short paragraphs.
 |---|---|
 | Prompt contains `ulw` or `ultrawork` | `ultrawork` — full autonomous delivery |
 | Prompt contains `uli` | `ultrawork` (ULI branch) — product iteration loop |
-| New feature, behavior change, refactor, UI work | `brainstorming` first, then `writing-plans` |
+| New feature, behavior change, refactor, UI work, or multi-file delivery | `brainstorming` first, then `writing-plans` |
+| Task needs planning, sequencing, or cross-agent coordination | `workflow-plan` (or `/plan`, which maps here) |
 | Multi-step implementation with approved plan | `dev-orchestrator` |
 | Bug or failing behavior with unknown cause | `systematic-debugging` |
 | Any production code change | `testing-strategy` with TDD cycle |
 | Code review request | `code-quality` and `sentinel` |
 | "Is it done?" or final delivery | `verification-before-completion` |
 | Plan or design already approved, need execution | `writing-plans` then `dev-orchestrator` |
+| User asks for "plan mode" or `/plan` | `workflow-plan` |
+
 
 ## Priority
 

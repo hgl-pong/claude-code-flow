@@ -73,6 +73,9 @@ class PluginIntegrityTests(unittest.TestCase):
                 with self.subTest(command=command):
                     self.assertTrue((ROOT / rel).exists(), f"missing hook target: {rel}")
 
+        self.assertIn("workflow-plan-detector.py", read_text(ROOT / "hooks/hooks.json"))
+        self.assertTrue((ROOT / "hooks/scripts/workflow-plan-detector.py").exists())
+
     def test_python_hook_scripts_compile(self):
         scripts = sorted((ROOT / "hooks/scripts").glob("*.py"))
         self.assertGreater(len(scripts), 0, "expected Python hook scripts")
@@ -110,6 +113,7 @@ class PluginIntegrityTests(unittest.TestCase):
             "validator": "haiku",
             "weaver": "sonnet",
             "anvil": "haiku",
+            "artist": "sonnet",
         }
         expected_effort = {
             "atlas": "xhigh",
@@ -122,6 +126,7 @@ class PluginIntegrityTests(unittest.TestCase):
             "scout": "medium",
             "sentinel": "high",
             "weaver": "high",
+            "artist": "medium",
         }
         allowed_effort = {"low", "medium", "high", "xhigh", "max"}
 

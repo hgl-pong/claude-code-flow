@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+"""Tavily CLI - Web search from the terminal."""
+import sys
+import json
+import os
+import argparse
+from pathlib import Path
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Tavily web search CLI")
+    parser.add_argument("query", nargs="+", help="Search query")
+    parser.add_argument("-n", "--max", type=int, default=5, help="Max results (default: 5)")
+    parser.add_argument("-j", "--json", action="store_true", help="Output raw JSON")
+    parser.add_argument("--topic", default="general", choices=["general", "news"], help="Search topic")
+    parser.add_argument("--days", type=int, default=3, help="Days to look back (news topic)")
+    args = parser.parse_args()
+
+    api_key = os.environ.get("TAVILY_API_KEY", "")
+    if not api_key:
+        cfg = Path.home() / ".tavily"
+        if cfg.exists():
+            api_key = cfg.read_text().strip()
+    if not api_key:
+        print("Error: Set TAVILY_API_KEY env var or create ~/.tavily with the key", file=sys.stderr)
+        sys.exit(1)
+
+    from tavily import TavilyClient
+    client = TavilyClient(api_key=api_key)
+    kwargs = {"query": " ".join(args.query), "max_results": args.max, "topic": args.topic}
+    if args.topic == "news":
+        kwargs["days"] = args.days
+
+    results = client.search(**kwargs)
+
+    if args.json:
+        print(json.dumps(results, indent=2, ensure_ascii=False))
+        return
+
+    for r in results.get("results", []):
+        print(f"\033[1;36m{r.get('title', '')}\033[0m")
+        print(f"  \033[90m{r.get('url', '')}\033[0m")
+        content = r.get("content", "").strip()
+        if content:
+            if len(content) > 300:
+                content = content[:300] + "..."
+            print(f"  {content}")
+        print()
+
+
+if __name__ == "__main__":
+    main()

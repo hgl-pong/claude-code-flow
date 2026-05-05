@@ -1,0 +1,3 @@
+[submodule "vendor/img-cli"]
+	path = vendor/img-cli
+	url = https://github.com/hgl-pong/Img-cli.git

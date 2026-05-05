@@ -34,37 +34,37 @@ Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mo
 | Agent | Model | Effort | Role | Gate |
 |-------|-------|--------|------|------|
 | `scout` | sonnet | medium | Web research, docs lookup | Research |
-| `oracle` | opus | xhigh | Implementation planning, HTML viz | Plan |
-| `atlas` | opus | xhigh | Architecture design | Design |
+| `oracle` | opus | xhigh | Implementation planning, task slicing, approval-ready plans | Plan |
+| `atlas` | opus | xhigh | Architecture design, module boundaries, interface contracts | Design |
 | `designer` | sonnet | high | UI/UX design documents | UI Design |
 | `pd` | sonnet | medium | Product Manager (ULI only) | ULI |
-| `forge` | sonnet | high | Code implementation (backend/general) | -- |
-| `weaver` | sonnet | high | Frontend implementation | -- |
-| `prism` | sonnet | high | Test frameworks, benchmarks | -- |
-| `anvil` | haiku | default | Build, CI/CD, dependencies | -- |
+| `forge` | sonnet | high | Backend / shared implementation | Impl |
+| `weaver` | sonnet | high | Frontend implementation | Impl |
+| `prism` | sonnet | high | Tests, benchmarks, regression coverage | Tests |
+| `anvil` | haiku | default | Build, CI/CD, dependencies | Build |
 | `sentinel` | sonnet | high | Code review | Review |
 | `validator` | haiku | default | Functional acceptance testing | Acceptance |
-| `chronicler` | haiku | default | Documentation, changelogs | -- |
+| `chronicler` | haiku | default | Documentation, changelogs | Docs |
 
 ## Task Domain Detection
 
 Before entering the pipeline, classify the task into a domain. This determines which gates are mandatory.
 
 **Frontend-UI task** — ANY of these conditions is true:
-- Task creates or modifies `.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html` files
+- Task creates or modifies `.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, `.html` files that affect user-facing output
 - Task involves UI components, pages, layouts, styling, or visual elements
 - Task mentions "design", "UI", "frontend", "component", "page", "layout", "responsive"
 - Task involves user-facing interaction (forms, buttons, navigation, modals)
 - Task output will be seen by end users
 
 **Backend task** — ANY of these:
-- Task creates or modifies API endpoints, database queries, server logic
-- Task involves `.py`, `.go`, `.rs`, `.java`, `.rb`, `.ts` (non-frontend) files
+- Task creates or modifies API endpoints, database queries, server logic, hooks, scripts, or state files
+- Task involves `.py`, `.go`, `.rs`, `.java`, `.rb`, `.ts` implementation files outside the UI layer
 - Task mentions "API", "database", "server", "auth", "backend"
 
 **Cross-domain** — BOTH frontend and backend conditions are true.
 
-If cross-domain: treat each subtask according to its own domain. The pipeline runs ALL applicable gates.
+If cross-domain: split the work into frontend and backend subtasks, then treat each subtask according to its own domain. The pipeline runs ALL applicable gates.
 
 ## Mandatory Gate Checklist
 
@@ -212,6 +212,14 @@ FOR each task batch:
 | prism (tests) | 2 | worktree if file conflict |
 | anvil (build) | 1 | never parallel |
 
+#### Handoff Contract
+
+Before dispatching the next agent, write down:
+1. the exact artifact that is authoritative (`plan-brief.md`, `phase-context.md`, `DESIGN.md`, or code diff),
+2. the exact files in scope,
+3. the acceptance signal the next agent must preserve,
+4. any assumptions it must not re-open.
+
 #### File Conflict Analysis
 
 Before dispatching multiple agents simultaneously:
@@ -220,6 +228,7 @@ Before dispatching multiple agents simultaneously:
 3. If two tasks share any file path → **conflict detected**
 4. Conflicting tasks: dispatch with `isolation: "worktree"` (each gets its own branch)
 5. Non-conflicting tasks: dispatch without isolation (share worktree)
+6. Prefer one agent per file cluster unless the tasks are clearly disjoint.
 
 #### Context Envelope (Required for Every Dispatch)
 

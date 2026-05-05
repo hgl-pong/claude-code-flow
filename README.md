@@ -113,6 +113,7 @@ Tests:
 | `validator` | Haiku | default | 功能验收 |
 | `pd` | Sonnet | medium | ULI 产品需求提案 |
 | `chronicler` | Haiku | default | 文档生成, 变更日志, API 文档 |
+| `artist` | Sonnet | medium | 图像生成与识别 (img CLI) |
 | `anvil` | Haiku | default | 构建, CI/CD, 依赖管理 |
 
 ## Commands
@@ -269,7 +270,10 @@ claude-code-flow/
 │   ├── scout.md           # Sonnet — 调研
 │   ├── validator.md       # Haiku — 验收
 │   ├── chronicler.md      # Haiku — 文档生成
-│   └── anvil.md           # Haiku — 构建
+│   ├── anvil.md           # Haiku — 构建
+│   └── artist.md          # Sonnet — 图像生成与识别 (img CLI)
+├── vendor/
+│   └── img-cli/           # img CLI 子模块 (pip install -e .)
 ├── commands/
 │   ├── workflow-plan.md   # 规划流水线 (支持 --mode)
 │   ├── quick-fix.md       # 快速修复
@@ -320,6 +324,65 @@ claude-code-flow/
 ```
 
 ## 安装
+
+### 1. 安装 GitNexus（必需）
+
+本插件在会话启动时检查 GitNexus 并在会话结束时自动更新代码索引：
+
+```bash
+# 安装
+npm install -g gitnexus
+
+# 首次索引当前仓库
+gitnexus analyze .
+
+# 验证
+gitnexus status
+```
+
+### 2. 配置 Tavily 搜索（必需）
+
+本插件使用 Tavily 进行联网搜索，安装前需先配置：
+
+```bash
+# 安装 Python SDK
+pip install tavily-python
+
+# 保存 API Key（从 https://tavily.com 获取）
+echo "your-api-key-here" > ~/.tavily
+
+# 或者设置环境变量（推荐）
+echo 'export TAVILY_API_KEY="your-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+
+# 安装 CLI 封装脚本
+mkdir -p ~/bin
+# 将 skills/web-search/tavily-cli 复制到 ~/bin/tavily 并赋予执行权限
+cp skills/web-search/tavily-cli ~/bin/tavily
+chmod +x ~/bin/tavily
+
+# 验证
+python ~/bin/tavily "test search" -n 1
+```
+
+### 3. 安装 img-cli（可选，用于 artist agent）
+
+```bash
+# 从子模块安装
+cd vendor/img-cli && pip install -e . && cd ../..
+
+# 验证
+img generate "a red cat" -o test.png
+
+# 需要配置 OpenAI 认证（用于 codex/openai 后端）
+# 方式 1: 设置环境变量
+export OPENAI_API_KEY="sk-..."
+
+# 方式 2: 通过 codex 登录
+codex login
+```
+
+### 4. 安装插件
 
 ```
 /plugin marketplace add hgl-pong/claude-code-flow

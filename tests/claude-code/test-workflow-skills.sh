@@ -16,3 +16,10 @@ assert_contains "$output" "writing-plans|implementation plan|test-first.*plan" "
 assert_contains "$output" "testing-strategy|TDD|failing test|RED" "mentions TDD"
 assert_contains "$output" "systematic-debugging|reproduce|root cause" "mentions systematic debugging"
 assert_contains "$output" "verification-before-completion|fresh evidence|verification evidence" "mentions completion verification"
+
+output="$(run_claude "I have a multi-step implementation that needs coordination and planning." "$timeout_seconds")"
+assert_contains "$output" "workflow-plan|using-claude-code-flow" "workflow planning gets selected"
+assert_contains "$output" "brainstorm|writing-plans|dev-orchestrator" "planning path includes the right companion skills"
+
+output="$(run_claude "I am changing UI behavior and backend state together." "$timeout_seconds")"
+assert_contains "$output" "brainstorm|writing-plans|dev-orchestrator" "cross-domain work is routed to planning and orchestration"
