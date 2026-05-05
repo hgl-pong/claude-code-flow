@@ -21,5 +21,8 @@ output="$(run_claude "I have a multi-step implementation that needs coordination
 assert_contains "$output" "workflow-plan|using-claude-code-flow" "workflow planning gets selected"
 assert_contains "$output" "brainstorm|writing-plans|dev-orchestrator" "planning path includes the right companion skills"
 
+output="$(run_claude "I think this should probably enter plan mode." "$timeout_seconds")"
+assert_contains "$output" "workflow-plan|use /plan|avoid invoking EnterPlanMode" "plan mode phrasing is redirected to plugin planning"
+
 output="$(run_claude "I am changing UI behavior and backend state together." "$timeout_seconds")"
 assert_contains "$output" "brainstorm|writing-plans|dev-orchestrator" "cross-domain work is routed to planning and orchestration"

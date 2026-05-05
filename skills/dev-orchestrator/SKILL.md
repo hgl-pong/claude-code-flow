@@ -121,6 +121,8 @@ Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <
 
 Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + design), `plan-brief.md` (agent-ready tasks from oracle), `ui-research.md`, `DESIGN.md`, `modified-files.txt`, `verification-evidence.jsonl` + `last-verification.json`, `review-result.txt`.
 
+Planning entry: `/plan` and `/workflow-plan` both enter this plugin workflow. They must produce or update `phase-context.md` and, after approval, `plan-brief.md`. If Claude Code host plan mode is active without these files, exit host plan mode and restart with `/plan <task>`.
+
 Phase handoff: each gate agent appends output to `phase-context.md`. Oracle writes `plan-brief.md` after approval.
 
 ## Steps

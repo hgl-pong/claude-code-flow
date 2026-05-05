@@ -45,6 +45,8 @@ Some agents are **READ-ONLY** (atlas, sentinel, validator, chronicler, designer)
 Plan Gate (oracle) → Design Gate (atlas) → Implementation (forge/prism/anvil) → Review Gate (sentinel) → Documentation (chronicler)
 ```
 
+`/plan` is the plugin planning entry and routes to `/workflow-plan`; `EnterPlanMode` is guarded so model-triggered built-in plan mode redirects back to the plugin workflow. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
+
 Modes (`quick/standard/deep/autonomous/ultrawork`) control which gates are enforced. The pipeline is orchestrated by the `dev-orchestrator` skill using Claude Code's built-in `TaskCreate/TaskList/TaskUpdate` for task management.
 
 ### Autonomous Modes
@@ -57,6 +59,7 @@ Modes (`quick/standard/deep/autonomous/ultrawork`) control which gates are enfor
 All hooks registered in `hooks/hooks.json`, scripts in `hooks/scripts/`. Scripts use `${CLAUDE_PLUGIN_ROOT}` for portable paths. Key hooks:
 - **PreToolUse(Bash)**: Commit guard — blocks `git commit` when unreviewed files exist
 - **PreToolUse(Agent)**: Agent guard — blocks sentinel without modified files
+- **PreToolUse(EnterPlanMode)**: Plan guard — blocks built-in plan-mode tool calls and redirects to plugin `/plan` / `/workflow-plan`
 - **PostToolUse(Bash)**: Verification evidence tracking — classifies test/build/lint commands and records results to `verification-evidence.jsonl`
 - **PostToolUse(Write/Edit)**: File modification tracking with agent ownership
 - **Stop**: ULW/ULI stop hooks block exit until completion tags detected

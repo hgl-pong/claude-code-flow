@@ -1,5 +1,11 @@
 # Claude Code Flow
 
+## 2026-05-05 Plugin Plan Mode Routing
+
+- `/plan` is the plugin planning entry point and routes to `/workflow-plan`.
+- The plugin registers a `UserPromptSubmit` detector for plan-like prompts and a `PreToolUse(EnterPlanMode)` guard to keep model-triggered planning on the plugin workflow.
+- Claude Code host-level plan transitions such as Shift+Tab mode cycling, SDK `set_permission_mode`, or teammate-required plan mode cannot be fully intercepted by a plugin. If host plan mode appears without `.claude/flow/workflow-state.json`, exit it and rerun `/plan <task>`.
+
 ## 2026-05-03 Agent Model Tuning
 
 Version `1.6.4` adds explicit `effort` tiers to Claude Code agent frontmatter while keeping portable model aliases:
@@ -120,6 +126,7 @@ Tests:
 
 | 命令 | 说明 |
 |------|------|
+| `/plan` | 插件规划入口，等价于进入 `/workflow-plan`，避免 Claude Code 内置 plan mode |
 | `/workflow-plan` | 启动规划流水线，支持 `--mode quick\|standard\|deep\|autonomous` |
 | `/quick-fix` | 快速修复模式，跳过规划直接实现 |
 | `/workflow-resume` | 从最近快照恢复中断的工作流 |

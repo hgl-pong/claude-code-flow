@@ -27,5 +27,8 @@ output="$(run_claude "/plan Add user authentication with OAuth and JWT" "$timeou
 assert_contains "$output" "workflow-plan|plugin plan|use this as the plugin" "plugin plan command routes to workflow plan"
 assert_contains "$output" "brainstorm|writing-plans|dev-orchestrator" "plan mode follows the workflow pipeline"
 
+output="$(run_claude "/plan" "$timeout_seconds")"
+assert_contains "$output" "workflow-plan|plugin plan|workflow planning pipeline" "bare /plan still routes to plugin workflow"
+
 output="$(run_claude "Fix a typo in one file with a known root cause." "$timeout_seconds")"
 assert_contains "$output" "quick|narrow|single-file|known root cause" "distinguishes narrow fixes from full planning"

@@ -97,3 +97,7 @@ Before execution:
 ## Handoff
 
 For execution, use the orchestrator's subagent-driven loop when tasks are independent. Use inline execution when tasks are tightly coupled or require continuous local context.
+
+Every task handed to `dev-orchestrator` must be convertible into the orchestrator context envelope: goal, exact task, working directory, completed dependencies, file scope, test command, acceptance criteria, relevant excerpts, constraints, and out-of-scope boundaries. If any field is missing, keep planning instead of dispatching an implementation agent.
+
+The source of truth is the approved plan/spec plus `phase-context.md` and `plan-brief.md`; do not rely on chat history for implementation details.

@@ -5,7 +5,7 @@ description: "Start the full workflow pipeline — skill check, brainstorming, o
 
 # Workflow Plan
 
-Start the planning pipeline for a feature or task. Use this as the plugin replacement for the built-in plan flow.
+Start the planning pipeline for a feature or task. This is the plugin-side replacement for the built-in plan flow.
 
 ## Arguments
 
