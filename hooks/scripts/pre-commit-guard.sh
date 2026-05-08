@@ -1,6 +1,6 @@
 #!/bin/bash
 # PreToolUse(Bash): warn about unreviewed changes before git commit
-TRACK_FILE=".claude/flow/modified-files.txt"
+TRACK_FILE=".claude/flow/modified-files.jsonl"
 LOG_EVENT_SCRIPT="$(dirname "$0")/log-event.py"
 
 INPUT=$(cat)

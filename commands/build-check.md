@@ -15,7 +15,7 @@ Verify the project builds correctly and check for common build issues.
 ## Process
 
 1. Read build configuration files (package.json, CMakeLists.txt, Makefile, pyproject.toml, etc.)
-2. Invoke anvil to:
+2. Invoke prism to:
    - Check build configuration for common issues
    - Run the build
    - Run tests (if requested)

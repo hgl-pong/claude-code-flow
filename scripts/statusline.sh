@@ -6,7 +6,7 @@
 FLOW_DIR=".claude/flow"
 STATE_FILE="$FLOW_DIR/workflow-state.json"
 ULW_STATE_FILE="$FLOW_DIR/ulw-state.json"
-TRACK_FILE="$FLOW_DIR/modified-files.txt"
+TRACK_FILE="$FLOW_DIR/modified-files.jsonl"
 LAST_VERIFICATION="$FLOW_DIR/last-verification.json"
 
 # --- Git info ---

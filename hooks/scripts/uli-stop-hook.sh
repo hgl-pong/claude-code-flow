@@ -104,13 +104,13 @@ fi
 # Build phase-aware re-injection message
 case "$CURRENT_PHASE" in
   "pd_generating")
-    PHASE_MSG="PD must generate a NEW proposal for this iteration. Continue: spawn pd agent (it reads product-state.md and uli-acceptance-report.md), wait for uli-proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
+    PHASE_MSG="Product analysis + proposal must run for this iteration. Continue: spawn scout to analyze product state, then oracle to propose requirements, wait for uli-proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
     ;;
   "dev_pipeline")
-    PHASE_MSG="The dev pipeline is still in progress for iteration ${ITERATION}. Continue: complete ALL implementation tasks for this iteration, run sentinel review (two-stage), then run validator acceptance. Do NOT advance to next iteration until acceptance passes."
+    PHASE_MSG="The dev pipeline is still in progress for iteration ${ITERATION}. Continue: complete ALL implementation tasks for this iteration, run sentinel review (two-stage), then run prism acceptance. Do NOT advance to next iteration until acceptance passes."
     ;;
   "acceptance")
-    PHASE_MSG="Acceptance gate is pending for iteration ${ITERATION}. Continue: run validator, check build + tests + feature checklist against uli-proposal.md, record result. Only on ACCEPT: commit, update product-state.md, increment iteration via uli-next, then spawn PD for next iteration."
+    PHASE_MSG="Acceptance gate is pending for iteration ${ITERATION}. Continue: run prism for acceptance, check build + tests + feature checklist against uli-proposal.md, record result. Only on ACCEPT: commit, update product-state.md, increment iteration via uli-next, then spawn PD for next iteration."
     ;;
   *)
     PHASE_MSG="Continue the ULI iteration loop for iteration ${ITERATION}: PD proposal exists → implement ALL tasks → sentinel review → hard acceptance → commit → increment → PD for next iteration."

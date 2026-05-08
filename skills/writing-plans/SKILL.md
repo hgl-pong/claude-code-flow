@@ -30,9 +30,13 @@ A plan is written for a fresh agent with zero project context, zero judgment, an
 
 ## Plan Location
 
-Save substantial plans to:
+Persist the authoritative plan in structured workflow state first:
 
-`docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+- `.claude/flow/plan-state.json`
+- `.claude/flow/workflow-state.json`
+
+Export `.claude/flow/plan-brief.md` only as the agent-readable brief when needed.
+Never treat `docs/` as the source of truth for plan state.
 
 ## Required Header
 

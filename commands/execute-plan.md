@@ -26,10 +26,10 @@ Execute a saved implementation plan using the `dev-orchestrator` pipeline.
 5. For each task or non-conflicting task batch:
    - Apply `testing-strategy` before production code.
    - Build a self-contained context envelope from the plan. Paste the relevant plan excerpts directly; do not ask subagents to "read the plan."
-   - Dispatch implementation to the right agent (`forge`, `weaver`, `prism`, `anvil`) with the completion schema from `dev-orchestrator`.
+   - Dispatch implementation to `forge`, testing/acceptance to `prism`, review to `sentinel`.
    - Run focused verification.
    - Run `sentinel` for spec and quality review.
-   - Run `validator` for acceptance when the task affects behavior.
+   - Run `prism` for acceptance when the task affects behavior.
 6. Use `verification-before-completion` before reporting done.
 
 ## Dispatch Prompt Requirements

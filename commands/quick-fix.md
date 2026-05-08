@@ -23,10 +23,8 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
 5. **Test first when behavior changes**: Use `testing-strategy` to write or identify the failing regression test before production edits.
 
 6. **Choose agent**:
-   - `forge` for backend/general code.
-   - `weaver` for UI/frontend files, but only after a lightweight design note exists.
-   - `prism` for test-only work.
-   - `anvil` for build/config/dependency work.
+   - `forge` for all code implementation (backend + frontend).
+   - `prism` for test-only work, builds, or acceptance checks.
 
 7. **Implement**: Invoke the chosen agent with a complete context envelope. Do not use a one-line fix prompt.
    ```

@@ -10,7 +10,7 @@ Display the current state of the development workflow pipeline.
 ## Output Sections
 
 ### 1. Current Phase
-Read `.claude/flow/workflow-state.json` and display:
+Read `.claude/flow/workflow-state.json` and `.claude/flow/plan-state.json` and display:
 - Phase: research / plan / design / impl / review / idle
 - Mode: quick / standard / deep / autonomous
 - Task progress: x/y tasks completed
@@ -19,10 +19,11 @@ Read `.claude/flow/workflow-state.json` and display:
 - Verification count and latest verification command/result
 - Last updated timestamp
 - Plugin workflow active: yes/no based on `.claude/flow/workflow-state.json`
+- Structured plan state: status, title, task count, and plan hash if `.claude/flow/plan-state.json` exists
 - Planning entry: plugin `/plan` / `/workflow-plan`; if host plan mode is active without workflow state, say to exit host plan mode and rerun `/plan <task>`
 
 ### 2. Modified Files
-Read `.claude/flow/modified-files.txt` and display:
+Read `.claude/flow/modified-files.jsonl` and display:
 - Count of tracked modified files
 - List of files (truncated to 20, with "and N more..." if needed)
 
@@ -31,7 +32,7 @@ Read `.claude/flow/review-result.txt` if it exists and display:
 - Latest review outcome (APPROVE / REQUEST CHANGES / NEEDS DISCUSSION)
 
 ### 4. Agent Log
-Read `.claude/flow/agent-log.txt` if it exists and display:
+Read `.claude/flow/exec-log.jsonl` (filter `event=agent_complete`) and display:
 - Last 10 agent completions with timestamps
 
 ### 5. Verification Evidence

@@ -2,7 +2,7 @@
 
 AI-generated UI looks like every other AI-generated UI. These rules exist to prevent that.
 
-Shared by: `designer` (design phase) and `weaver` (implementation phase).
+Shared by: `designer` (design phase) and `forge` (implementation phase).
 
 ---
 

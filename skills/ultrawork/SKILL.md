@@ -54,11 +54,11 @@ ULW GATE CHECKLIST (all gates auto-approve but all must execute):
 [ ] Brainstorm — always for implement/refactor
 [ ] Research (scout) — always for implement/refactor (auto-skip if pure internal)
 [ ] Plan (oracle) — ALWAYS mandatory
-[ ] Architecture (atlas) — mandatory when: new system, 3+ modules, cross-cutting change
+[ ] Architecture (oracle) — mandatory when: new system, 3+ modules, cross-cutting change
 [ ] UI Research (scout) — mandatory when task domain is frontend-UI
 [ ] UI Design (designer) — mandatory when task domain is frontend-UI
 [ ] Review (sentinel) — ALWAYS mandatory
-[ ] Acceptance (validator) — ALWAYS mandatory
+[ ] Acceptance (prism) — ALWAYS mandatory
 ```
 
 Record checked gates in `phase-context.md` under `## Gate Checklist`.
@@ -80,16 +80,16 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `phase-context.md`. Do NOT present options.
 2. Research (auto-approve, if checked) — invoke scout for external info. Skip only for pure internal logic tasks.
 3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
-4. Architecture (auto-approve, if checked) — atlas produces design. Append to `phase-context.md`.
+4. Architecture (auto-approve, if checked) — oracle produces design. Append to `phase-context.md`.
 5. UI Research (auto-approve, if checked) — scout researches design patterns. Write `ui-research.md`.
-6. UI Design (auto-approve, if checked) — designer produces `DESIGN.md`. **weaver MAY NOT be dispatched until DESIGN.md exists.**
+6. UI Design (auto-approve, if checked) — designer produces `DESIGN.md`. **forge MAY NOT be dispatched until DESIGN.md exists.**
 7. Implementation (Ralph Loop + parallel scheduler):
    - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
-   - **Parallel scheduler** (see dev-orchestrator Step 9): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge/weaver, 2 prism, 1 anvil.
+   - **Parallel scheduler** (see dev-orchestrator Step 9): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge, 2 prism, 1 build.
    - Each agent prompt must use the **Context Envelope** format (Goal, Task, Dependencies, File Scope, Test Command, Acceptance Criteria, Constraints).
    - Each agent: test-first RED → implement GREEN → refactor → verify → record evidence → increment done.
 8. Review (auto, sentinel — two-stage) — Stage 1: spec compliance → Stage 2: code quality (only if Stage 1 passes). APPROVE→continue; REQUEST CHANGES→back to implementer (max 3 loops); NEEDS DISCUSSION after 3 loops→escalate. Use subagent-driven review: dispatch sentinel with `review_focus: spec_compliance`, then a fresh sentinel with `review_focus: code_quality`.
-9. Acceptance (auto, validator) — ACCEPT→TaskUpdate completed; REJECT→back to implementer with gap list (max 2 loops).
+9. Acceptance (auto, prism) — ACCEPT→TaskUpdate completed; REJECT→back to implementer with gap list (max 2 loops).
 
 ### `fix`
 
@@ -150,7 +150,7 @@ After max retries: **escalate**. Never loop infinitely.
 5. **Never emit `<ulw-done>` without evidence** — the Stop Hook trusts this tag.
 6. **Branch off main** — never commit directly to `main`/`master`.
 7. **Escalate, don't loop forever** — max retries are hard limits.
-8. **Dynamic parallelism** — dispatch up to 3 forge/weaver, 2 prism, 1 anvil. Use worktree isolation for file conflicts.
+8. **Dynamic parallelism** — dispatch up to 3 forge, 2 prism, 1 build. Use worktree isolation for file conflicts.
 9. **No feature creep** — implement exactly what was asked.
 10. **Ralph Loop: stateless dispatch** — every agent prompt is self-contained. Never carry prior agent output into the next dispatch.
 11. **Auto-approve does not mean skip** — autonomous mode skips user confirmation, NOT gate execution.

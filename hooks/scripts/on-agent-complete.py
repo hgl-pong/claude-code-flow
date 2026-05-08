@@ -4,16 +4,14 @@ import json, os, sys
 from datetime import datetime, timezone
 
 FLOW_DIR = os.path.join(".claude", "flow")
-LOG_FILE = os.path.join(FLOW_DIR, "agent-log.txt")
 EXEC_LOG = os.path.join(FLOW_DIR, "exec-log.jsonl")
 SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 
 AGENT_MODELS = {
-    "oracle": "opus", "atlas": "opus", "forge": "sonnet",
-    "prism": "sonnet", "anvil": "haiku", "sentinel": "sonnet",
-    "chronicler": "sonnet", "scout": "sonnet", "evolver": "opus",
-    "designer": "sonnet", "weaver": "sonnet",
+    "oracle": "opus", "forge": "sonnet",
+    "prism": "sonnet", "sentinel": "sonnet",
+    "scout": "haiku", "designer": "sonnet", "artist": "haiku",
 }
 
 def get_session_id():
@@ -43,10 +41,6 @@ def main():
         return
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # Legacy log (backward compatible)
-    with open(LOG_FILE, "a") as f:
-        f.write(f"[{ts}] {agent_name} completed\n")
 
     # Structured JSONL log
     entry = {

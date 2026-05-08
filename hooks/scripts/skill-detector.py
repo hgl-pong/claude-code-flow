@@ -123,7 +123,7 @@ def write_proposals(proposals):
             lines.append(f"  - \"{ex}\"")
         ui_keywords = {"ui", "interface", "component", "page", "frontend", "css", "layout", "design", "responsive", "modal", "form", "dashboard", "页面", "组件", "前端", "样式", "布局", "界面", "交互"}
         if any(kw in ' '.join(key) for kw in ui_keywords):
-            lines.append(f"- **Suggested agents**: oracle(plan) -> designer(ui design) -> weaver(impl) -> prism(tests) -> sentinel(review)")
+            lines.append(f"- **Suggested agents**: oracle(plan) -> designer(ui design) -> forge(impl) -> prism(tests) -> sentinel(review)")
         else:
             lines.append(f"- **Suggested agents**: oracle(plan) -> forge(impl) -> prism(tests) -> sentinel(review)")
         lines.append("")

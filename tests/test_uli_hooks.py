@@ -340,57 +340,6 @@ class UliHooksJsonRegistrationTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# pd.md frontmatter and content tests
-# ---------------------------------------------------------------------------
-
-class UliAgentFrontmatterTests(unittest.TestCase):
-    """Verify pd.md has correct frontmatter and required sections."""
-
-    def setUp(self):
-        import re
-        self.pd_path = ROOT / "agents" / "pd.md"
-        self.assertTrue(self.pd_path.exists(), "agents/pd.md must exist")
-        self.content = self.pd_path.read_text(encoding="utf-8")
-        match = re.match(r"^---\s*\n(.*?)\n---\s*\n", self.content, re.S)
-        self.assertIsNotNone(match, "pd.md must have YAML frontmatter")
-        self.fm = match.group(1)
-
-    def test_required_frontmatter_fields(self):
-        import re
-        self.assertRegex(self.fm, r"(?m)^name:\s*pd")
-        self.assertRegex(self.fm, r"(?m)^description:\s*.+")
-        self.assertRegex(self.fm, r"(?m)^model:\s*.+")
-        self.assertRegex(self.fm, r"(?m)^tools:\s*.+")
-
-    def test_iron_law_present(self):
-        self.assertIn("IRON LAW", self.content)
-
-    def test_anti_ai_pm_rules_present(self):
-        self.assertIn("Anti-AI-PM", self.content)
-
-    def test_tools_are_read_only_plus_bash(self):
-        import re
-        match = re.search(r'tools:\s*\[([^\]]+)\]', self.content)
-        self.assertIsNotNone(match, "tools field not found in frontmatter")
-        tools_str = match.group(1)
-        self.assertNotIn('"Write"', tools_str, "PD must not have Write tool")
-        self.assertNotIn('"Edit"', tools_str, "PD must not have Edit tool")
-        self.assertIn('"Read"', tools_str, "PD must have Read tool")
-        self.assertIn('"Bash"', tools_str, "PD must have Bash tool (for git log)")
-
-    def test_max_core_requirements_documented(self):
-        import re
-        self.assertRegex(
-            self.content, r"(?i)(3|three).*CORE|CORE.*(\bnot exceed\b|maximum\b|max\b.*3)",
-            "Must document max 3 CORE requirements per iteration"
-        )
-
-    def test_proposal_output_format_documented(self):
-        self.assertIn("uli-proposal.md", self.content)
-        self.assertIn("[CORE]", self.content)
-
-
-# ---------------------------------------------------------------------------
 # ultrawork SKILL.md — ULI branch completeness
 # ---------------------------------------------------------------------------
 
@@ -414,9 +363,9 @@ class UliSkillBranchTests(unittest.TestCase):
     def test_hard_acceptance_gate_defined(self):
         self.assertIn("Hard Acceptance Gate", self.content)
 
-    def test_pd_agent_spawn_described(self):
+    def test_product_analysis_proposal_flow_described(self):
         self.assertIn("uli-proposal.md", self.content)
-        self.assertRegex(self.content, r"(?i)pd.*agent|spawn.*pd|agent.*pd")
+        self.assertIn("scout", self.content)
 
     def test_max_iterations_default_documented(self):
         import re

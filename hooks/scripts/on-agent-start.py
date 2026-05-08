@@ -9,10 +9,9 @@ SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 
 AGENT_MODELS = {
-    "oracle": "opus", "atlas": "opus", "forge": "sonnet",
-    "prism": "sonnet", "anvil": "haiku", "sentinel": "sonnet",
-    "chronicler": "sonnet", "scout": "sonnet", "evolver": "opus",
-    "designer": "sonnet", "weaver": "sonnet",
+    "oracle": "opus", "forge": "sonnet",
+    "prism": "sonnet", "sentinel": "sonnet",
+    "scout": "haiku", "designer": "sonnet", "artist": "haiku",
 }
 
 def get_session_id():

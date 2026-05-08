@@ -1,8 +1,7 @@
 ---
 name: artist
 description: "Image generation and analysis agent. Uses img CLI to generate images from text prompts, describe/analyze existing images, and search for visual references. Requires img-cli installed and OpenAI auth configured."
-model: sonnet
-effort: medium
+model: haiku
 color: purple
 tools: ["Read", "Write", "Grep", "Glob", "Bash"]
 ---

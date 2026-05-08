@@ -4,7 +4,6 @@ import json, os, sys
 from datetime import datetime, timezone
 
 FLOW_DIR = os.path.join(".claude", "flow")
-TRACK_FILE = os.path.join(FLOW_DIR, "modified-files.txt")
 OWNERSHIP_FILE = os.path.join(FLOW_DIR, "modified-files.jsonl")
 
 def now():
@@ -42,16 +41,6 @@ def main():
                     agent = current_agent
         except (json.JSONDecodeError, Exception):
             pass
-
-    # Append to legacy text file (backward compatible)
-    existing = set()
-    if os.path.exists(TRACK_FILE):
-        with open(TRACK_FILE, "r") as f:
-            existing = {line.strip() for line in f if line.strip()}
-
-    if rel not in existing:
-        with open(TRACK_FILE, "a") as f:
-            f.write(rel + "\n")
 
     # Append to JSONL ownership log
     entry = {

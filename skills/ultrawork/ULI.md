@@ -91,30 +91,54 @@ Each pass through this loop is ONE iteration. The iteration number increments ON
 └─────────────────────────────────────────────┘
 ```
 
-### Step 1 — PD Agent (MUST run every iteration)
+### Step 1 — Product Analysis + Proposal (MUST run every iteration)
+
+**1a. Scout analyzes product state:**
 
 Update state: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-phase pd_generating`
 
 ```
 Agent({
-  name: "pd",
-  subagent_type: "claude-code-flow:pd",
+  name: "scout",
+  subagent_type: "claude-code-flow:scout",
   model: "sonnet",
   prompt: """
 ## Envelope
 - **Goal:** <product goal>
-- **Your Task:** Propose requirements for iteration N of this product.
+- **Your Task:** Analyze product state and recommend next iteration priorities.
 - **Iteration:** N / max_iterations
 - **Completed Features:** <read from product-state.md>
 - **Last Verdict:** <read from uli-acceptance-report.md, may not exist>
-- **Constraints:** Max 3 CORE, every CORE must have executable acceptance criterion.
 
-See agents/pd.md for full format. Output to .claude/flow/uli/iterations/<N>/proposal.md and copy to .claude/flow/uli-proposal.md.
+Read product-state.md, uli-acceptance-report.md, recent git log, and project README.
+Write analysis to .claude/flow/uli-analysis.md with: product state summary, gap analysis, top 3 recommended areas with rationale.
 """
 })
 ```
 
-Wait for PD. Read `uli-proposal.md` (working copy). Verify at least 1 CORE requirement with concrete acceptance criterion. If none or untestable, stop ULI and report to user.
+Wait for scout. Read `.claude/flow/uli-analysis.md`.
+
+**1b. Oracle proposes requirements:**
+
+```
+Agent({
+  name: "oracle",
+  subagent_type: "claude-code-flow:oracle",
+  model: "opus",
+  prompt: """
+## Envelope
+- **Goal:** <product goal>
+- **Your Task:** Propose requirements for iteration N based on the product analysis.
+- **Iteration:** N / max_iterations
+- **Product Analysis:** <read from .claude/flow/uli-analysis.md>
+- **Constraints:** Max 3 CORE, every CORE must have concrete, executable acceptance criterion.
+
+Output to .claude/flow/uli/iterations/<N>/proposal.md and copy to .claude/flow/uli-proposal.md.
+"""
+})
+```
+
+Wait for oracle. Read `uli-proposal.md` (working copy). Verify at least 1 CORE requirement with concrete acceptance criterion. If none or untestable, stop ULI and report to user.
 
 **VERIFY:** `.claude/flow/uli/iterations/<N>/proposal.md` exists and contains at least 1 CORE requirement. If not, STOP.
 
@@ -137,9 +161,9 @@ Do NOT show plan to user (autonomous mode).
 
 **Ralph Loop**: each agent dispatch is stateless — self-contained prompt via Context Envelope, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
 
-Use parallel scheduler (see dev-orchestrator): file conflict analysis, worktree isolation for conflicting tasks, dispatch non-conflicting agents in a single message with `run_in_background: true`. Max 3 parallel for forge/weaver, 2 for prism, 1 for anvil. Every agent prompt must use the **Context Envelope** format.
+Use parallel scheduler (see dev-orchestrator): file conflict analysis, worktree isolation for conflicting tasks, dispatch non-conflicting agents in a single message with `run_in_background: true`. Max 3 parallel for forge, 2 for prism, 1 for prism. Every agent prompt must use the **Context Envelope** format.
 
-Test-first RED→GREEN→refactor→record evidence. Frontend→weaver; backend→forge; tests→prism; build→anvil.
+Test-first RED→GREEN→refactor→record evidence. All code→forge; tests/build/acceptance→prism.
 
 **IMPORTANT:** The Ralph Loop processes ALL tasks for this iteration. Do NOT advance to Step 4 until ALL tasks are done or escalated. The loop runs tasks, not iterations.
 
@@ -164,8 +188,8 @@ Update state: `uli-set-phase acceptance`
 
 ```
 Agent({
-  name: "validator",
-  subagent_type: "claude-code-flow:validator",
+  name: "prism",
+  subagent_type: "claude-code-flow:prism",
   prompt: "Run acceptance for ULI iteration N. Read .claude/plans/plan-brief.md and .claude/flow/uli-proposal.md. Run: (1) build, (2) full tests, (3) verify each CORE requirement from proposal. ACCEPT or REJECT with gap list."
 })
 ```

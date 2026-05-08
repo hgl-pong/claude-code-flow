@@ -6,14 +6,13 @@ from datetime import datetime, timezone
 FLOW_DIR = os.path.join(".claude", "flow")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 PHASE_CONTEXT = os.path.join(FLOW_DIR, "phase-context.md")
-TASK_GRAPH = os.path.join(FLOW_DIR, "task-graph.json")
 MODIFIED_FILES_JSONL = os.path.join(FLOW_DIR, "modified-files.jsonl")
 VERIFICATION_EVIDENCE = os.path.join(FLOW_DIR, "verification-evidence.jsonl")
 PRE_COMPACT = os.path.join(FLOW_DIR, "pre-compact-context.md")
 
 CRITICAL_FILES = [
     "workflow-state.json", "phase-context.md", "plans/plan-brief.md",
-    "task-graph.json", "modified-files.txt", "verification-evidence.jsonl",
+    "modified-files.jsonl", "verification-evidence.jsonl",
     "last-verification.json", "ui-research.md",
 ]
 
@@ -45,22 +44,7 @@ def main():
         sections.append(f"- Last verification: {last_verification.get('status', '?')} {last_verification.get('kind', '?')} -- `{last_verification.get('command', '')}`")
     sections.append("")
 
-    # 2. Task graph summary
-    if os.path.exists(TASK_GRAPH):
-        try:
-            with open(TASK_GRAPH, "r") as f:
-                graph = json.load(f)
-            if graph.get("nodes"):
-                sections.append("## Task Graph")
-                for n in graph["nodes"]:
-                    deps = n.get("dependencies", [])
-                    dep_str = f" (after: {', '.join(deps)})" if deps else ""
-                    sections.append(f"- [{n['status']}] {n['id']}: {n['title']} ({n['agent']}){dep_str}")
-                sections.append("")
-        except (json.JSONDecodeError, Exception):
-            pass
-
-    # 3. Recent file modifications (last 10 from modified-files.jsonl)
+    # 2. Recent file modifications (last 10 from modified-files.jsonl)
     if os.path.exists(MODIFIED_FILES_JSONL):
         try:
             with open(MODIFIED_FILES_JSONL, "r") as f:
@@ -78,7 +62,7 @@ def main():
         except Exception:
             pass
 
-    # 4. Recent verification evidence (last 10 from verification-evidence.jsonl)
+    # 3. Recent verification evidence (last 10 from verification-evidence.jsonl)
     if os.path.exists(VERIFICATION_EVIDENCE):
         try:
             with open(VERIFICATION_EVIDENCE, "r", encoding="utf-8") as f:
@@ -96,7 +80,7 @@ def main():
         except Exception:
             pass
 
-    # 5. Key decisions from phase-context (last 30 lines if file is large)
+    # 4. Key decisions from phase-context (last 30 lines if file is large)
     if os.path.exists(PHASE_CONTEXT):
         try:
             with open(PHASE_CONTEXT, "r") as f:

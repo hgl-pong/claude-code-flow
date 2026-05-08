@@ -40,12 +40,6 @@ def main():
     except Exception:
         pass
 
-    # Check evolution status
-    try:
-        evolution_check = os.path.join(os.path.dirname(__file__), "evolution-check.py")
-        subprocess.run([sys.executable, evolution_check], timeout=5)
-    except Exception:
-        pass
 
 
 if __name__ == "__main__":

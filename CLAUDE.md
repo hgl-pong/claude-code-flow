@@ -31,18 +31,17 @@ bash tests/skill-triggering/run-all.sh
 ### Model-Tiered Agent Pipeline
 
 Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `model` alias and, for Opus/Sonnet agents, an `effort` level:
-- **Opus xhigh** (oracle, atlas): Planning and architecture
-- **Opus high** (evolver): Data-backed meta-analysis
-- **Sonnet high** (forge, weaver, prism, sentinel, designer): Implementation, testing, review, UI design
-- **Sonnet medium** (scout, pd, artist): Research, product proposals, image generation/analysis
-- **Haiku default** (validator, chronicler, anvil): Acceptance checks, docs, build/CI
+- **Opus xhigh** (oracle): Planning, architecture, system decomposition
+- **Sonnet high** (forge, prism, sentinel, designer): Implementation, testing/acceptance, review, UI design
+- **Sonnet high** (forge, prism, sentinel, designer): Implementation, testing, review, UI design
+- **Haiku** (scout, artist): Research, image generation
 
-Some agents are **READ-ONLY** (atlas, sentinel, validator, chronicler, designer) — they produce reports/designs only, never modify code.
+Some agents are **READ-ONLY** (sentinel, designer) — they produce reports/designs only, never modify code.
 
 ### Workflow Pipeline
 
 ```
-Plan Gate (oracle) → Design Gate (atlas) → Implementation (forge/prism/anvil) → Review Gate (sentinel) → Documentation (chronicler)
+Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
 ```
 
 `/plan` is the plugin planning entry and routes to `/workflow-plan`; `EnterPlanMode` is guarded so model-triggered built-in plan mode redirects back to the plugin workflow. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
@@ -75,10 +74,8 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 
 ### Self-Evolution
 
-- **evolver** agent analyzes `exec-log.jsonl` for failure patterns and proposes prompt improvements
 - **skill-detector.py** auto-detects new skill needs from unmatched tasks (3+ similar occurrences)
 - **rule-evaluator.py** accumulates rules from corrections; sentinel checks violations during review
-- All evolution changes must pass `eval-gate.py` (PASS/WARN/FAIL)
 
 ## Conventions
 
@@ -95,7 +92,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (380 symbols, 749 relationships, 20 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (421 symbols, 827 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

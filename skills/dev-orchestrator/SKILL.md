@@ -16,7 +16,7 @@ Keep user-facing updates and final reports concise. Report outcomes, changed fil
 
 Auto-recommend: 1-2 subtasks single domain → **quick**; 3-5 subtasks → **standard**; 6+ or cross-module → **deep**; "just ship it" → **autonomous**; `ulw`/`ultrawork` → **ultrawork** (use ultrawork skill); `uli` → **uli** (use ultrawork skill ULI branch).
 
-| Mode | Research | Architecture (atlas) | UI Research (scout) | UI Design (designer) | Plan Approval | Review | Auto-retry |
+| Mode | Research | Architecture (oracle) | UI Research (scout) | UI Design (designer) | Plan Approval | Review | Auto-retry |
 |------|----------|---------------------|--------------------|--------------------|---------------|--------|------------|
 | quick | No | No | No | No | No | Optional | No |
 | standard | If needed | If needed | Yes for UI tasks | Yes for UI tasks | Yes | Yes | No |
@@ -33,18 +33,13 @@ Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode <mo
 
 | Agent | Model | Effort | Role | Gate |
 |-------|-------|--------|------|------|
-| `scout` | sonnet | medium | Web research, docs lookup | Research |
-| `oracle` | opus | xhigh | Implementation planning, task slicing, approval-ready plans | Plan |
-| `atlas` | opus | xhigh | Architecture design, module boundaries, interface contracts | Design |
+| `scout` | haiku | default | Research, analysis, product state analysis | Research |
+| `oracle` | opus | xhigh | Planning + architecture, task slicing, approval-ready plans | Plan/Design |
 | `designer` | sonnet | high | UI/UX design documents | UI Design |
-| `pd` | sonnet | medium | Product Manager (ULI only) | ULI |
-| `forge` | sonnet | high | Backend / shared implementation | Impl |
-| `weaver` | sonnet | high | Frontend implementation | Impl |
-| `prism` | sonnet | high | Tests, benchmarks, regression coverage | Tests |
-| `anvil` | haiku | default | Build, CI/CD, dependencies | Build |
+| `forge` | sonnet | high | Full-stack implementation (backend + frontend) | Impl |
+| `prism` | sonnet | high | Tests, benchmarks, build, CI/CD, acceptance | Tests/Build/Acceptance |
 | `sentinel` | sonnet | high | Code review | Review |
-| `validator` | haiku | default | Functional acceptance testing | Acceptance |
-| `chronicler` | haiku | default | Documentation, changelogs | Docs |
+
 
 ## Task Domain Detection
 
@@ -83,21 +78,21 @@ GATE CHECKLIST (evaluate for this specific task):
 [ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
     Oracle MUST produce plan-brief.md with TaskCreate tasks.
 
-[ ] Gate 4: Architecture (atlas) — see mode table above. If mandatory: atlas
+[ ] Gate 4: Architecture (oracle) — see mode table above. If mandatory: oracle
     MUST produce design document before implementation.
 
 [ ] Gate 5: UI Research (scout) — mandatory when task domain is frontend-UI
     AND mode is standard+. Scout MUST produce ui-research.md.
 
 [ ] Gate 6: UI Design (designer) — mandatory when task domain is frontend-UI
-    AND mode is standard+. Designer MUST produce DESIGN.md before weaver
-    can be dispatched.
+    AND mode is standard+. Designer MUST produce DESIGN.md before forge
+    can be dispatched for UI work.
 
 [ ] Gate 7: Review (sentinel) — see mode table above. If mandatory: sentinel
     MUST approve before acceptance.
 
-[ ] Gate 8: Acceptance (validator) — mandatory for standard/deep/autonomous.
-    Validator MUST accept before completion.
+[ ] Gate 8: Acceptance (prism) — mandatory for standard/deep/autonomous.
+    Prism MUST accept before completion.
 
 EXECUTION RULE: After evaluating this checklist, you MUST execute gates in
 order (1→2→3→4→5→6→7→8), skipping only gates that are unchecked. You MAY NOT
@@ -119,11 +114,11 @@ skip a checked gate. You MAY NOT reorder gates.
 
 Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <phase>`
 
-Key files: `workflow-state.json` (phase/mode/tasks), `phase-context.md` (approved plan + design), `plan-brief.md` (agent-ready tasks from oracle), `ui-research.md`, `DESIGN.md`, `modified-files.txt`, `verification-evidence.jsonl` + `last-verification.json`, `review-result.txt`.
+Key files: `workflow-state.json` (phase/mode/tasks), `plan-state.json` (authoritative structured plan), `phase-context.md` (approved plan + design), `plan-brief.md` (agent-readable export from oracle), `ui-research.md`, `DESIGN.md`, `modified-files.jsonl`, `verification-evidence.jsonl` + `last-verification.json`, `review-result.txt`.
 
-Planning entry: `/plan` and `/workflow-plan` both enter this plugin workflow. They must produce or update `phase-context.md` and, after approval, `plan-brief.md`. If Claude Code host plan mode is active without these files, exit host plan mode and restart with `/plan <task>`.
+Planning entry: `/plan` and `/workflow-plan` both enter this plugin workflow. They must produce or update `plan-state.json` and `phase-context.md`, then export `plan-brief.md` after approval. If Claude Code host plan mode is active without these files, exit host plan mode and restart with `/plan <task>`.
 
-Phase handoff: each gate agent appends output to `phase-context.md`. Oracle writes `plan-brief.md` after approval.
+Phase handoff: each gate agent appends output to `phase-context.md`. Oracle writes `plan-brief.md` as a render of the structured plan after approval.
 
 ## Steps
 
@@ -168,7 +163,7 @@ Atlas produces module design, API surface, data layout → user approval (auto f
 Scout researches similar product patterns, design trends → `ui-research.md`. Extract reusable knowledge. Append summary to `phase-context.md`.
 
 ### 8. UI Design Gate (if checked)
-Designer produces design document → user approval (auto for autonomous) → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — weaver's input).
+Designer produces design document → user approval (auto for autonomous) → append to `phase-context.md`. Also outputs `.claude/flow/DESIGN.md` (structured specs — forge's input).
 
 After DESIGN.md is written, inform the user:
 ```
@@ -176,9 +171,9 @@ Design viewer available. To review and edit tokens interactively:
   python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/design-server.py
 Then open http://localhost:8765 in your browser.
 ```
-If the user edits tokens via the viewer, wait for their confirmation before proceeding to Implementation so DESIGN.md changes are picked up by weaver.
+If the user edits tokens via the viewer, wait for their confirmation before proceeding to Implementation so DESIGN.md changes are picked up by forge.
 
-**IRON LAW for UI tasks: weaver MAY NOT be dispatched until DESIGN.md exists.** If DESIGN.md is missing and the task is frontend-UI, STOP and run designer first.
+**IRON LAW for UI tasks: forge MAY NOT be dispatched until DESIGN.md exists.** If DESIGN.md is missing and the task is frontend-UI, STOP and run designer first.
 
 **Hard enforcement for deep mode:** In deep mode with frontend-UI tasks, designer is MANDATORY — no exceptions. Before proceeding to Implementation (step 9), explicitly verify:
 1. Task domain includes frontend-UI → YES? → designer MUST have run
@@ -210,9 +205,9 @@ FOR each task batch:
 
 | Agent Type | Max Parallel | Isolation |
 |---|---|---|
-| forge / weaver (code) | 3 | worktree if file conflict |
+| forge (code) | 3 | worktree if file conflict |
 | prism (tests) | 2 | worktree if file conflict |
-| anvil (build) | 1 | never parallel |
+| prism (build) | 1 | never parallel |
 
 #### Handoff Contract
 
@@ -319,7 +314,7 @@ For deep and autonomous modes, dispatch each review stage as a **separate sentin
 For quick/standard: single sentinel run with both stages (no `review_focus` parameter) — backward compatible.
 
 ### 11. Acceptance Gate (if checked)
-After sentinel APPROVE, invoke validator. Validator reads `plan-brief.md`, runs build+tests, checks feature delivery.
+After sentinel APPROVE, invoke prism. Prism reads `plan-brief.md`, runs build+tests, checks feature delivery.
 
 Outcomes: ACCEPT→TaskUpdate completed; REJECT→back to implementer (max 2 rounds).
 
@@ -332,9 +327,9 @@ environment error → escalate to user
 unknown          → investigate (max 2 retries), escalate
 ```
 
-### 13. Documentation + Report
-Invoke chronicler if: new public APIs, user requested docs, or existing docs/ directory. Use `verification-before-completion`. Set phase to `idle`. Present a concise final summary: outcome, files, verification, caveats.
+### 13. Report
 
+Present a concise final summary: outcome, files changed, verification results, caveats.
 ## Verification
 
 **IRON LAW: NEVER claim a phase is complete without fresh verification evidence.**
@@ -342,7 +337,7 @@ Invoke chronicler if: new public APIs, user requested docs, or existing docs/ di
 - "Tests pass" requires actual test output
 - "Build succeeds" requires actual build output
 - "Implementation matches plan" requires line-by-line comparison
-- TaskUpdate status=completed only after validator ACCEPT
+- TaskUpdate status=completed only after prism ACCEPT
 
 Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run Stage 2 before Stage 1 passes.
 
@@ -356,7 +351,7 @@ Review is two-stage: Stage 1 spec compliance → Stage 2 code quality. NEVER run
 - "I can skip TaskCreate and just do it inline"
 - "This frontend task doesn't need designer" ← WRONG. If Gate Checklist checked UI Design, run it.
 - "I can skip designer and go straight to Implementation" ← WRONG. In deep mode with frontend-UI, designer is mandatory — verify DESIGN.md exists before step 9.
-- "I'll dispatch weaver without DESIGN.md" ← WRONG. UI Design gate must complete first.
+- "I'll dispatch forge for UI work without DESIGN.md" ← WRONG. UI Design gate must complete first.
 
 ## Subagent Prompt Construction
 

@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import subprocess
 import sys
@@ -81,63 +80,40 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertTrue((ROOT / "hooks/scripts/plan-mode-guard.py").exists())
 
         plan_cmd = read_text(ROOT / "commands/plan.md")
+        workflow_plan = read_text(ROOT / "commands/workflow-plan.md")
+        workflow_status = read_text(ROOT / "commands/workflow-status.md")
+        write_plan = read_text(ROOT / "commands/write-plan.md")
+        using_flow = read_text(ROOT / "skills/using-claude-code-flow/SKILL.md")
+        orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+        writing_plans = read_text(ROOT / "skills/writing-plans/SKILL.md")
+        readme = read_text(ROOT / "README.md")
+        claude_md = read_text(ROOT / "CLAUDE.md")
+        guard_text = read_text(ROOT / "hooks/scripts/plan-mode-guard.py")
+
         self.assertIn("/workflow-plan", plan_cmd)
         self.assertIn("EnterPlanMode", plan_cmd)
         self.assertIn("host plan mode", plan_cmd.lower())
-        self.assertIn("/plan", plan_cmd)
-        self.assertIn("Do not invoke built-in plan mode", plan_cmd)
         self.assertIn("workflow-planning pipeline", plan_cmd)
-        self.assertIn("/workflow-plan", read_text(ROOT / "commands/workflow-plan.md"))
-        self.assertIn("plugin-side replacement", read_text(ROOT / "commands/workflow-plan.md"))
-        self.assertIn("Plugin workflow active", read_text(ROOT / "commands/workflow-status.md"))
-        self.assertIn("host plan mode", read_text(ROOT / "commands/workflow-status.md").lower())
-        guard_text = read_text(ROOT / "hooks/scripts/plan-mode-guard.py")
+        self.assertIn("plugin-side replacement", workflow_plan)
+        self.assertIn("Plugin workflow active", workflow_status)
+        self.assertIn("structured plan state", workflow_status.lower())
+        self.assertIn("plan-state.json", write_plan)
+        self.assertIn("plan-init", write_plan)
         self.assertIn("Use /plan or workflow-plan instead.", guard_text)
-        self.assertIn("EnterPlanMode", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("avoid `EnterPlanMode`", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("/plan", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("workflow-plan", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("plan mode", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md").lower())
-        self.assertIn("workflow-state.json", read_text(ROOT / "skills/dev-orchestrator/SKILL.md"))
-        self.assertIn("phase-context.md", read_text(ROOT / "skills/dev-orchestrator/SKILL.md"))
-        self.assertIn("plan-brief.md", read_text(ROOT / "skills/dev-orchestrator/SKILL.md"))
-        self.assertIn("context envelope", read_text(ROOT / "skills/writing-plans/SKILL.md").lower())
-        self.assertIn("source of truth", read_text(ROOT / "skills/writing-plans/SKILL.md").lower())
-        self.assertIn("plugin planning entry", read_text(ROOT / "README.md"))
-        self.assertIn("host-level plan transitions", read_text(ROOT / "README.md").lower())
-        self.assertIn("PreToolUse(EnterPlanMode)", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("Shift+Tab", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("`/plan` is the plugin planning entry", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("workflow-plan", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("EnterPlanMode", read_text(ROOT / "commands/plan.md"))
-        self.assertIn("Do not use `EnterPlanMode`", read_text(ROOT / "commands/plan.md"))
-        self.assertIn("host plan mode", read_text(ROOT / "commands/plan.md").lower())
-        self.assertIn("workflow-planning pipeline", read_text(ROOT / "commands/plan.md"))
-        self.assertIn("workflow-plan", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("plan mode", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md").lower())
-        self.assertIn("avoid `EnterPlanMode`", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("prefer `workflow-plan`", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md").lower())
-        self.assertIn("workflow-state.json", read_text(ROOT / "skills/dev-orchestrator/SKILL.md"))
-        self.assertIn("phase-context.md", read_text(ROOT / "skills/dev-orchestrator/SKILL.md"))
-        self.assertIn("plan-brief.md", read_text(ROOT / "skills/dev-orchestrator/SKILL.md"))
-        self.assertIn("context envelope", read_text(ROOT / "skills/writing-plans/SKILL.md").lower())
-        self.assertIn("source of truth", read_text(ROOT / "skills/writing-plans/SKILL.md").lower())
-        self.assertIn("plugin planning entry", read_text(ROOT / "README.md"))
-        self.assertIn("host-level plan transitions", read_text(ROOT / "README.md").lower())
-        self.assertIn("PreToolUse(EnterPlanMode)", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("Shift+Tab", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("`/plan` is the plugin planning entry", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("workflow-plan", read_text(ROOT / "CLAUDE.md"))
-        self.assertIn("EnterPlanMode", read_text(ROOT / "commands/plan.md"))
-        self.assertIn("Do not use `EnterPlanMode`", read_text(ROOT / "commands/plan.md"))
-        self.assertIn("host plan mode", read_text(ROOT / "commands/plan.md").lower())
-        self.assertIn("workflow-planning pipeline", read_text(ROOT / "commands/plan.md"))
-        self.assertIn("workflow-plan", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("plan mode", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md").lower())
-        self.assertIn("avoid `EnterPlanMode`", read_text(ROOT / "skills/using-claude-code-flow/SKILL.md"))
-        self.assertIn("workflow-plan-detector.py", hooks_text)
-        self.assertIn("plan-mode-guard.py", hooks_text)
-        self.assertIn('"matcher": "EnterPlanMode"', hooks_text)
+        self.assertIn("avoid `EnterPlanMode`", using_flow)
+        self.assertIn("prefer `workflow-plan`", using_flow.lower())
+        self.assertIn("plan-state.json", orchestrator)
+        self.assertIn("plan-brief.md", orchestrator)
+        self.assertIn("workflow-state.json", orchestrator)
+        self.assertIn("context envelope", writing_plans.lower())
+        self.assertIn("source of truth", writing_plans.lower())
+        self.assertIn("plan-state.json", readme.lower())
+        self.assertIn("plan_hash", readme)
+        self.assertIn("host-level plan transitions", readme.lower())
+        self.assertIn("PreToolUse(EnterPlanMode)", claude_md)
+        self.assertIn("Shift+Tab", claude_md)
+        self.assertIn("`/plan` is the plugin planning entry", claude_md)
+        self.assertIn("workflow-plan", claude_md)
 
     def test_python_hook_scripts_compile(self):
         scripts = sorted((ROOT / "hooks/scripts").glob("*.py"))
@@ -163,33 +139,20 @@ class PluginIntegrityTests(unittest.TestCase):
 
     def test_agent_model_effort_configuration_is_valid(self):
         expected_model = {
-            "atlas": "opus",
-            "chronicler": "haiku",
             "designer": "sonnet",
-            "evolver": "opus",
             "forge": "sonnet",
             "oracle": "opus",
-            "pd": "sonnet",
             "prism": "sonnet",
-            "scout": "sonnet",
+            "scout": "haiku",
             "sentinel": "sonnet",
-            "validator": "haiku",
-            "weaver": "sonnet",
-            "anvil": "haiku",
-            "artist": "sonnet",
+            "artist": "haiku",
         }
         expected_effort = {
-            "atlas": "xhigh",
             "designer": "high",
-            "evolver": "high",
             "forge": "high",
             "oracle": "xhigh",
-            "pd": "medium",
             "prism": "high",
-            "scout": "medium",
             "sentinel": "high",
-            "weaver": "high",
-            "artist": "medium",
         }
         allowed_effort = {"low", "medium", "high", "xhigh", "max"}
 
@@ -229,6 +192,75 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertEqual(state["mode"], "standard")
             self.assertEqual(state["verification_count"], 2)
             self.assertIn("last_verification", state)
+
+    def test_plan_state_round_trip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "hooks/scripts/flow-state.py"),
+                    "plan-init",
+                    json.dumps(
+                        {
+                            "title": "Ship structured plans",
+                            "goal": "Move planning state into script-managed JSON",
+                            "tasks": [
+                                {
+                                    "title": "Add plan state",
+                                    "test_command": "python -m unittest tests.test_plugin_integrity",
+                                    "acceptance": ["plan state exists"],
+                                },
+                                {
+                                    "title": "Export plan brief",
+                                    "depends_on": [1],
+                                    "acceptance": ["brief renders"],
+                                },
+                            ],
+                        }
+                    ),
+                ],
+                cwd=tmp,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            state_path = Path(tmp) / ".claude" / "flow" / "workflow-state.json"
+            plan_path = Path(tmp) / ".claude" / "flow" / "plan-state.json"
+            brief_path = Path(tmp) / ".claude" / "flow" / "plan-brief.md"
+
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            self.assertEqual(state["plan_hash"], plan["plan_hash"])
+            self.assertEqual(state["plan_status"], "draft")
+            self.assertEqual(state["plan_title"], "Ship structured plans")
+            self.assertEqual(state["plan_task_total"], 2)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "hooks/scripts/flow-state.py"),
+                    "plan-approve",
+                    "Approved for execution",
+                ],
+                cwd=tmp,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            brief = brief_path.read_text(encoding="utf-8")
+            self.assertEqual(plan["status"], "approved")
+            self.assertTrue(plan["approved"])
+            self.assertEqual(state["plan_status"], "approved")
+            self.assertEqual(state["plan_hash"], plan["plan_hash"])
+            self.assertIn("# Ship structured plans Implementation Plan", brief)
+            self.assertIn("**Goal:** Move planning state into script-managed JSON", brief)
+            self.assertIn("### Task 1: Add plan state", brief)
+            self.assertIn("### Task 2: Export plan brief", brief)
+            self.assertIn("**Depends on:** 1", brief)
 
     def test_track_verification_records_bash_evidence(self):
         payload = {
