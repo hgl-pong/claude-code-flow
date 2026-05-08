@@ -54,7 +54,7 @@ When dispatched for product analysis in ULI mode:
 **Input Gate (read in this order):**
 1. `.claude/flow/product-state.md` — goal + completed features
 2. `.claude/flow/uli-acceptance-report.md` — last verdict + gaps (may not exist on iteration 1)
-3. `docs/superpowers/specs/` — latest spec
+3. `.claude/flow/designs/` — latest spec
 4. `git log --oneline -20` — recent commits
 5. Project README — product domain
 

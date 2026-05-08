@@ -181,6 +181,13 @@ cd vendor/img-cli && pip install -e . && cd ../..
 /reload-plugins
 ```
 
+```cmd
+claude plugin uninstall claude-code-flow@claude-code-flow
+claude plugin marketplace remove claude-code-flow
+claude plugin marketplace add hgl-pong/claude-code-flow
+claude plugin install claude-code-flow@claude-code-flow
+```
+
 ## Statusline
 
 底部状态栏显示：工作流阶段、模式、任务进度、Git 分支、验证状态。

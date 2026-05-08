@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Helper functions for Claude Code E2E tests.
-# Modelled on obra/superpowers test patterns.
+# Helper functions modelled on common Claude Code plugin test patterns.
 
 set -euo pipefail
 

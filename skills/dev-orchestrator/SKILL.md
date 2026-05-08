@@ -125,7 +125,7 @@ Phase handoff: each gate agent appends output to `phase-context.md`. Oracle writ
 ### 1. Analyze + Mode Select + Domain Detect
 Start with `using-claude-code-flow`. Classify: domain (using Task Domain Detection rules), complexity, needs design/research? Select mode, set phase to `plan`.
 
-For new features, behavior changes, UI work, architecture changes, or broad refactors, run `brainstorming` first. Save substantial specs to `docs/superpowers/specs/`.
+For new features, behavior changes, UI work, architecture changes, or broad refactors, run `brainstorming` first. Save substantial specs to `.claude/flow/designs/`.
 
 ### 2. Evaluate Gate Checklist
 Run the Mandatory Gate Checklist above. Record which gates are mandatory in `phase-context.md` under a `## Gate Checklist` section. Example:

@@ -18,7 +18,7 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 1. Use `using-claude-code-flow` to select companion skills.
 2. **Analyze**: domain (frontend-ui / backend / cross-domain), complexity (1-2 vs 3+ subtasks), and whether the request changes behavior, UI, architecture, or multiple files.
 3. **Domain detect**: use Task Domain Detection rules from `dev-orchestrator`. Classify as frontend-UI, backend, or cross-domain.
-4. **Brainstorm** if the task is new, behavior-changing, UI-facing, architectural, or a broad refactor. Save substantial designs to `docs/superpowers/specs/`.
+4. **Brainstorm** if the task is new, behavior-changing, UI-facing, architectural, or a broad refactor. Save substantial designs to `.claude/flow/designs/`.
 5. **Select mode**: 1-2 subtasks → quick; 3-5 → standard; 6+ or cross-module → deep; "figure it out" → autonomous.
 6. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`.
 7. **Create structured plan state** with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
