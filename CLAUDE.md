@@ -31,12 +31,13 @@ bash tests/skill-triggering/run-all.sh
 ### Model-Tiered Agent Pipeline
 
 Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `model` alias and, for Opus/Sonnet agents, an `effort` level:
-- **Opus xhigh** (oracle): Planning, architecture, system decomposition
-- **Sonnet high** (forge, prism, sentinel, designer): Implementation, testing/acceptance, review, UI design
-- **Sonnet high** (forge, prism, sentinel, designer): Implementation, testing, review, UI design
+- **Opus xhigh** (oracle): Planning, architecture, system decomposition, UI design decisions
+- **Sonnet high** (forge, prism, sentinel): Implementation, testing/acceptance, review
 - **Haiku** (scout, artist): Research, image generation
 
-Some agents are **READ-ONLY** (sentinel, designer) — they produce reports/designs only, never modify code.
+UI design is handled by the `ui-design` skill (not a separate agent). Oracle decides during planning whether to invoke it for frontend-UI tasks.
+
+`sentinel` is the only READ-ONLY agent — it produces review reports, never modifies code.
 
 ### Workflow Pipeline
 
@@ -92,7 +93,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (496 symbols, 883 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (508 symbols, 894 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

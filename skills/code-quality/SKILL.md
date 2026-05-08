@@ -1,7 +1,7 @@
 ---
 name: Code Quality
-version: "1.0.0"
-description: This skill should be used when the user asks about "code quality", "best practices", "clean code", "code smells", "refactoring", "design patterns", "SOLID principles", or any topic related to writing maintainable, well-structured code. Also triggers when reviewing code for quality issues.
+version: "1.1.0"
+description: "Use for: code quality, best practices, refactoring, design patterns, SOLID, code smells. Triggers on code review and quality questions."
 ---
 
 # Code Quality Standards

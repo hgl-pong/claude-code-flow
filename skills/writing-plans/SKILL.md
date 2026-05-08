@@ -1,7 +1,7 @@
 ---
 name: Writing Plans
 version: "1.0.0"
-description: Use after requirements or a design are approved and before executing a multi-step implementation.
+description: "Use for: creating implementation plans from approved designs, task breakdown with test-first structure."
 ---
 
 # Writing Plans
@@ -48,6 +48,15 @@ Every plan starts with:
 **Goal:** <one sentence>
 **Architecture:** <2-3 sentence summary>
 **Verification:** <main commands and acceptance checks>
+
+## Decisions
+- <decision>: <rationale>
+
+## Rejected Alternatives
+- <alternative>: <why rejected>
+
+## Risks
+- <risk>: <mitigation>
 ```
 
 ## Process

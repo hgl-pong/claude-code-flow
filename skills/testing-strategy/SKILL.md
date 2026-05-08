@@ -1,7 +1,7 @@
 ---
 name: Testing Strategy
-version: "1.0.0"
-description: This skill should be used when the user asks about "testing", "write tests", "test strategy", "test coverage", "unit tests", "integration tests", "end-to-end tests", "mocking", "TDD", or when implementing any production behavior change. Triggers when planning test approach, writing tests, setting up test infrastructure, fixing bugs, or adding features.
+version: "1.1.0"
+description: "Use for: test writing, TDD, test strategy, coverage, unit/integration/E2E tests, mocking. Triggers on behavior changes."
 ---
 
 # Testing Strategy

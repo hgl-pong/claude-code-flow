@@ -1,27 +1,27 @@
 # Claude Code Flow
 
-Claude Code 开发工作流插件。7 个专职 Agent、模型分层、门控流水线、会话持久化。
+Claude Code 开发工作流插件。6 个专职 Agent + UI 设计 Skill、模型分层、门控流水线、会话持久化、关键词路由。
 
 ## 核心概念
 
-- **Structured Plan State**: Plan 权威在 `.claude/flow/plan-state.json` 和 `workflow-state.json`，`plan_hash` 追踪方案身份，`plan-brief.md` 是 agent 交接层
+- **Structured Plan State**: Plan 权威在 `.claude/flow/plan-state.json` 和 `workflow-state.json`，`plan_hash` 追踪方案身份，`plan-brief.md` 是 agent 交接层（含 Decisions/Rejected/Risks 字段）
 - **Plan Mode Routing**: `/plan` 路由到 `/workflow-plan`，`PreToolUse(EnterPlanMode)` 拦截内置 plan mode
 - **Host-level plan transitions**: Shift+Tab / SDK `set_permission_mode` 等宿主转换无法被插件拦截，需退出后重跑 `/plan`
 - **Quick-fix routing**: 按 `forge` / `prism` 任务域分发，非默认路由到 backend/general
+- **Keyword routing**: UserPromptSubmit hook 自动检测任务模式关键词，推荐匹配 skill
 
 ## Agent
 
-| Agent | 模型 | 职责 |
-|-------|------|------|
-| `oracle` | Opus xhigh | 规划 + 架构设计 |
-| `forge` | Sonnet high | 全栈实现（后端 + 前端） |
-| `prism` | Sonnet high | 测试 + 构建 + 验收 |
-| `sentinel` | Sonnet high | 代码审查（两阶段：规格合规 → 代码质量） |
-| `designer` | Sonnet high | UI/UX 设计规格（只读） |
-| `scout` | Haiku | 调研 + 产品分析 |
-| `artist` | Haiku | 图像生成与识别 |
+| Agent | 模型 | 职责 | Prompt Schema |
+|-------|------|------|---------------|
+| `oracle` | Opus xhigh | 规划 + 架构 + UI 设计决策 | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
+| `forge` | Sonnet high | 全栈实现（后端 + 前端） | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
+| `prism` | Sonnet high | 测试 + 构建 + 验收 | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
+| `sentinel` | Sonnet high | 代码审查（两阶段） | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
+| `scout` | Haiku | 调研 + 产品分析 | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
+| `artist` | Haiku | 图像生成与识别 | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
 
-`sentinel` 和 `designer` 是只读 agent，不修改代码。
+所有 agent 统一 prompt schema。`sentinel` 是只读 agent。UI 设计由 `ui-design` skill 处理，oracle 在规划阶段决定是否调用。
 
 ## 工作流
 
@@ -39,7 +39,7 @@ Plan + Architecture (oracle)
   auto:     自动批准
       |
       v
-UI Design (designer) ── 仅前端任务 + standard 以上模式
+UI Design (ui-design skill) ── 仅前端任务 + standard 以上模式，oracle 决定
       |
       v
 Implementation (forge) ── 全栈实现
@@ -93,12 +93,15 @@ Review (sentinel) ── 两阶段审查
 
 ## Skills
 
+Skills 使用渐进式披露：精简 SKILL.md（< 3000 词）+ `references/` 按需加载。所有 skill 支持 Standalone 模式（零工具可用）+ Enhanced 模式（连接 GitNexus/Tavily 等增强）。
+
 | Skill | 触发场景 |
 |-------|----------|
-| `dev-orchestrator` | 主编排：分析任务、选择模式、DAG 调度、分发 Agent |
+| `dev-orchestrator` | 多步开发任务编排、Agent 调度、流水线管理 |
 | `using-claude-code-flow` | 对话开始时选择正确的 workflow skill |
+| `ui-design` | UI/UX 设计规格、组件设计、色彩/排版系统、design tokens |
 | `brainstorming` | 将粗略想法细化为批准的设计 |
-| `writing-plans` | 从设计创建具体的实现计划 |
+| `writing-plans` | 从设计创建实现计划（含 Decisions/Rejected/Risks） |
 | `testing-strategy` | 测试策略、TDD、测试金字塔 |
 | `code-quality` | 代码质量标准、最佳实践 |
 | `systematic-debugging` | 系统化调试：复现 → 定位 → 证明 → 修复 |
@@ -118,6 +121,7 @@ Review (sentinel) ── 两阶段审查
 
 | 事件 | 功能 |
 |------|------|
+| UserPromptSubmit | ULW/ULI/plan 模式检测 + 关键词 skill 路由 |
 | SessionStart | git 状态检查、session_id 生成、状态快照 |
 | PostToolUse(Write/Edit) | 文件修改追踪 + Agent 所有权 |
 | PostToolUse(Bash) | 验证证据追踪（test/build/lint 分类） |
@@ -133,19 +137,19 @@ Review (sentinel) ── 两阶段审查
 
 ```
 claude-code-flow/
-├── agents/                # 7 个专职 Agent
-│   ├── oracle.md          # Opus — 规划 + 架构
+├── agents/                # 6 个专职 Agent
+│   ├── oracle.md          # Opus — 规划 + 架构 + UI 设计决策
 │   ├── forge.md           # Sonnet — 全栈实现
 │   ├── prism.md           # Sonnet — 测试 + 构建 + 验收
 │   ├── sentinel.md        # Sonnet — 代码审查
-│   ├── designer.md        # Sonnet — UI/UX 设计
-│   ├── scout.md           # Sonnet — 调研 + 分析
-│   └── artist.md          # Sonnet — 图像生成
+│   ├── scout.md           # Haiku — 调研 + 分析
+│   ├── artist.md          # Haiku — 图像生成
+│   └── references/        # Agent 共享知识库
 ├── commands/              # Slash 命令
-├── skills/                # 技能（自动触发的工作流知识）
+├── skills/                # 技能（渐进式披露：SKILL.md + references/）
 ├── hooks/                 # Hook 脚本
 │   ├── hooks.json         # Hook 注册
-│   └── scripts/           # Python/Bash 脚本
+│   └── scripts/           # Python/Bash 脚本（含 keyword-router.py）
 ├── .claude/flow/          # 运行时状态（gitignored）
 └── scripts/
     └── statusline.sh      # 底部状态栏

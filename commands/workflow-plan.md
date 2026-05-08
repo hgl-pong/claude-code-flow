@@ -27,7 +27,7 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan → user approval; autonomous→structured plan → auto-approve. Oracle creates tasks via TaskCreate.
 11. **Architecture** (if checked): oracle for architecture → approval.
 12. **UI Research** (if checked, frontend-UI tasks only): scout research → `ui-research.md`.
-13. **UI Design** (if checked, frontend-UI tasks only): designer spec → `DESIGN.md` → approval.
+13. **UI Design** (if checked, frontend-UI tasks only): `ui-design` skill → `DESIGN.md` → approval.
 14. **Create execution handoff**: use `writing-plans` for multi-step work, then build self-contained context envelopes for subagents.
 15. **Hand off**: frontend-UI→forge after `DESIGN.md`; backend/general→forge; tests/acceptance→prism. Do not skip `writing-plans` for multi-step work that needs coordinated execution.
 16. **Quick fix exception**: for a narrow one-file fix with known root cause and no design change, skip the full planning pipeline and go straight to the smallest safe change.

@@ -1,7 +1,7 @@
 ---
 name: Systematic Debugging
-version: "1.0.0"
-description: Use when fixing bugs, test failures, crashes, flaky behavior, performance regressions, or any issue where the root cause is not already proven.
+version: "1.1.0"
+description: "Use for: fixing bugs, test failures, crashes, flaky behavior, performance regressions. Root cause investigation before fix."
 ---
 
 # Systematic Debugging
@@ -55,6 +55,16 @@ Reproduce the failure. Prove the cause. Then fix. Patching without understanding
 - Changing multiple unrelated things in one attempt.
 - Calling a flaky sleep a synchronization fix.
 - Reporting success without rerunning the failing scenario.
+
+## Capability Tiers
+
+**Standalone** (always works):
+- Reproduce, localize, prove, fix, verify with project's test runner
+
+**Enhanced** (with connected tools):
+- + GitNexus: trace execution flows to suspected code, impact analysis on fix targets
+- + Tavily: search for known issues, library-specific debugging patterns
+- + IDE MCP: breakpoints, call stacks, watch variables
 
 ## Completion Evidence
 

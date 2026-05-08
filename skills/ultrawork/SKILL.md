@@ -56,7 +56,7 @@ ULW GATE CHECKLIST (all gates auto-approve but all must execute):
 [ ] Plan (oracle) — ALWAYS mandatory
 [ ] Architecture (oracle) — mandatory when: new system, 3+ modules, cross-cutting change
 [ ] UI Research (scout) — mandatory when task domain is frontend-UI
-[ ] UI Design (designer) — mandatory when task domain is frontend-UI
+[ ] UI Design (ui-design skill) — mandatory when task domain is frontend-UI
 [ ] Review (sentinel) — ALWAYS mandatory
 [ ] Acceptance (prism) — ALWAYS mandatory
 ```
@@ -82,7 +82,7 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
 4. Architecture (auto-approve, if checked) — oracle produces design. Append to `phase-context.md`.
 5. UI Research (auto-approve, if checked) — scout researches design patterns. Write `ui-research.md`.
-6. UI Design (auto-approve, if checked) — designer produces `DESIGN.md`. **forge MAY NOT be dispatched until DESIGN.md exists.**
+6. UI Design (auto-approve, if checked) — `ui-design` skill produces `DESIGN.md`. **forge MAY NOT be dispatched until DESIGN.md exists.**
 7. Implementation (Ralph Loop + parallel scheduler):
    - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
    - **Parallel scheduler** (see dev-orchestrator Step 9): file conflict analysis, worktree isolation, dispatch non-conflicting agents in one message with `run_in_background: true`. Max 3 forge, 2 prism, 1 build.
@@ -164,5 +164,5 @@ After max retries: **escalate**. Never loop infinitely.
 | "I'll verify in the next iteration" | There is no next iteration. Verify now. |
 | "The remaining task is trivial" | Trivial means 2 minutes, not skippable. Do it. |
 | "I ran out of retries" | Escalate. Never silently skip. |
-| "This frontend task doesn't need designer" | If Gate Checklist checked UI Design, run it. No exceptions. |
+| "This frontend task doesn't need ui-design skill" | If Gate Checklist checked UI Design, run it. No exceptions. |
 | "Auto-approve means I can skip this gate" | Auto-approve means no user prompt. The gate still executes. |

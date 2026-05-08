@@ -1,7 +1,7 @@
 ---
 name: Verification Before Completion
-version: "1.0.0"
-description: Use before declaring work complete, especially after implementation, bug fixes, refactors, reviews, or acceptance testing.
+version: "1.1.0"
+description: "Use for: final verification before declaring done. Triggers after implementation, bug fixes, refactors, reviews."
 ---
 
 # Verification Before Completion

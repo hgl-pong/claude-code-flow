@@ -139,7 +139,6 @@ class PluginIntegrityTests(unittest.TestCase):
 
     def test_agent_model_effort_configuration_is_valid(self):
         expected_model = {
-            "designer": "sonnet",
             "forge": "sonnet",
             "oracle": "opus",
             "prism": "sonnet",
@@ -148,7 +147,6 @@ class PluginIntegrityTests(unittest.TestCase):
             "artist": "haiku",
         }
         expected_effort = {
-            "designer": "high",
             "forge": "high",
             "oracle": "xhigh",
             "prism": "high",
