@@ -162,7 +162,7 @@ After max retries: **escalate**. Never loop infinitely.
 | "I'm 90% done, close enough to emit `<ulw-done>`" | 90% is not 100%. The remaining 10% is what the user asked for. |
 | "The tests are flaky, not my fault" | Flaky tests are your problem in autonomous mode. Fix or isolate them. |
 | "I'll verify in the next iteration" | There is no next iteration. Verify now. |
-| "The remaining task is trivial" | Trivial means 2 minutes, not skippable. Do it. |
+| "The remaining task is trivial" | Trivial means one file, not skippable. Do it. |
 | "I ran out of retries" | Escalate. Never silently skip. |
 | "This frontend task doesn't need ui-design skill" | If Gate Checklist checked UI Design, run it. No exceptions. |
 | "Auto-approve means I can skip this gate" | Auto-approve means no user prompt. The gate still executes. |

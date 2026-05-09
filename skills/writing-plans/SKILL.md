@@ -69,11 +69,13 @@ Every plan starts with:
 
 ## Task Shape
 
-Each task should be independently understandable:
+Each task should be independently understandable. Annotate `agent:` and `blockedBy:` so the orchestrator can build the dispatch DAG without guessing.
 
 ```markdown
 ### Task N: <name>
 
+**Agent:** forge | prism | sentinel | scout
+**BlockedBy:** [task IDs] | none
 **Files:**
 - Create: `path/to/new-file`
 - Modify: `path/to/existing-file`
@@ -88,6 +90,14 @@ Each task should be independently understandable:
 - [ ] Step 5: Review and record evidence
 ```
 
+**Agent assignment rules:**
+- `forge` — any file creation/modification
+- `prism` — test runs, build verification, acceptance checks
+- `sentinel` — review only; always after prism; never writes code
+- `scout` — research, analysis, doc reading; writes only analysis output files (e.g. `ui-research.md`), not implementation files
+
+**BlockedBy rules:** only add a true data dependency. "Task B needs Task A's output file" → blocked. "Task B is in the same module" → NOT a reason to block; check for file conflict instead.
+
 ## Quality Bar
 
 - Exact file paths.
@@ -95,7 +105,7 @@ Each task should be independently understandable:
 - Expected output for tests that should fail or pass.
 - No placeholders.
 - No "similar to previous task"; repeat the needed details.
-- Each implementation task should normally take 2-5 minutes; split anything larger into test, implementation, and verification tasks.
+- Each task has one verification command that proves it done. If you can't write a single command, the task needs to be split.
 - Prefer fewer abstractions until duplication or complexity proves the need.
 
 ## Self-Review

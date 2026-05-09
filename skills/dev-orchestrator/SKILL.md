@@ -77,6 +77,8 @@ Key rules:
 ### 9. Implementation (Ralph Loop)
 Set phase to `impl`. Apply `testing-strategy` before production code. For bugs with unknown cause, apply `systematic-debugging` first.
 
+For large tasks (3+ subtasks): invoke `dispatching-parallel-agents` skill before the first dispatch — it determines batch groupings, file conflict isolation, and inter-agent handoff contracts.
+
 **Stateless iteration:**
 ```
 FOR each task batch:

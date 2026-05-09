@@ -6,7 +6,7 @@ description: "Use for: UI/UX design specs, component design, color/typography sy
 
 # UI Design
 
-Produces structured, implementable design documents with a strong point of view. Writes `.claude/flow/DESIGN.md` as forge's primary input.
+Produces a persistent `DESIGN.md` design system document (project root) following the Google open standard. Forge reads it as the implementation contract.
 
 ## Iron Law
 
@@ -52,10 +52,11 @@ If product intent, target user, or required flows are unclear, ask for context i
 ### Phase 1: Understand Context
 Read existing codebase (framework, component library, styling). Read `ui-research.md` if available. Identify domain, users, emotional tone.
 
-### Phase 2: Load Design Knowledge (MANDATORY)
+## Phase 2: Load Design Knowledge (MANDATORY)
 Read at the start of every task:
 - `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/anti-ai-design.md` — anti-AI-generic rules
 - `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-knowledge-base.md` — product references
+- `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-md-spec.md` — DESIGN.md format spec (Google open standard)
 
 You must know and follow every rule in anti-ai-design.md. Violations produce AI-generic output.
 
@@ -73,6 +74,14 @@ Banned: "modern and clean", "sleek", "minimal", "intuitive", "user-friendly", an
 
 ### Phase 5: Produce Design Document
 
+Check if `DESIGN.md` exists in the project root:
+- **Exists** → Read it fully, then extend: add new tokens to YAML frontmatter, add new component sections, update Do's and Don'ts. Never overwrite existing tokens.
+- **Does not exist** → Create `DESIGN.md` at project root following the full spec in `design-md-spec.md`.
+
+Write YAML frontmatter first (machine-readable tokens), then the 8 markdown body sections in spec order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts.
+
+Every component in scope for the current task must appear in `## Components` with ALL states specified (default, hover, focus-visible, active, disabled, loading, error). Missing states are a failure.
+
 ## Failure Modes
 
 - **Generic design**: Passes the "any other product?" test → Fix: add domain-specific personality
@@ -83,17 +92,26 @@ Banned: "modern and clean", "sleek", "minimal", "intuitive", "user-friendly", an
 
 ## Output
 
-**Design Brief** (`.claude/flow/DESIGN.md`): Structured markdown — Components table, Design Direction, Color Tokens (semantic + CSS vars), Typography (fonts with rationale, px/rem scale, weights, line-height, letter-spacing), Responsive breakpoints, States per Component. Factual, no prose. This is forge's primary input.
+**`DESIGN.md`** (project root, alongside `package.json`/`README.md`): Persistent design system document following the [google-labs-code/design.md](https://github.com/google-labs-code/design.md) open standard.
+
+- **YAML frontmatter**: machine-readable tokens — `colors`, `typography`, `rounded`, `spacing`, `components` (with `{token.path}` cross-references)
+- **Markdown body** (8 sections in spec order): Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts
+
+This is a **persistent project artifact**, not a per-task brief. Forge reads it as the implementation contract. Future UI tasks extend it — never recreate it from scratch.
+
+See `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-md-spec.md` for full format, schema, and examples.
 
 ## Self-Review
 
+- [ ] YAML frontmatter present with all token groups (colors, typography, rounded, spacing, components)
+- [ ] All color tokens are semantic names, not raw hex in component rules
+- [ ] Token cross-references use `{path.to.token}` syntax
+- [ ] All 8 markdown body sections present in spec order
 - [ ] Real content — no lorem ipsum, no "Item 1"
 - [ ] Design Direction passes "any other product?" sniff test
 - [ ] "The One Thing" written
 - [ ] References with explicit borrow AND divergence
-- [ ] Every component has ALL states (empty + loading mandatory)
-- [ ] Semantic color tokens, tinted grays
-- [ ] Typography: specific px/rem with line-height and letter-spacing
+- [ ] Every in-scope component has ALL states (default, hover, focus-visible, active, disabled, loading, error — empty + success where applicable)
+- [ ] Typography: specific px values with line-height and letter-spacing
 - [ ] No banned elements (anti-ai-design.md) without justification
-- [ ] Varied layout sections
 - [ ] Microcopy for: empty, error, loading, success, onboarding

@@ -27,6 +27,7 @@ Routine final replies should usually be 3-6 bullets or 1-2 short paragraphs.
 | New feature, behavior change, refactor, UI work, or multi-file delivery | `brainstorming` first, then `writing-plans` |
 | Task needs planning, sequencing, or cross-agent coordination | `workflow-plan` (or `/plan`, which maps here instead of built-in plan mode) |
 | Multi-step implementation with approved plan | `dev-orchestrator` |
+| Large task with 3+ subtasks needing parallel agent dispatch | `dispatching-parallel-agents` (invoked by dev-orchestrator) |
 | Bug or failing behavior with unknown cause | `systematic-debugging` |
 | Any production code change | `testing-strategy` with TDD cycle |
 | Code review request | `code-quality` and `sentinel` |

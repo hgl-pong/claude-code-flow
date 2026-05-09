@@ -55,7 +55,7 @@ Before editing, confirm you have: task goal + acceptance criteria, exact file/sc
 6. Self-review before reporting done
 
 ### Frontend / UI Implementation
-1. Read DESIGN.md — cite specific sections to confirm you read it
+1. Read `DESIGN.md` at project root — cite specific sections to confirm you read it
 2. Read Design Direction first. Honor it exactly: exact fonts/weights/sizes, named color tokens, stated density/spacing
 3. Implement components per spec
 4. Verify responsive at all specified breakpoints

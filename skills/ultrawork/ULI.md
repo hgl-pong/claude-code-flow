@@ -53,7 +53,7 @@ Each iteration stores artifacts in a dedicated directory:
 Working copies at fixed paths (for agents that reference them):
 - `.claude/flow/uli-proposal.md` — current iteration's proposal
 - `.claude/flow/uli-acceptance-report.md` — last iteration's acceptance report
-- `.claude/plans/plan-brief.md` — current iteration's task brief
+- `.claude/flow/plan-brief.md` — current iteration's task brief
 
 ## ULI Stop Hook
 
@@ -150,7 +150,7 @@ Oracle reads `.claude/flow/uli-proposal.md` and decomposes it into ALL tasks nee
 
 1. Oracle creates tasks via `TaskCreate` with `blockedBy` dependencies
 2. Writes implementation plan to `.claude/flow/uli/iterations/<N>/plan.md`
-3. Writes agent brief to `.claude/plans/plan-brief.md`
+3. Writes agent brief to `.claude/flow/plan-brief.md`
 4. Sets total tasks: `flow-state.py ulw-set-total <N>`
 
 **VERIFY:** `plan-brief.md` exists and TaskList shows all tasks for this iteration. Every CORE requirement from the proposal maps to at least one task.
@@ -161,7 +161,7 @@ Do NOT show plan to user (autonomous mode).
 
 **Ralph Loop**: each agent dispatch is stateless — self-contained prompt via Context Envelope, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
 
-Use parallel scheduler (see dev-orchestrator): file conflict analysis, worktree isolation for conflicting tasks, dispatch non-conflicting agents in a single message with `run_in_background: true`. Max 3 parallel for forge, 2 for prism, 1 for prism. Every agent prompt must use the **Context Envelope** format.
+Use parallel scheduler (see dev-orchestrator): file conflict analysis, worktree isolation for conflicting tasks, dispatch non-conflicting agents in a single message with `run_in_background: true`. Max 3 parallel for forge, 2 for prism (unit/integration), 1 for prism (build). Every agent prompt must use the **Context Envelope** format.
 
 Test-first RED→GREEN→refactor→record evidence. All code→forge; tests/build/acceptance→prism.
 
@@ -190,7 +190,7 @@ Update state: `uli-set-phase acceptance`
 Agent({
   name: "prism",
   subagent_type: "claude-code-flow:prism",
-  prompt: "Run acceptance for ULI iteration N. Read .claude/plans/plan-brief.md and .claude/flow/uli-proposal.md. Run: (1) build, (2) full tests, (3) verify each CORE requirement from proposal. ACCEPT or REJECT with gap list."
+  prompt: "Run acceptance for ULI iteration N. Read .claude/flow/plan-brief.md and .claude/flow/uli-proposal.md. Run: (1) build, (2) full tests, (3) verify each CORE requirement from proposal. ACCEPT or REJECT with gap list."
 })
 ```
 
