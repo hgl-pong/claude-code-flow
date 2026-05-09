@@ -77,7 +77,7 @@ Do not add dependencies speculatively. Every new dependency needs: concrete need
 5. Verify build succeeds
 
 ### Acceptance Verification
-1. **Read Plan** — `plan-state.json` for requirements, `plan-brief.md` for brief
+1. **Read Plan** — `plan-state.json` for requirements, `<output_dir>/plan-brief.md` for brief (output_dir from envelope; check `.claude/flow/uli/<slug>/`, `.claude/flow/ulw/<slug>/`, or `.claude/flow/plans/<slug>/`)
 2. **Verify Build** — run build command. Fail → REJECT immediately
 3. **Run Tests** — full test suite, record pass/fail
 4. **Check Feature Delivery** — per requirement: files exist, APIs callable, components render

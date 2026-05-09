@@ -15,7 +15,7 @@ GATE CHECKLIST (evaluate for this specific task):
     produce findings before plan gate.
 
 [ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
-    Oracle MUST produce plan-brief.md with TaskCreate tasks.
+    Oracle MUST produce `<output_dir>/plan-brief.md` with TaskCreate tasks.
 
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
@@ -114,7 +114,7 @@ When an agent completes:
 7. Record evidence in `verification-evidence.jsonl`
 8. Check if new tasks are now unblocked → dispatch next batch
 
-After every 3 tasks: write key decisions to `phase-context.md`.
+After every 3 tasks: write key decisions to `<output_dir>/phase-context.md`.
 
 ## Error Recovery
 

@@ -64,13 +64,13 @@ Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase <m
 Start with `using-claude-code-flow`. Classify domain, complexity, select mode. For new features/behavior changes/UI work: run `brainstorming` first.
 
 ### 2. Evaluate Gate Checklist
-See `${CLAUDE_PLUGIN_ROOT}/skills/dev-orchestrator/references/pipeline-operations.md` for full gate checklist. Record checked gates in `phase-context.md`. Plan authority lives in `plan-state.json` and `workflow-state.json`.
+See `${CLAUDE_PLUGIN_ROOT}/skills/dev-orchestrator/references/pipeline-operations.md` for full gate checklist. Record checked gates in `<output_dir>/phase-context.md` (e.g. `.claude/flow/plans/<slug>/`). Plan authority lives in `plan-state.json` and `workflow-state.json`.
 
 ### 3-8. Execute Gates in Order
-Run checked gates sequentially. Each gate agent appends output to `phase-context.md`.
+Run checked gates sequentially. Each gate agent appends output to `<output_dir>/phase-context.md`.
 
 Key rules:
-- **Plan Gate**: oracle creates plan-brief.md + TaskCreate tasks with blockedBy
+- **Plan Gate**: oracle creates `<output_dir>/plan-brief.md` + TaskCreate tasks with blockedBy
 - **UI Design Gate**: if oracle determined UI design is needed, `ui-design` skill produces DESIGN.md before forge dispatches. IRON LAW for UI tasks: forge MAY NOT dispatch until DESIGN.md exists.
 - **Review Gate**: two-stage (spec compliance → code quality). NEVER reverse order. See `pipeline-operations.md` for subagent-driven review in deep/autonomous mode.
 
@@ -98,7 +98,7 @@ Context envelope template and dispatch details: `${CLAUDE_PLUGIN_ROOT}/skills/de
 Two-stage sentinel review. See `pipeline-operations.md` for subagent-driven mode.
 
 ### 11. Acceptance Gate (if checked)
-Prism reads `plan-brief.md`, runs build+tests, checks feature delivery. ACCEPT→complete; REJECT→back to implementer (max 2 rounds).
+Prism reads `<output_dir>/plan-brief.md`, runs build+tests, checks feature delivery. ACCEPT→complete; REJECT→back to implementer (max 2 rounds).
 
 ### 12. Report
 Concise summary: outcome, files changed, verification results, caveats.

@@ -35,7 +35,7 @@ Persist the authoritative plan in structured workflow state first:
 - `.claude/flow/plan-state.json`
 - `.claude/flow/workflow-state.json`
 
-Export `.claude/flow/plan-brief.md` only as the agent-readable brief when needed.
+Export `.claude/flow/plans/<task-slug>/plan-brief.md` only as the agent-readable brief when needed. Always pass the full slug path explicitly: `flow-state.py plan-approve --output .claude/flow/plans/<task-slug>/plan-brief.md`
 Never treat `docs/` as the source of truth for plan state.
 
 ## Required Header
@@ -123,4 +123,4 @@ For execution, use the orchestrator's subagent-driven loop when tasks are indepe
 
 Every task handed to `dev-orchestrator` must be convertible into the orchestrator context envelope: goal, exact task, working directory, completed dependencies, file scope, test command, acceptance criteria, relevant excerpts, constraints, and out-of-scope boundaries. If any field is missing, keep planning instead of dispatching an implementation agent.
 
-The source of truth is the approved plan/spec plus `phase-context.md` and `plan-brief.md`; do not rely on chat history for implementation details.
+The source of truth is the approved plan/spec plus `<output_dir>/phase-context.md` and `<output_dir>/plan-brief.md`; do not rely on chat history for implementation details.

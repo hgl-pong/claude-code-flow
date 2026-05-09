@@ -11,7 +11,8 @@ from datetime import datetime, timezone
 FLOW_DIR = os.path.join(".claude", "flow")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 PLAN_FILE = os.path.join(FLOW_DIR, "plan-state.json")
-PLAN_BRIEF_FILE = os.path.join(FLOW_DIR, "plan-brief.md")
+ULI_STATE_FILE = os.path.join(FLOW_DIR, "uli-state.json")
+PLAN_BRIEF_FILE = os.path.join(FLOW_DIR, "plan-brief.md")  # legacy default; pass --output for slug-namespaced paths
 SNAPSHOT_DIR = os.path.join(FLOW_DIR, "snapshots")
 ARCHIVE_DIR = os.path.join(FLOW_DIR, "archive")
 SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
@@ -98,6 +99,26 @@ def save_state(state):
     state["updated_at"] = now()
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
+
+
+def sync_uli_state_file(uli: dict) -> None:
+    """Keep uli-state.json in sync so the stop hook (bash) can read it directly."""
+    os.makedirs(FLOW_DIR, exist_ok=True)
+    flat = {
+        "active": uli.get("active", True),
+        "session_id": uli.get("session_id", get_session_id()),
+        "goal": uli.get("goal", ""),
+        "iteration": uli.get("iteration", 1),
+        "max_iterations": uli.get("max_iterations", 10),
+        "current_phase": uli.get("current_phase", "init"),
+        "current_task_slug": uli.get("current_task_slug", ""),
+        "pd_proposal_ready": uli.get("pd_proposal_ready", False),
+        "acceptance_status": uli.get("acceptance_status"),
+        "started_at": uli.get("started_at", now()),
+        "last_iteration_at": uli.get("last_iteration_at", now()),
+    }
+    with open(ULI_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(flat, f, indent=2)
 
 
 def load_plan():
@@ -473,14 +494,23 @@ def main():
         print(json.dumps(plan, indent=2))
 
     elif action == "plan-approve":
+        args = sys.argv[2:]
+        path = PLAN_BRIEF_FILE
+        if "--output" in args:
+            idx = args.index("--output")
+            if idx + 1 >= len(args):
+                print("ERROR: --output requires a path argument", file=sys.stderr)
+                sys.exit(1)
+            path = args[idx + 1]
+            args = args[:idx] + args[idx + 2:]
+        summary = " ".join(args).strip()
         plan = load_plan()
-        summary = " ".join(sys.argv[2:]).strip()
         plan["approved"] = True
         plan["status"] = "approved"
         if summary:
             plan["summary"] = summary
         plan = save_plan_and_state(plan)
-        export_plan(plan)
+        export_plan(plan, path)
         print(json.dumps(plan, indent=2))
 
     elif action == "plan-export":
@@ -551,37 +581,75 @@ def main():
         state = load_state()
         state["uli"] = {
             "active": True,
+            "session_id": get_session_id(),
             "goal": goal,
             "iteration": 1,
             "max_iterations": max_iter,
             "current_phase": "init",
+            "current_task_slug": "",
             "pd_proposal_ready": False,
             "acceptance_status": None,
             "retry_count": 0,
+            "started_at": now(),
+            "last_iteration_at": now(),
         }
         state["mode"] = "autonomous"
         state["phase"] = "plan"
         save_state(state)
-        uli_dir = os.path.join(FLOW_DIR, "uli", "iterations")
+        sync_uli_state_file(state["uli"])
+        uli_dir = os.path.join(FLOW_DIR, "uli")
         os.makedirs(uli_dir, exist_ok=True)
         print(f"ULI_INIT: iteration=1 max={max_iter} dir={uli_dir}")
+
+    elif action == "uli-set-task":
+        slug = sys.argv[2] if len(sys.argv) > 2 else "task"
+        state = load_state()
+        if "uli" not in state:
+            print("WARNING: uli-set-task called before uli-init — slug stored but other fields may be missing", file=sys.stderr)
+            state["uli"] = {}
+        state["uli"]["current_task_slug"] = slug
+        save_state(state)
+        sync_uli_state_file(state["uli"])
+        task_dir = os.path.join(FLOW_DIR, "uli", slug)
+        os.makedirs(task_dir, exist_ok=True)
+        print(f"ULI_SET_TASK: slug={slug} dir={task_dir}")
+
+    elif action == "ulw-set-task":
+        slug = sys.argv[2] if len(sys.argv) > 2 else "task"
+        state = load_state()
+        if "ulw" not in state:
+            print("WARNING: ulw-set-task called before ulw-init — slug stored but other fields may be missing", file=sys.stderr)
+            state["ulw"] = {}
+        state["ulw"]["current_task_slug"] = slug
+        save_state(state)
+        task_dir = os.path.join(FLOW_DIR, "ulw", slug)
+        os.makedirs(task_dir, exist_ok=True)
+        print(f"ULW_SET_TASK: slug={slug} dir={task_dir}")
 
     elif action == "uli-set-phase":
         phase = sys.argv[2] if len(sys.argv) > 2 else "plan"
         state = load_state()
-        if "uli" in state:
+        if "uli" not in state:
+            print("WARNING: uli-set-phase called before uli-init", file=sys.stderr)
+        else:
             state["uli"]["current_phase"] = phase
         save_state(state)
+        if "uli" in state:
+            sync_uli_state_file(state["uli"])
 
     elif action == "uli-next":
         state = load_state()
         if "uli" in state:
             state["uli"]["iteration"] += 1
             state["uli"]["current_phase"] = "pd_generating"
+            state["uli"]["current_task_slug"] = ""
             state["uli"]["pd_proposal_ready"] = False
             state["uli"]["acceptance_status"] = None
             state["uli"]["retry_count"] = 0
+            state["uli"]["last_iteration_at"] = now()
         save_state(state)
+        if "uli" in state:
+            sync_uli_state_file(state["uli"])
         print(state["uli"]["iteration"])
 
     elif action == "uli-get":

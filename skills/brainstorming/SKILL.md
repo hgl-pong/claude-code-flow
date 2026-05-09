@@ -44,7 +44,7 @@ Do not implement until there is an approved design. For tiny work, the design ca
    - Ask for approval before implementation.
 
 5. **Save the spec when the task is substantial**
-   - Path: `.claude/flow/designs/YYYY-MM-DD-<topic>-design.md`
+   - Path: `.claude/flow/designs/<topic>-design.md`
    - Include goals, non-goals, chosen approach, tasks, risks, and verification.
 
 ## Design Checks

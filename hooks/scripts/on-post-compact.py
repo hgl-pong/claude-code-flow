@@ -35,7 +35,7 @@ def main():
             print(f"FLOW: WARNING: {w}")
 
     if phase not in ("idle", "unknown"):
-        print(f"FLOW: Resume pipeline from '{phase}' phase. Re-read phase-context.md for context.")
+        print(f"FLOW: Resume pipeline from '{phase}' phase. Re-read phase-context.md (check plans/<slug>/, ulw/<slug>/) for context.")
 
 if __name__ == "__main__":
     main()

@@ -19,6 +19,7 @@ Triggered by: `ulw-detector` hook (user wrote `ulw`/`ultrawork`), or `/ulw` invo
 1. Write ULW state file via: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-init "<ORIGINAL_PROMPT>"`
 2. Set workflow mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous`
 3. Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan`
+4. Derive a task slug (2–4 words kebab-case) from the task description; set via `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-task "<slug>"` — creates `.claude/flow/ulw/<slug>/`. All subsequent file writes for this task go inside this directory.
 
 ## Step 1 — Intent Gate
 
@@ -61,7 +62,7 @@ ULW GATE CHECKLIST (all gates auto-approve but all must execute):
 [ ] Acceptance (prism) — ALWAYS mandatory
 ```
 
-Record checked gates in `phase-context.md` under `## Gate Checklist`.
+Record checked gates in `.claude/flow/ulw/<slug>/phase-context.md` under `## Gate Checklist`.
 
 **CRITICAL: A checked gate MUST execute, even in autonomous mode. Auto-approve means no user confirmation needed, NOT that the gate is skipped.**
 
@@ -77,11 +78,11 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 
 ### `implement` / `refactor`
 
-1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `phase-context.md`. Do NOT present options.
+1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `.claude/flow/ulw/<slug>/phase-context.md`. Do NOT present options.
 2. Research (auto-approve, if checked) — invoke scout for external info. Skip only for pure internal logic tasks.
 3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
-4. Architecture (auto-approve, if checked) — oracle produces design. Append to `phase-context.md`.
-5. UI Research (auto-approve, if checked) — scout researches design patterns. Write `ui-research.md`.
+4. Architecture (auto-approve, if checked) — oracle produces design. Append to `.claude/flow/ulw/<slug>/phase-context.md`.
+5. UI Research (auto-approve, if checked) — scout researches design patterns. Write `.claude/flow/ulw/<slug>/ui-research.md`.
 6. UI Design (auto-approve, if checked) — `ui-design` skill produces `DESIGN.md`. **forge MAY NOT be dispatched until DESIGN.md exists.**
 7. Implementation (Ralph Loop + parallel scheduler):
    - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.

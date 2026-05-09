@@ -148,9 +148,9 @@ Never have two forge agents write to the same new shared file — one owns it.
 
 When forge is blocked on a design decision not in the plan:
 1. Task status → `BLOCKED`
-2. Write a one-paragraph question to `phase-context.md` (tag: `[ESCALATION]`)
+2. Write a one-paragraph question to `<output_dir>/phase-context.md` (tag: `[ESCALATION]`)
 3. Orchestrator detects BLOCKED status, reads the question, routes to oracle for a decision
-4. Oracle appends decision to `phase-context.md` (tag: `[DECISION]`)
+4. Oracle appends decision to `<output_dir>/phase-context.md` (tag: `[DECISION]`)
 5. Orchestrator re-dispatches forge with the decision injected into the envelope
 
 ## Completion Handling
@@ -162,7 +162,7 @@ After each agent completes:
 3. Verify evidence exists for behavior changes (RED/GREEN)
 4. `TaskUpdate(status: "completed")`
 5. Scan TaskList for newly unblocked tasks → dispatch next batch immediately
-6. Every 3 completed tasks: write summary to `phase-context.md`
+6. Every 3 completed tasks: write summary to `<output_dir>/phase-context.md`
 
 ## Red Flags
 

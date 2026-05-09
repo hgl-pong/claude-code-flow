@@ -37,23 +37,22 @@ Partial delivery does not advance the iteration. Shipping broken features is wor
 
 ## Iteration Document Structure
 
-Each iteration stores artifacts in a dedicated directory:
+Each iteration stores artifacts in a folder named by a short English slug derived from its goal:
 
 ```
-.claude/flow/uli/iterations/
-├── 1/
-│   ├── proposal.md          # PD requirements proposal (PRD for this iteration)
-│   ├── plan.md              # Oracle implementation plan
-│   └── acceptance-report.md # Acceptance verdict + evidence
-├── 2/
-│   └── ...
-└── ...
+.claude/flow/uli/
+├── product-state.md              # Shared across all iterations — goal + cumulative features
+├── <task-slug>/                  # e.g. "add-auth", "fix-login", "build-test-suite"
+│   ├── proposal.md               # PD requirements proposal (PRD for this iteration)
+│   ├── analysis.md               # Scout product analysis
+│   ├── plan.md                   # Oracle implementation plan
+│   ├── plan-brief.md             # Agent-readable brief
+│   └── acceptance-report.md     # Acceptance verdict + evidence
+└── <next-task-slug>/
+    └── ...
 ```
 
-Working copies at fixed paths (for agents that reference them):
-- `.claude/flow/uli-proposal.md` — current iteration's proposal
-- `.claude/flow/uli-acceptance-report.md` — last iteration's acceptance report
-- `.claude/flow/plan-brief.md` — current iteration's task brief
+**Slug derivation:** at the start of each iteration, derive a 2–4 word kebab-case slug from the iteration goal (e.g., "add user auth" → `add-user-auth`). Store it in `uli-state.json` as `current_task_slug`. All agents in this iteration receive the slug via their Context Envelope and use it to construct paths.
 
 ## ULI Stop Hook
 
@@ -64,8 +63,8 @@ Working copies at fixed paths (for agents that reference them):
 1. Write ULI state file via: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-init "<GOAL_FROM_USER_PROMPT>"` (default: max_iterations=10)
 2. Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous`
 3. Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan`
-4. Create/verify `.claude/flow/product-state.md` (goal + completed features + known gaps).
-5. Create iteration directory: `mkdir -p .claude/flow/uli/iterations/1`
+4. Create/verify `.claude/flow/uli/product-state.md` (goal + completed features + known gaps).
+5. Derive iteration-1 slug from the first iteration's expected goal (kebab-case, 2–4 words). Set via: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-task "<slug>"`; creates `.claude/flow/uli/<slug>/`.
 6. Branch off main: `git checkout -b uli/$(date +%Y%m%d-%H%M%S)-iteration-loop`
 
 ## Iteration Loop (Steps 1-5, repeat until max_iterations or goal achieved)
@@ -107,16 +106,17 @@ Agent({
 - **Goal:** <product goal>
 - **Your Task:** Analyze product state and recommend next iteration priorities.
 - **Iteration:** N / max_iterations
-- **Completed Features:** <read from product-state.md>
-- **Last Verdict:** <read from uli-acceptance-report.md, may not exist>
+- **Completed Features:** <read from .claude/flow/uli/product-state.md>
+- **Last Verdict:** <read from .claude/flow/uli/<slug>/acceptance-report.md, may not exist>
+- **Task Slug:** <slug>
 
-Read product-state.md, uli-acceptance-report.md, recent git log, and project README.
-Write analysis to .claude/flow/uli-analysis.md with: product state summary, gap analysis, top 3 recommended areas with rationale.
+Read .claude/flow/uli/product-state.md, .claude/flow/uli/<slug>/acceptance-report.md, recent git log, and project README.
+Write analysis to .claude/flow/uli/<slug>/analysis.md with: product state summary, gap analysis, top 3 recommended areas with rationale.
 """
 })
 ```
 
-Wait for scout. Read `.claude/flow/uli-analysis.md`.
+Wait for scout. Read `.claude/flow/uli/<slug>/analysis.md`.
 
 **1b. Oracle proposes requirements:**
 
@@ -130,30 +130,30 @@ Agent({
 - **Goal:** <product goal>
 - **Your Task:** Propose requirements for iteration N based on the product analysis.
 - **Iteration:** N / max_iterations
-- **Product Analysis:** <read from .claude/flow/uli-analysis.md>
+- **Product Analysis:** <read from .claude/flow/uli/<slug>/analysis.md>
 - **Constraints:** Max 3 CORE, every CORE must have concrete, executable acceptance criterion.
 
-Output to .claude/flow/uli/iterations/<N>/proposal.md and copy to .claude/flow/uli-proposal.md.
+Output to .claude/flow/uli/<slug>/proposal.md.
 """
 })
 ```
 
-Wait for oracle. Read `uli-proposal.md` (working copy). Verify at least 1 CORE requirement with concrete acceptance criterion. If none or untestable, stop ULI and report to user.
+Wait for oracle. Read `.claude/flow/uli/<slug>/proposal.md`. Verify at least 1 CORE requirement with concrete acceptance criterion. If none or untestable, stop ULI and report to user.
 
-**VERIFY:** `.claude/flow/uli/iterations/<N>/proposal.md` exists and contains at least 1 CORE requirement. If not, STOP.
+**VERIFY:** `.claude/flow/uli/<slug>/proposal.md` exists and contains at least 1 CORE requirement. If not, STOP.
 
 Update state: `uli-set-phase dev_pipeline`
 
 ### Step 2 — Oracle Plan (ALL tasks for this iteration)
 
-Oracle reads `.claude/flow/uli-proposal.md` and decomposes it into ALL tasks needed for this iteration.
+Oracle reads `.claude/flow/uli/<slug>/proposal.md` and decomposes it into ALL tasks needed for this iteration.
 
 1. Oracle creates tasks via `TaskCreate` with `blockedBy` dependencies
-2. Writes implementation plan to `.claude/flow/uli/iterations/<N>/plan.md`
-3. Writes agent brief to `.claude/flow/plan-brief.md`
+2. Writes implementation plan to `.claude/flow/uli/<slug>/plan.md`
+3. Writes agent brief to `.claude/flow/uli/<slug>/plan-brief.md`
 4. Sets total tasks: `flow-state.py ulw-set-total <N>`
 
-**VERIFY:** `plan-brief.md` exists and TaskList shows all tasks for this iteration. Every CORE requirement from the proposal maps to at least one task.
+**VERIFY:** `.claude/flow/uli/<slug>/plan-brief.md` exists and TaskList shows all tasks for this iteration. Every CORE requirement from the proposal maps to at least one task.
 
 Do NOT show plan to user (autonomous mode).
 
@@ -173,7 +173,7 @@ After every task completes: `flow-state.py ulw-inc-done`
 
 ### Step 4 — Sentinel Review (two-stage)
 
-**Stage 1: Spec Compliance** — does implementation match the proposal? Check every CORE requirement from `uli-proposal.md`.
+**Stage 1: Spec Compliance** — does implementation match the proposal? Check every CORE requirement from `.claude/flow/uli/<slug>/proposal.md`.
 **Stage 2: Code Quality** — only runs if Stage 1 passes. Check naming, structure, error handling, test coverage.
 
 APPROVE→Step 5; REQUEST CHANGES→back to Step 3 implementer (max 2 loops); still failing→Step 5 with `acceptance_status = "sentinel_failed"`.
@@ -190,21 +190,20 @@ Update state: `uli-set-phase acceptance`
 Agent({
   name: "prism",
   subagent_type: "claude-code-flow:prism",
-  prompt: "Run acceptance for ULI iteration N. Read .claude/flow/plan-brief.md and .claude/flow/uli-proposal.md. Run: (1) build, (2) full tests, (3) verify each CORE requirement from proposal. ACCEPT or REJECT with gap list."
+  prompt: "Run acceptance for ULI iteration N. Read .claude/flow/uli/<slug>/plan-brief.md and .claude/flow/uli/<slug>/proposal.md. Run: (1) build, (2) full tests, (3) verify each CORE requirement from proposal. ACCEPT or REJECT with gap list."
 })
 ```
 
 **ACCEPT** (ALL must be true): build passes, tests pass, every CORE requirement verified.
 
 On ACCEPT:
-1. Write acceptance report to `.claude/flow/uli/iterations/<N>/acceptance-report.md`
-2. Copy to `.claude/flow/uli-acceptance-report.md` (working copy)
-3. Update `product-state.md` — append completed features
+1. Write acceptance report to `.claude/flow/uli/<slug>/acceptance-report.md`
+2. Update `.claude/flow/uli/product-state.md` — append completed features
 4. Commit: `feat(uli-N): <iteration goal>`
 5. Check loop condition:
    - If `iteration >= max_iterations` → Step 6
    - If product goal fully achieved → Step 6
-   - Else → increment: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-next`, go to Step 1
+   - Else → increment: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-next`; derive next iteration's slug from its expected goal and set via `uli-set-task <next-slug>`, then go to Step 1
 
 **REJECT** (first time): route back to Step 3 with gap list (max 2 retry loops within this iteration).
 
@@ -236,14 +235,14 @@ Apply `verification-before-completion` across all delivered features. Output:
 ## ULI Golden Rules
 
 1. **Write uli-state.json first** — Stop Hook needs it.
-2. **PD runs before dev — EVERY iteration** — never start pipeline without a fresh `uli-proposal.md`. PD MUST analyze product-state.md and produce a NEW proposal each time.
+2. **PD runs before dev — EVERY iteration** — never start pipeline without a fresh `uli/<slug>/proposal.md`. PD MUST analyze `.claude/flow/uli/product-state.md` and produce a NEW proposal each time.
 3. **One iteration = one PD proposal** — do not split, do not merge, do not skip PD.
-4. **Each iteration gets its own directory** — never overwrite previous iteration artifacts.
+4. **Each iteration gets its own slug-named directory** — never overwrite previous iteration artifacts.
 5. **Hard acceptance** — build + tests + feature checklist ALL must pass. One failure = REJECT.
 6. **REJECT after retries = escalate** — never retry more than 2 times per iteration.
 7. **Never emit `<uli-done>` after a REJECT** — only on full success.
 8. **Branch off main** — never commit directly to `main`/`master`.
-9. **Update product-state.md after each ACCEPT** — PD needs this for next iteration.
+9. **Update `.claude/flow/uli/product-state.md` after each ACCEPT** — PD needs this for next iteration.
 10. **No feature creep from PD** — PD proposes, dev delivers exactly that.
 11. **Ralph Loop runs tasks, not iterations** — the loop processes individual tasks within one iteration. Iteration boundary is PD→acceptance→commit.
 12. **Iteration context isolation** — each iteration's agents read from files, not session history. Prior iteration outputs are invisible to new agents.

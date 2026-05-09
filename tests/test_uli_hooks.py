@@ -181,6 +181,7 @@ class UliStopHookTests(unittest.TestCase):
             "iteration": 1,
             "max_iterations": 10,
             "current_phase": "dev_pipeline",
+            "current_task_slug": "build-calculator",
             "pd_proposal_ready": True,
             "acceptance_status": None,
             "started_at": "2026-04-30T00:00:00Z",
@@ -267,16 +268,16 @@ class UliStopHookTests(unittest.TestCase):
                 self.assertIn(phase, json.dumps(data),
                               f"Phase '{phase}' should appear in message")
 
-    def test_uli_state_updated_after_block(self):
-        """After blocking, iteration counter should be incremented."""
+    def test_uli_state_not_modified_after_block(self):
+        """After blocking, uli-state.json must NOT be modified (iteration only advances on ACCEPT)."""
         with tempfile.TemporaryDirectory() as tmp:
             state = self._active_state(iteration=3)
             _code, _out = run_stop_hook(state, [make_assistant_line("Still working...")], tmp_dir=tmp)
             updated = json.loads(
                 (Path(tmp) / ".claude" / "flow" / "uli-state.json").read_text(encoding="utf-8")
             )
-            self.assertEqual(updated["iteration"], 4,
-                             "Iteration should be incremented after block")
+            self.assertEqual(updated["iteration"], 3,
+                             "Iteration must NOT increment on block — only advances after acceptance")
 
     def test_uli_state_marked_inactive_after_done(self):
         """After <uli-done>, uli-state.json should have active=false."""
@@ -364,7 +365,7 @@ class UliSkillBranchTests(unittest.TestCase):
         self.assertIn("Hard Acceptance Gate", self.content)
 
     def test_product_analysis_proposal_flow_described(self):
-        self.assertIn("uli-proposal.md", self.content)
+        self.assertIn("uli/<slug>/proposal.md", self.content)
         self.assertIn("scout", self.content)
 
     def test_max_iterations_default_documented(self):

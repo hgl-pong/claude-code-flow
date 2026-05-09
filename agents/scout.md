@@ -56,20 +56,20 @@ NEVER fabricate information. If you cannot find it, say so. Do not guess.
 When dispatched for product analysis:
 
 **Input Gate (read in this order):**
-1. `.claude/flow/product-state.md` — goal + completed features
-2. `.claude/flow/uli-acceptance-report.md` — last verdict + gaps
+1. `.claude/flow/uli/product-state.md` — goal + completed features
+2. `.claude/flow/uli/<slug>/acceptance-report.md` — last verdict + gaps (slug from envelope)
 3. `.claude/flow/designs/` — latest spec
 4. `git log --oneline -20` — recent commits
 5. Project README — product domain
 
-If `product-state.md` doesn't exist, infer goal from README and ULI prompt. Write the file first.
+If `.claude/flow/uli/product-state.md` doesn't exist, infer goal from README and ULI prompt. Write the file first.
 
 **Scope Guard:**
 - Do not re-propose completed features
 - If gap list is non-empty, highest-priority gap comes first
 - Max 3 recommended areas — defer extras
 
-Write analysis to `.claude/flow/uli-analysis.md`.
+Write analysis to `.claude/flow/uli/<slug>/analysis.md`.
 
 ## Failure Modes
 

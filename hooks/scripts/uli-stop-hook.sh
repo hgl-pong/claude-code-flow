@@ -23,6 +23,7 @@
 #   "iteration": 1,
 #   "max_iterations": 10,
 #   "current_phase": "pd_generating|dev_pipeline|acceptance|complete",
+#   "current_task_slug": "<kebab-slug for current iteration, e.g. add-user-auth>",
 #   "pd_proposal_ready": false,
 #   "acceptance_status": null,
 #   "started_at": "<iso timestamp>",
@@ -56,6 +57,7 @@ ITERATION=$(jq -r '.iteration // 1' "$ULI_STATE_FILE")
 MAX_ITERATIONS=$(jq -r '.max_iterations // 10' "$ULI_STATE_FILE")
 GOAL=$(jq -r '.goal // "continue product development"' "$ULI_STATE_FILE")
 CURRENT_PHASE=$(jq -r '.current_phase // "pd_generating"' "$ULI_STATE_FILE")
+TASK_SLUG=$(jq -r '.current_task_slug // ""' "$ULI_STATE_FILE")
 
 # ── 3. Max iterations guard ────────────────────────────────────────────────
 if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -gt $MAX_ITERATIONS ]]; then
@@ -104,13 +106,13 @@ fi
 # Build phase-aware re-injection message
 case "$CURRENT_PHASE" in
   "pd_generating")
-    PHASE_MSG="Product analysis + proposal must run for this iteration. Continue: spawn scout to analyze product state, then oracle to propose requirements, wait for uli-proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
+    PHASE_MSG="Product analysis + proposal must run for this iteration. Continue: spawn scout to analyze product state, then oracle to propose requirements, wait for uli/${TASK_SLUG:-<slug>}/proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
     ;;
   "dev_pipeline")
     PHASE_MSG="The dev pipeline is still in progress for iteration ${ITERATION}. Continue: complete ALL implementation tasks for this iteration, run sentinel review (two-stage), then run prism acceptance. Do NOT advance to next iteration until acceptance passes."
     ;;
   "acceptance")
-    PHASE_MSG="Acceptance gate is pending for iteration ${ITERATION}. Continue: run prism for acceptance, check build + tests + feature checklist against uli-proposal.md, record result. Only on ACCEPT: commit, update product-state.md, increment iteration via uli-next, then spawn PD for next iteration."
+    PHASE_MSG="Acceptance gate is pending for iteration ${ITERATION}. Continue: run prism for acceptance, check build + tests + feature checklist against uli/${TASK_SLUG:-<slug>}/proposal.md, record result. Only on ACCEPT: commit, update uli/product-state.md, increment iteration via uli-next, then spawn PD for next iteration."
     ;;
   *)
     PHASE_MSG="Continue the ULI iteration loop for iteration ${ITERATION}: PD proposal exists → implement ALL tasks → sentinel review → hard acceptance → commit → increment → PD for next iteration."
@@ -118,7 +120,7 @@ case "$CURRENT_PHASE" in
 esac
 
 # ── 5a. Stuck detection ──────────────────────────────────────────────────────
-STUCK_FILE=".claude/flow/uli-stuck-tracker.json"
+STUCK_FILE=".claude/flow/uli/stuck-tracker.json"
 STUCK_MSG=""
 
 PREV_PHASE=""
@@ -143,6 +145,7 @@ jq -n --arg p "$CURRENT_PHASE" --argjson s "$STUCK_COUNT" \
 # ── 5b. Product state summary ────────────────────────────────────────────────
 PRODUCT_STATE_MSG=""
 PRODUCT_STATE_FILE=".claude/flow/uli/product-state.md"
+
 if [[ -f "$PRODUCT_STATE_FILE" ]]; then
   PRODUCT_SUMMARY=$(head -c 500 "$PRODUCT_STATE_FILE" 2>/dev/null || echo "")
   if [[ -n "$PRODUCT_SUMMARY" ]]; then
@@ -152,7 +155,7 @@ fi
 
 SYSTEM_MSG="ULI iteration ${ITERATION}/${MAX_ITERATIONS} | goal: ${GOAL} | phase: ${CURRENT_PHASE} | ${PHASE_MSG}${PRODUCT_STATE_MSG}${STUCK_MSG} | Output <uli-done>SUMMARY</uli-done> ONLY when all iterations are complete or the product goal is fully delivered."
 
-CONTINUATION_PROMPT="Continue ULI iteration ${ITERATION}. Goal: ${GOAL}. Phase: ${CURRENT_PHASE}. ONE ITERATION = one PD proposal + all tasks delivered + acceptance passed + commit. Do NOT treat individual tasks as iterations. Read .claude/flow/uli-state.json, .claude/flow/uli-proposal.md, and .claude/flow/uli-acceptance-report.md to understand where to resume, then continue the ultrawork skill ULI branch."
+CONTINUATION_PROMPT="Continue ULI iteration ${ITERATION}. Goal: ${GOAL}. Phase: ${CURRENT_PHASE}.${TASK_SLUG:+ Task slug: ${TASK_SLUG}.} ONE ITERATION = one PD proposal + all tasks delivered + acceptance passed + commit. Do NOT treat individual tasks as iterations. Read .claude/flow/uli-state.json and .claude/flow/uli/${TASK_SLUG:-<slug>}/ to understand where to resume, then continue the ultrawork skill ULI branch."
 
 jq -n \
   --arg prompt "$CONTINUATION_PROMPT" \

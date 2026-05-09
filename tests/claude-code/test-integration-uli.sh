@@ -4,10 +4,10 @@
 # Runs ONE full ULI iteration on a minimal project and verifies:
 #   1. uli-detector hook fires and ULI MODE ACTIVE is injected
 #   2. ultrawork skill (ULI branch) is invoked
-#   3. PD agent spawns and writes uli-proposal.md
+#   3. PD agent spawns and writes uli/proposal.md
 #   4. Dev pipeline executes (forge/weaver or equivalent)
 #   5. uli-state.json exists with expected structure
-#   6. uli-acceptance-report.md or <uli-done> emitted
+#   6. uli/acceptance-report.md or <uli-done> emitted
 #   7. product-state.md is created/updated
 #   8. At least one commit is made on a uli/ branch
 #
@@ -61,8 +61,8 @@ init_git_repo "$TEST_PROJECT"
 
 # Seed the product-state.md so ULI can read the goal
 # (In real use, the orchestrator creates this; we seed it to reduce PD cold-start cost)
-mkdir -p "$TEST_PROJECT/.claude/flow"
-cat >"$TEST_PROJECT/.claude/flow/product-state.md" <<'STATE'
+mkdir -p "$TEST_PROJECT/.claude/flow/uli"
+cat >"$TEST_PROJECT/.claude/flow/uli/product-state.md" <<'STATE'
 # Product State
 
 ## Goal
@@ -146,11 +146,11 @@ if [ -n "$SESSION_FILE" ]; then
   if grep -Eiq '"pd"|"claude-code-flow:pd"|subagent.*pd|pd.*agent' "$SESSION_FILE" 2>/dev/null; then
     echo "  [PASS] PD agent invocation found in session"
   else
-    # Fall back: check if uli-proposal.md was created (which PD writes)
-    if [ -f "$TEST_PROJECT/.claude/flow/uli-proposal.md" ]; then
-      echo "  [PASS] uli-proposal.md exists (PD output confirmed)"
+    # Fall back: check if uli/<slug>/proposal.md was created (which PD writes)
+    if find "$TEST_PROJECT/.claude/flow/uli" -name "proposal.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q .; then
+      echo "  [PASS] uli/<slug>/proposal.md exists (PD output confirmed)"
     else
-      echo "  [FAIL] PD agent not spawned and uli-proposal.md not found"
+      echo "  [FAIL] PD agent not spawned and uli/<slug>/proposal.md not found"
       FAILED=$((FAILED+1))
     fi
   fi
@@ -159,17 +159,18 @@ else
 fi
 echo ""
 
-# Test 3: uli-proposal.md was created and has CORE requirements
-echo "Test 3: uli-proposal.md created with CORE requirements..."
-if [ -f "$TEST_PROJECT/.claude/flow/uli-proposal.md" ]; then
-  echo "  [PASS] uli-proposal.md exists"
-  assert_file_contains "$TEST_PROJECT/.claude/flow/uli-proposal.md" \
+# Test 3: uli/<slug>/proposal.md was created and has CORE requirements
+echo "Test 3: uli/<slug>/proposal.md created with CORE requirements..."
+PROPOSAL_FILE=$(find "$TEST_PROJECT/.claude/flow/uli" -name "proposal.md" -mindepth 2 -maxdepth 2 2>/dev/null | head -1)
+if [ -n "$PROPOSAL_FILE" ]; then
+  echo "  [PASS] $PROPOSAL_FILE exists"
+  assert_file_contains "$PROPOSAL_FILE" \
     "\[CORE\]|CORE" "Contains CORE requirement" || FAILED=$((FAILED+1))
-  assert_file_contains "$TEST_PROJECT/.claude/flow/uli-proposal.md" \
+  assert_file_contains "$PROPOSAL_FILE" \
     "Acceptance|acceptance.criterion|acceptance_criterion" \
     "Contains acceptance criteria" || FAILED=$((FAILED+1))
 else
-  echo "  [FAIL] uli-proposal.md not found"
+  echo "  [FAIL] uli/<slug>/proposal.md not found"
   FAILED=$((FAILED+1))
 fi
 echo ""
@@ -227,14 +228,14 @@ echo ""
 
 # Test 7: product-state.md was updated with completed features
 echo "Test 7: product-state.md updated with completed features..."
-if [ -f "$TEST_PROJECT/.claude/flow/product-state.md" ]; then
+if [ -f "$TEST_PROJECT/.claude/flow/uli/product-state.md" ]; then
   # Check if it has any "Completed Features" that aren't "(none yet)"
-  if grep -Eiq "\[iteration|commit:|feat:" "$TEST_PROJECT/.claude/flow/product-state.md" 2>/dev/null; then
+  if grep -Eiq "\[iteration|commit:|feat:" "$TEST_PROJECT/.claude/flow/uli/product-state.md" 2>/dev/null; then
     echo "  [PASS] product-state.md has completed feature entries"
   else
     # Acceptable if acceptance didn't fully complete — check for ACCEPT in report
-    if [ -f "$TEST_PROJECT/.claude/flow/uli-acceptance-report.md" ] && \
-       grep -Eiq "ACCEPT|accept" "$TEST_PROJECT/.claude/flow/uli-acceptance-report.md" 2>/dev/null; then
+    if [ -f "$TEST_PROJECT/.claude/flow/uli/product-state.md" ] && \
+       find "$TEST_PROJECT/.claude/flow/uli" -name "acceptance-report.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q .; then
       echo "  [PASS] acceptance report exists — product-state may be partially updated"
     else
       echo "  [WARN] product-state.md may not have been updated (acceptance may still be in progress)"
@@ -271,14 +272,14 @@ if [ -f "$OUTPUT_FILE" ] && grep -q '<uli-done>' "$OUTPUT_FILE" 2>/dev/null; the
 fi
 
 acceptance_exists=false
-if [ -f "$TEST_PROJECT/.claude/flow/uli-acceptance-report.md" ]; then
+if find "$TEST_PROJECT/.claude/flow/uli" -name "acceptance-report.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q .; then
   acceptance_exists=true
 fi
 
 if $uli_done_in_output; then
   echo "  [PASS] <uli-done> tag found in Claude output"
 elif $acceptance_exists; then
-  echo "  [PASS] uli-acceptance-report.md exists (iteration completed)"
+  echo "  [PASS] uli/<slug>/acceptance-report.md exists (iteration completed)"
 else
   echo "  [WARN] No <uli-done> or acceptance report — iteration may still be in progress"
   echo "         (This is acceptable for --max-turns limited runs)"
@@ -322,10 +323,12 @@ echo ""
 
 # Artifact summary
 echo "Files created:"
-[ -f "$TEST_PROJECT/.claude/flow/uli-state.json" ]       && echo "  ✓ .claude/flow/uli-state.json"       || echo "  ✗ .claude/flow/uli-state.json"
-[ -f "$TEST_PROJECT/.claude/flow/product-state.md" ]     && echo "  ✓ .claude/flow/product-state.md"     || echo "  ✗ .claude/flow/product-state.md"
-[ -f "$TEST_PROJECT/.claude/flow/uli-proposal.md" ]      && echo "  ✓ .claude/flow/uli-proposal.md"      || echo "  ✗ .claude/flow/uli-proposal.md"
-[ -f "$TEST_PROJECT/.claude/flow/uli-acceptance-report.md" ] && echo "  ✓ .claude/flow/uli-acceptance-report.md" || echo "  ✗ .claude/flow/uli-acceptance-report.md"
+[ -f "$TEST_PROJECT/.claude/flow/uli-state.json" ]               && echo "  ✓ .claude/flow/uli-state.json"               || echo "  ✗ .claude/flow/uli-state.json"
+[ -f "$TEST_PROJECT/.claude/flow/uli/product-state.md" ]         && echo "  ✓ .claude/flow/uli/product-state.md"         || echo "  ✗ .claude/flow/uli/product-state.md"
+find "$TEST_PROJECT/.claude/flow/uli" -name "proposal.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q . \
+  && echo "  ✓ .claude/flow/uli/<slug>/proposal.md"        || echo "  ✗ .claude/flow/uli/<slug>/proposal.md"
+find "$TEST_PROJECT/.claude/flow/uli" -name "acceptance-report.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q . \
+  && echo "  ✓ .claude/flow/uli/<slug>/acceptance-report.md" || echo "  ✗ .claude/flow/uli/<slug>/acceptance-report.md"
 echo ""
 
 if [ "$FAILED" -eq 0 ]; then

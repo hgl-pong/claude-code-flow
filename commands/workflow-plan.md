@@ -22,7 +22,7 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 5. **Select mode**: 1-2 subtasks → quick; 3-5 → standard; 6+ or cross-module → deep; "figure it out" → autonomous.
 6. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`.
 7. **Create structured plan state** with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
-8. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `phase-context.md`.
+8. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `<output_dir>/phase-context.md` (e.g. `.claude/flow/plans/<slug>/`).
 9. **Research** (if checked): invoke scout for external info.
 10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan → user approval; autonomous→structured plan → auto-approve. Oracle creates tasks via TaskCreate.
 11. **Architecture** (if checked): oracle for architecture → approval.
@@ -34,7 +34,7 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 17. **Cross-domain exception**: if the task spans both frontend and backend, split the work by domain and run the applicable gates for each side.
 18. **Routing guard**: if the prompt clearly asks for planning, orchestration, or implementation sequencing, prefer `/workflow-plan` over jumping straight into implementation.
 19. **Execution rule**: after approval, hand the work to the smallest agent set that matches the file scope; keep parallel work non-overlapping.
-20. **Source of truth**: `plan-state.json`, `plan-brief.md`, and `phase-context.md` are the handoff artifacts; do not rely on chat history for execution details.
+20. **Source of truth**: `plan-state.json`, `<output_dir>/plan-brief.md`, and `<output_dir>/phase-context.md` are the handoff artifacts; do not rely on chat history for execution details.
 
 ## Usage
 

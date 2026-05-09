@@ -65,7 +65,7 @@ If UI design is needed, add a design step before forge implementation in the pla
 3. For each decision: Context → Decision → Rationale → Consequences
 4. Define API contracts, data models, interface boundaries
 5. Identify cross-cutting concerns and integration points
-6. Write to `.claude/flow/phase-context.md` under `## Architecture`
+6. Write to `<output_dir>/phase-context.md` under `## Architecture` (output_dir from envelope; default `.claude/flow/plans/<task-slug>/`)
 
 ### Planning
 1. Read codebase for architecture, conventions, dependencies
@@ -76,7 +76,7 @@ If UI design is needed, add a design step before forge implementation in the pla
 6. Export markdown only when workflow needs human-readable brief
 
 ### After Approval
-1. Write agent brief to `.claude/flow/plan-brief.md` — structured with: goal per phase, exact files, acceptance criteria, dependencies, risks, Decided/Rejected fields
+1. Write agent brief to `<output_dir>/plan-brief.md` — structured with: goal per phase, exact files, acceptance criteria, dependencies, risks, Decided/Rejected fields (output_dir from envelope; default `.claude/flow/plans/<task-slug>/`). Export via: `flow-state.py plan-approve --output <output_dir>/plan-brief.md`
 2. Create tasks via TaskCreate with subject, description, blockedBy
 3. If user requests changes: revise and re-run self-review
 
@@ -91,7 +91,7 @@ If UI design is needed, add a design step before forge implementation in the pla
 
 **Architecture**: Module decomposition, API contracts, data models, dependency graph, risk assessment.
 
-**Plan Brief** (`.claude/flow/plan-brief.md`): No prose — agents need actions.
+**Plan Brief** (`<output_dir>/plan-brief.md`): No prose — agents need actions.
 
 **Status**: DONE / NEEDS_CONTEXT / BLOCKED
 

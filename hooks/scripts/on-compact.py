@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 """PreCompact: preserve workflow state before context compaction."""
-import json, os
+import glob, json, os
 from datetime import datetime, timezone
 
 FLOW_DIR = os.path.join(".claude", "flow")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
-PHASE_CONTEXT = os.path.join(FLOW_DIR, "phase-context.md")
 MODIFIED_FILES_JSONL = os.path.join(FLOW_DIR, "modified-files.jsonl")
 VERIFICATION_EVIDENCE = os.path.join(FLOW_DIR, "verification-evidence.jsonl")
 PRE_COMPACT = os.path.join(FLOW_DIR, "pre-compact-context.md")
 
-CRITICAL_FILES = [
-    "workflow-state.json", "phase-context.md", "plans/plan-brief.md",
+# Base list — slug-namespaced files (plans/*/…, ulw/*/…, uli/*/…) are added dynamically in main()
+CRITICAL_FILES_BASE = [
+    "workflow-state.json",
     "modified-files.jsonl", "verification-evidence.jsonl",
     "last-verification.json", "ui-research.md",
 ]
@@ -19,9 +19,24 @@ CRITICAL_FILES = [
 def now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+
+def slug_namespaced_files() -> list[str]:
+    """Discover current plan-brief.md and phase-context.md under slug-named subdirs."""
+    found = []
+    for pattern in [
+        "plans/*/plan-brief.md", "plans/*/phase-context.md",
+        "ulw/*/phase-context.md",
+        "uli/*/plan-brief.md",
+    ]:
+        for path in sorted(glob.glob(os.path.join(FLOW_DIR, pattern))):
+            found.append(os.path.relpath(path, FLOW_DIR).replace("\\", "/"))
+    return found
+
+
 def main():
     os.makedirs(FLOW_DIR, exist_ok=True)
     sections = []
+    critical_files = CRITICAL_FILES_BASE + slug_namespaced_files()
 
     # 1. Current state
     state = {}
@@ -80,18 +95,24 @@ def main():
         except Exception:
             pass
 
-    # 4. Key decisions from phase-context (last 30 lines if file is large)
-    if os.path.exists(PHASE_CONTEXT):
-        try:
-            with open(PHASE_CONTEXT, "r") as f:
-                lines = f.readlines()
-            if lines:
-                sections.append("## Phase Context (recent)")
-                for line in lines[-30:]:
-                    sections.append(line.rstrip())
-                sections.append("")
-        except Exception:
-            pass
+    # 4. Key decisions from phase-context (last 30 lines; check slug-namespaced paths first)
+    phase_context_candidates = (
+        sorted(glob.glob(os.path.join(FLOW_DIR, "plans/*/phase-context.md"))) +
+        sorted(glob.glob(os.path.join(FLOW_DIR, "ulw/*/phase-context.md")))
+    )
+    for pc_path in phase_context_candidates:
+        if os.path.exists(pc_path):
+            try:
+                with open(pc_path, "r") as f:
+                    lines = f.readlines()
+                if lines:
+                    label = os.path.relpath(pc_path, FLOW_DIR).replace("\\", "/")
+                    sections.append(f"## Phase Context — {label} (recent)")
+                    for line in lines[-30:]:
+                        sections.append(line.rstrip())
+                    sections.append("")
+            except Exception:
+                pass
 
     content = "\n".join(sections)
     with open(PRE_COMPACT, "w") as f:
@@ -99,7 +120,7 @@ def main():
 
     # Output hint for the orchestrator to re-read critical files
     # Claude Code's createPostCompactFileAttachments() restores recently-read files
-    print(f"FLOW: Pre-compact context saved. Critical files: {', '.join(CRITICAL_FILES)}")
+    print(f"FLOW: Pre-compact context saved. Critical files: {', '.join(critical_files)}")
     print(f"FLOW: Phase={state.get('phase', 'unknown')}, Tasks={state.get('task_done', 0)}/{state.get('task_total', 0)}")
 
 if __name__ == "__main__":
