@@ -23,10 +23,10 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 6. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`.
 7. **Create structured plan state** with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
 8. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `<output_dir>/phase-context.md` (e.g. `.claude/flow/plans/<slug>/`).
-9. **Research** (if checked): invoke scout for external info.
-10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan → user approval; autonomous→structured plan → auto-approve. Oracle creates tasks via TaskCreate.
+9. **Research** (if checked): invoke scout for **both** local codebase analysis and external web research. Scout MUST complete before oracle starts — these are sequential, never parallel. Scout findings feed directly into oracle's planning context.
+10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan → user approval; autonomous→structured plan → auto-approve. Oracle creates tasks via TaskCreate. Oracle runs **after** scout completes, using scout's findings as input.
 11. **Architecture** (if checked): oracle for architecture → approval.
-12. **UI Research** (if checked, frontend-UI tasks only): scout research → `ui-research.md`.
+12. **UI Research** (if checked, frontend-UI tasks only): scout produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design gate.
 13. **UI Design** (if checked, frontend-UI tasks only): `ui-design` skill → `DESIGN.md` → approval.
 14. **Create execution handoff**: use `writing-plans` for multi-step work, then build self-contained context envelopes for subagents.
 15. **Hand off**: frontend-UI→forge after `DESIGN.md`; backend/general→forge; tests/acceptance→prism. Do not skip `writing-plans` for multi-step work that needs coordinated execution.

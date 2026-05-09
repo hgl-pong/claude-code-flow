@@ -12,16 +12,25 @@ GATE CHECKLIST (evaluate for this specific task):
     known root cause, config changes, single-file edits with clear spec.
 
 [ ] Gate 2: Research (scout) — see mode table. If mandatory: scout MUST
-    produce findings before plan gate.
+    complete BOTH local codebase analysis AND external web research before
+    plan gate. Scout and oracle are SEQUENTIAL — never dispatch oracle
+    until scout finishes and its findings are available.
 
 [ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
     Oracle MUST produce `<output_dir>/plan-brief.md` with TaskCreate tasks.
+    Oracle MUST receive scout's findings as input when Gate 2 was checked.
 
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
 
 [ ] Gate 5: UI Research (scout) — mandatory when task domain is frontend-UI
-    AND mode is standard+. Scout MUST produce ui-research.md.
+    AND mode is standard+. Scout MUST produce ui-research.md covering:
+    a) Local codebase: existing components, styling patterns, design tokens.
+    b) Competitor analysis: 2-3 similar products in the same domain — UI patterns,
+       visual language, interaction conventions.
+    c) Current design aesthetics: trending visual styles, typography choices,
+       color palettes, and interaction patterns relevant to the product domain.
+    Scout MUST complete before Gate 6 (UI Design) starts.
 
 [ ] Gate 6: UI Design (ui-design skill) — mandatory when task domain is frontend-UI
     AND mode is standard+. UI design skill MUST produce DESIGN.md before forge

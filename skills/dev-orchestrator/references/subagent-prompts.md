@@ -153,6 +153,8 @@ Agent({
 
 ## Scout (Research)
 
+Dispatch scout FIRST. Oracle MUST NOT start until scout completes.
+
 ```
 Agent({
   description: "Research: [topic]",
@@ -161,17 +163,83 @@ Agent({
   prompt: """
 Research [topic] and produce a structured report.
 
-## Questions to Answer
+## Phase 1: Local Codebase Analysis
 
-1. [specific question]
-2. [specific question]
-3. [specific question]
+1. Explore the existing code in [relevant paths] for related patterns, utilities, and conventions
+2. Identify existing abstractions that should be reused
+3. Note any constraints or gotchas in the current architecture
+
+## Phase 2: External Research
+
+1. [specific external question — APIs, libraries, best practices, etc.]
+2. [specific external question]
+3. [specific external question]
+
+Use the web-search skill (Tavily) for external research — NOT the built-in WebSearch tool.
+
+## Output
+
+Save findings to: [output path, e.g. `.claude/flow/designs/research-[topic].md`]
+
+Format: concise, actionable, with sources. Structure as:
+- **Local findings**: patterns, existing code, constraints
+- **External findings**: tools, APIs, best practices, with source URLs
+- **Recommendations**: what oracle should consider when planning
+"""
+})
+```
+
+## Scout (UI Research — frontend-UI tasks only)
+
+Use this template INSTEAD of the general scout template when Gate 5 (UI Research) is checked.
+If both Gate 2 and Gate 5 are checked, use this template and append any Gate 2-specific research questions (e.g., which state management library to use) to Phase 2.
+Dispatch BEFORE Gate 6 (UI Design). UI Design MUST NOT start until this scout completes.
+
+```
+Agent({
+  description: "UI Research: [product/domain]",
+  subagent_type: "claude-code-flow:scout",
+  model: "haiku",
+  prompt: """
+Produce a UI research report for [product/domain].
+
+## Phase 1: Local Codebase Analysis
+
+1. Explore existing UI components, styling patterns, design tokens, theme configuration
+2. Identify component library (if any), CSS framework, icon system
+3. Note existing color palette, typography choices, spacing conventions
+4. Check for existing DESIGN.md — summarize its current tokens and patterns
+
+## Phase 2: Competitor Analysis
+
+Research 2-3 competing/similar products in this domain:
+1. Identify their visual language: color palette, typography, iconography style
+2. Note distinctive UI patterns and interaction conventions
+3. What makes each recognizable (not generic)?
+4. Detailed descriptions of key screens (landing, dashboard, settings), with screenshots if tooling supports
+
+Use the web-search skill (Tavily) for competitor research — NOT the built-in WebSearch tool.
+
+## Phase 3: Current Design Aesthetics
+
+Research contemporary design trends relevant to this product domain:
+1. Trending visual styles (e.g., bento grids, glassmorphism, brutalist, neo-brutalist, warm minimalism)
+2. Typography trends: popular font pairings, variable font usage, size scales
+3. Color palette trends: gradient usage, pastel vs saturated, dark mode patterns
+4. Interaction patterns: micro-animations, scroll behaviors, transitions
+5. What distinguishes current-year design from generic "modern and clean"?
+
+Use the web-search skill (Tavily) for design trend research.
 
 ## Output
 
 Save findings to: [output path, e.g. `.claude/flow/designs/ui-research.md`]
 
-Format: concise, actionable, with sources. Focus on what's needed for the design decision, not exhaustive coverage.
+Format: concise, visual, with source URLs and screenshots where possible. Structure as:
+- **Local findings**: existing design system, tokens, component inventory
+- **Competitor analysis**: per-product breakdown with visual language notes
+- **Design trends**: actionable aesthetics relevant to this product domain
+- **Recommendations**: specific design directions for ui-design skill to consider
 """
 })
 ```

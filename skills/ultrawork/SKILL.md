@@ -79,10 +79,10 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 ### `implement` / `refactor`
 
 1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `.claude/flow/ulw/<slug>/phase-context.md`. Do NOT present options.
-2. Research (auto-approve, if checked) — invoke scout for external info. Skip only for pure internal logic tasks.
-3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan.
+2. Research (auto-approve, if checked) — invoke scout for **both** local codebase analysis and external web research. Scout MUST complete before oracle starts — these are sequential, never parallel. Skip only for pure internal logic tasks.
+3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan. Oracle runs **after** scout completes, using scout's findings as input.
 4. Architecture (auto-approve, if checked) — oracle produces design. Append to `.claude/flow/ulw/<slug>/phase-context.md`.
-5. UI Research (auto-approve, if checked) — scout researches design patterns. Write `.claude/flow/ulw/<slug>/ui-research.md`.
+5. UI Research (auto-approve, if checked) — scout produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design step.
 6. UI Design (auto-approve, if checked) — `ui-design` skill produces `DESIGN.md`. **forge MAY NOT be dispatched until DESIGN.md exists.**
 7. Implementation (Ralph Loop + parallel scheduler):
    - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.

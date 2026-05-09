@@ -40,6 +40,7 @@ Start with `using-claude-code-flow`. Classify domain (frontend-UI / backend / cr
 See `references/pipeline-operations.md` for full gate checklist and execution details. Record in `<output_dir>/phase-context.md`.
 
 Key rules:
+- **Research Gate → Plan Gate**: scout and oracle are STRICTLY SEQUENTIAL. Scout must finish both local codebase analysis and external web research before oracle starts. Never dispatch them in parallel. Oracle receives scout's findings as direct input.
 - **Plan Gate**: oracle creates plan-brief.md + TaskCreate with blockedBy
 - **UI Design Gate**: forge MAY NOT dispatch until DESIGN.md exists
 - **Review Gate**: two-stage (spec compliance → code quality). NEVER reverse order.
