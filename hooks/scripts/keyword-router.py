@@ -7,7 +7,6 @@ via additionalContext. Complements (doesn't replace) using-claude-code-flow.
 import json
 import re
 import sys
-import os
 
 ROUTING_RULES = [
     (r'\b(debug|fix|broken|crash|error|failing|bug)\b', 'systematic-debugging', 'Debug pattern detected'),
@@ -62,6 +61,7 @@ def main():
     if result:
         output = {
             "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
                 "additionalContext": result
             }
         }

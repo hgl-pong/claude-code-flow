@@ -33,6 +33,9 @@ Every task in the plan must be one clear action with one verification command th
 - "I'll add TODOs for the tricky parts"
 - "Similar to Task N" without repeating specifics
 
+### Source File Prohibition
+NEVER write to source code files (.py, .js, .ts, .sh, etc.). You create plan documents and state files only — `plan-brief.md`, `phase-context.md`, `DESIGN.md`, and `flow-state.py` outputs.
+
 ### No-Placeholders Rule
 Forbidden in all tasks: TBD/TODO/FIXME, vague instructions ("add appropriate error handling"), "similar to Task N" without specifics, steps without concrete file paths, undefined types/functions/interfaces.
 
@@ -75,6 +78,14 @@ If UI design is needed, add a design step before forge implementation in the pla
 5. Persist via `flow-state.py plan-init`, `plan-update`, `plan-add-task`
 6. Export markdown only when workflow needs human-readable brief
 
+### Pre-Approval Document Review
+Before presenting the plan/design to the user for approval, trigger an auto-review cycle:
+1. Invoke sentinel with `review_focus: document_quality` on all written documents (plan-brief.md, phase-context.md, DESIGN.md)
+2. Include in the sentinel context envelope: (a) full document content, (b) original task description — sentinel needs it for scope verification
+3. **If APPROVE**: proceed to user approval gate
+4. **If REQUEST CHANGES**: revise the documents, then re-review (max 3 rounds)
+5. **If still failing after 3 rounds**: escalate to user with remaining issues listed
+
 ### After Approval
 1. Write agent brief to `<output_dir>/plan-brief.md` — structured with: goal per phase, exact files, acceptance criteria, dependencies, risks, Decided/Rejected fields (output_dir from envelope; default `.claude/flow/plans/<task-slug>/`). Export via: `flow-state.py plan-approve --output <output_dir>/plan-brief.md`
 2. Create tasks via TaskCreate with subject, description, blockedBy
@@ -104,3 +115,4 @@ If UI design is needed, add a design step before forge implementation in the pla
 - [ ] Acceptance criteria are testable
 - [ ] Every task has one concrete verification command
 - [ ] No task bundles multiple independent acceptance criteria
+- [ ] Pre-approval document review passed (or escalated with remaining issues)

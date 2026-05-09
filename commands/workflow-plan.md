@@ -24,17 +24,18 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 7. **Create structured plan state** with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
 8. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `<output_dir>/phase-context.md` (e.g. `.claude/flow/plans/<slug>/`).
 9. **Research** (if checked): invoke scout for **both** local codebase analysis and external web research. Scout MUST complete before oracle starts — these are sequential, never parallel. Scout findings feed directly into oracle's planning context.
-10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan → user approval; autonomous→structured plan → auto-approve. Oracle creates tasks via TaskCreate. Oracle runs **after** scout completes, using scout's findings as input.
-11. **Architecture** (if checked): oracle for architecture → approval.
+10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan; autonomous→structured plan. Oracle creates tasks via TaskCreate. Oracle runs **after** scout completes, using scout's findings as input.
+11. **Architecture** (if checked): oracle for architecture.
 12. **UI Research** (if checked, frontend-UI tasks only): scout produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design gate.
-13. **UI Design** (if checked, frontend-UI tasks only): `ui-design` skill → `DESIGN.md` → approval.
-14. **Create execution handoff**: use `writing-plans` for multi-step work, then build self-contained context envelopes for subagents.
-15. **Hand off**: frontend-UI→forge after `DESIGN.md`; backend/general→forge; tests/acceptance→prism. Do not skip `writing-plans` for multi-step work that needs coordinated execution.
-16. **Quick fix exception**: for a narrow one-file fix with known root cause and no design change, skip the full planning pipeline and go straight to the smallest safe change.
-17. **Cross-domain exception**: if the task spans both frontend and backend, split the work by domain and run the applicable gates for each side.
-18. **Routing guard**: if the prompt clearly asks for planning, orchestration, or implementation sequencing, prefer `/workflow-plan` over jumping straight into implementation.
-19. **Execution rule**: after approval, hand the work to the smallest agent set that matches the file scope; keep parallel work non-overlapping.
-20. **Source of truth**: `plan-state.json`, `<output_dir>/plan-brief.md`, and `<output_dir>/phase-context.md` are the handoff artifacts; do not rely on chat history for execution details.
+13. **UI Design** (if checked, frontend-UI tasks only): `ui-design` skill → `DESIGN.md`.
+14. **Document auto-review**: if any gate produced documents (plan-brief.md, phase-context.md, DESIGN.md), invoke sentinel with `review_focus: document_quality`. Pass original task description in the envelope. If REQUEST CHANGES → oracle revises → re-review (max 3 rounds). Still failing after 3 rounds → escalate to user. Only proceed to approval gate after APPROVE.
+15. **Create execution handoff**: use `writing-plans` for multi-step work, then build self-contained context envelopes for subagents.
+16. **Hand off**: frontend-UI→forge after `DESIGN.md`; backend/general→forge; tests/acceptance→prism. Do not skip `writing-plans` for multi-step work that needs coordinated execution.
+17. **Quick fix exception**: for a narrow one-file fix with known root cause and no design change, skip the full planning pipeline and go straight to the smallest safe change.
+18. **Cross-domain exception**: if the task spans both frontend and backend, split the work by domain and run the applicable gates for each side.
+19. **Routing guard**: if the prompt clearly asks for planning, orchestration, or implementation sequencing, prefer `/workflow-plan` over jumping straight into implementation.
+20. **Execution rule**: after approval, hand the work to the smallest agent set that matches the file scope; keep parallel work non-overlapping.
+21. **Source of truth**: `plan-state.json`, `<output_dir>/plan-brief.md`, and `<output_dir>/phase-context.md` are the handoff artifacts; do not rely on chat history for execution details.
 
 ## Usage
 
