@@ -197,6 +197,7 @@ if [ -f "$ULW_STATE_FILE" ]; then
     ULW_TOTAL=$(sed -n 's/.*"task_total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
     ULW_ITER=$(sed -n 's/.*"iteration"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
 
+    ULW_DONE="${ULW_DONE:-0}"
     PROG=""; [ -n "$ULW_TOTAL" ] && [ "${ULW_TOTAL:-0}" -gt 0 ] && PROG=" ${ULW_DONE}/${ULW_TOTAL}"
     LOOP=""; [ -n "$ULW_ITER" ] && [ "${ULW_ITER:-0}" -gt 0 ] && LOOP=" #${ULW_ITER}"
 
