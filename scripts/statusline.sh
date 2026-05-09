@@ -185,7 +185,7 @@ build_line1() {
   [ -n "$LIMITS" ] && out="${out}${SEP}${LIMITS}"
   [ -n "$AGENT_PART" ] && out="${out}${AGENT_PART}"
   [ -n "$VIM_PART" ] && out="${out}${VIM_PART}"
-  printf "%b" "$out"
+  printf "%s" "$out"
 }
 
 # ── ULW active → 2-line display ───────────────────────────
@@ -201,8 +201,8 @@ if [ -f "$ULW_STATE_FILE" ]; then
     PROG=""; [ -n "$ULW_TOTAL" ] && [ "${ULW_TOTAL:-0}" -gt 0 ] && PROG=" ${ULW_DONE}/${ULW_TOTAL}"
     LOOP=""; [ -n "$ULW_ITER" ] && [ "${ULW_ITER:-0}" -gt 0 ] && LOOP=" #${ULW_ITER}"
 
-    printf "%b\n" "$(build_line1)"
-    printf "%b\n" "${YEL}⚡ulw${R}:${CYN}${INTENT:-?}${R}${PROG}${LOOP}${VERIFY}"
+    printf "%s\n" "$(build_line1)"
+    printf "%s\n" "${YEL}⚡ulw${R}:${CYN}${INTENT:-?}${R}${PROG}${LOOP}${VERIFY}"
     exit 0
   fi
 fi
@@ -225,8 +225,8 @@ fi
 
 # Active workflow → 2-line; idle → single line
 if [ "$PHASE_DISPLAY" != "idle" ]; then
-  printf "%b\n" "$(build_line1)"
-  printf "%b\n" "flow:${PHASE_COLOR}${PHASE_DISPLAY}${R}${PROGRESS}${VERIFY}"
+  printf "%s\n" "$(build_line1)"
+  printf "%s\n" "flow:${PHASE_COLOR}${PHASE_DISPLAY}${R}${PROGRESS}${VERIFY}"
 else
-  printf "%b\n" "$(build_line1)${SEP}${PHASE_COLOR}flow${R}${VERIFY}"
+  printf "%s\n" "$(build_line1)${SEP}${PHASE_COLOR}flow${R}${VERIFY}"
 fi
