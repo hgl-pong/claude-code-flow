@@ -344,5 +344,46 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertEqual(metrics["verification_by_kind"]["test"], 1)
 
 
+    def test_memory_inject_missing_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "hooks/scripts/memory-inject.py")],
+                cwd=tmp,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+
+    def test_memory_inject_empty_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            memory_dir = Path(tmp) / ".claude" / "memory"
+            memory_dir.mkdir(parents=True)
+            (memory_dir / "project-context.md").write_text("", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "hooks/scripts/memory-inject.py")],
+                cwd=tmp,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+
+    def test_memory_inject_with_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            memory_dir = Path(tmp) / ".claude" / "memory"
+            memory_dir.mkdir(parents=True)
+            (memory_dir / "project-context.md").write_text("# My Project\n\nActive sprint: v2.", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "hooks/scripts/memory-inject.py")],
+                cwd=tmp,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("PROJECT_MEMORY:", result.stdout)
+            self.assertIn("Active sprint: v2.", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
