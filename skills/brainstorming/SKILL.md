@@ -1,18 +1,20 @@
 ---
 name: Brainstorming
-version: "1.0.0"
-description: Use before creative development work: new features, behavior changes, UI work, architecture changes, or broad refactors.
+version: "2.0.0"
+description: "Use when creating features, building components, adding functionality, or modifying behavior — before implementation"
 ---
 
 # Brainstorming
 
-Use this skill to turn an idea into a clear design. The goal is not ceremony; it is to surface assumptions before code makes them expensive.
+Turn ideas into clear designs. The goal is not ceremony — it is to surface assumptions before code makes them expensive.
 
 ## Hard Gate
 
 Do not implement until there is an approved design. For tiny work, the design can be two or three sentences. For larger work, write it as a spec.
 
-### Rationalization Table
+This applies to EVERY task regardless of perceived simplicity. "Simple" projects are where unexamined assumptions cause the most wasted work.
+
+## Anti-Pattern: "Too Simple To Need Design"
 
 | Excuse | Reality |
 |--------|---------|
@@ -25,8 +27,9 @@ Do not implement until there is an approved design. For tiny work, the design ca
 ## Process
 
 1. **Explore context**
-   - Read the relevant README, docs, commands, skills, agents, and nearby code.
+   - Read relevant README, docs, commands, skills, agents, and nearby code.
    - Note existing patterns the design should respect.
+   - If the request describes multiple independent subsystems, flag this immediately. Help decompose into sub-projects before refining details.
 
 2. **Clarify**
    - Ask one focused question at a time when needed.
@@ -41,22 +44,35 @@ Do not implement until there is an approved design. For tiny work, the design ca
 4. **Present the design**
    - Cover scope, files/modules, data flow, error handling, tests, and rollout.
    - Scale detail to risk.
+   - Design for isolation: break into units with clear purpose, well-defined interfaces, understandable independently.
    - Ask for approval before implementation.
 
-5. **Save the spec when the task is substantial**
+5. **Save the spec when substantial**
    - Path: `.claude/flow/designs/<topic>-design.md`
    - Include goals, non-goals, chosen approach, tasks, risks, and verification.
 
-## Design Checks
+## Spec Self-Review
 
-Before moving on:
+After writing the spec document, check before asking user to review:
 
-- No `TBD`, `TODO`, or vague "handle edge cases" language.
-- Requirements are testable.
-- The design does not bundle unrelated refactors.
-- The smallest useful version is clear.
-- Risks have verification steps.
+- **Placeholder scan** — Any `TBD`, `TODO`, incomplete sections, or vague "handle edge cases"? Fix them.
+- **Internal consistency** — Do sections contradict each other? Does architecture match feature descriptions?
+- **Scope check** — Focused enough for a single implementation plan? Or needs decomposition?
+- **Ambiguity check** — Could any requirement be interpreted two ways? Pick one, make explicit.
+- **No bundled refactors** — Design does not include unrelated changes.
+- **Testable requirements** — Every requirement can be verified.
+- **Risks have verification steps.**
+
+Fix inline. No need to re-review — just fix and move on.
+
+## User Review Gate
+
+After spec self-review passes:
+
+> "Spec written to `<path>`. Please review before we write the implementation plan."
+
+Wait for user response. If changes requested, make them and re-run self-review. Only proceed once approved.
 
 ## Handoff
 
-After design approval, use `writing-plans` for multi-step work or the lightweight TDD path for narrow changes.
+After approval, invoke **SUGGESTED: `writing-plans`** for multi-step work or the lightweight TDD path for narrow changes. Do not invoke any implementation skill directly.

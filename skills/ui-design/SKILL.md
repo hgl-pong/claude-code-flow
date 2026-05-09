@@ -14,6 +14,23 @@ Produces a persistent `DESIGN.md` design system document (project root) followin
 A design without states, breakpoints, accessibility notes, and implementable tokens is not ready for forge.
 ```
 
+## DESIGN.md Is NOT Architecture
+
+This skill produces a **visual design system document** — colors, typography, spacing, component states, visual hierarchy. It is the counterpart to an architect's blueprint: the interior designer's material palette, not the structural engineer's load calculation.
+
+| DESIGN.md IS (this skill) | DESIGN.md IS NOT (do not write) |
+|---|---|
+| Color tokens with hex values | API endpoint contracts |
+| Typography scale (font, size, weight, line-height) | Data model schemas |
+| Component states (hover, focus, disabled, loading) | Module dependency diagrams |
+| Spacing scale (xs/sm/md/lg/xl) | Service boundary definitions |
+| Border-radius and elevation tokens | Database table designs |
+| Responsive breakpoints and grid system | Authentication/authorization flows |
+| Visual hierarchy and layout composition | Code architecture decisions |
+| Real microcopy (labels, errors, empty states) | Implementation technical strategy |
+
+**If the output contains API routes, data models, system diagrams, or code architecture — it is the WRONG document.** That content belongs in `plan-brief.md` or `phase-context.md` under `## Architecture`.
+
 ## When to Use This Skill
 
 Oracle decides during planning. This skill is mandatory when:
@@ -51,6 +68,8 @@ If product intent, target user, or required flows are unclear, ask for context i
 
 ### Phase 1: Understand Context
 Read existing codebase (framework, component library, styling). Read `ui-research.md` if available. Identify domain, users, emotional tone.
+
+**CRITICAL**: Your output is a VISUAL design system. You are NOT writing architecture, data models, API contracts, or system design. If you find yourself describing backend logic, database schemas, or module boundaries, STOP — that belongs in `plan-brief.md`.
 
 ## Phase 2: Load Design Knowledge (MANDATORY)
 Read at the start of every task:
@@ -103,6 +122,7 @@ See `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-md-spec.md` for fu
 
 ## Self-Review
 
+- [ ] NO architecture content — zero mentions of API endpoints, data models, system modules, auth flows, or code structure
 - [ ] YAML frontmatter present with all token groups (colors, typography, rounded, spacing, components)
 - [ ] All color tokens are semantic names, not raw hex in component rules
 - [ ] Token cross-references use `{path.to.token}` syntax

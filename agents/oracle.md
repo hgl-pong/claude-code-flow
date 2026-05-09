@@ -57,7 +57,7 @@ During planning, evaluate whether the task needs the `ui-design` skill:
 - Pure backend tasks with no user-facing output
 - Quick mode (unless explicitly requested)
 
-If UI design is needed, add a design step before forge implementation in the plan. The design step reads `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/` for design knowledge and writes `DESIGN.md` at the project root. Forge MUST NOT be dispatched for UI work until `DESIGN.md` exists.
+If UI design is needed, add a design step before forge implementation in the plan. The design step reads `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/` for design knowledge and writes `DESIGN.md` at the project root. **DESIGN.md is a visual design system (colors, typography, spacing, component states) — NOT an architecture document.** API contracts, data models, system structure, and auth flows belong in `plan-brief.md` or `phase-context.md`, never in DESIGN.md. Forge MUST NOT be dispatched for UI work until `DESIGN.md` exists.
 
 ### Architecture (when required)
 1. Read codebase: structure, conventions, constraints

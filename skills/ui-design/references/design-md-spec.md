@@ -185,3 +185,62 @@ When a `DESIGN.md` already exists:
 3. Add new component sections to `## Components`
 4. Update `## Do's and Don'ts` if new patterns emerge
 5. Never change existing token values unless the user explicitly changed the design direction
+
+---
+
+## Anti-Patterns — What NOT to Write
+
+These sections indicate the file has drifted into architecture documentation, not visual design. If you find yourself writing any of these, STOP and move that content to `plan-brief.md` or `phase-context.md`:
+
+```markdown
+## WRONG — Architecture content (do NOT put in DESIGN.md)
+
+### System Architecture
+The app follows a microservices pattern with an API gateway...
+
+### Data Model
+User { id: string, email: string, role: enum }
+
+### API Endpoints
+GET /api/users — returns list of users
+POST /api/auth/login — authenticates user
+
+### Authentication Flow
+1. User submits credentials
+2. Server validates against database
+3. JWT token issued
+
+### Module Structure
+src/
+  auth/
+  components/
+  services/
+
+### Technical Decisions
+We use React Query for server state management...
+```
+
+```markdown
+## CORRECT — Visual design content (what DESIGN.md should contain)
+
+### Colors
+Primary: "#1A1C1E" — near-black authority, grounds the interface
+Surface canvas: "#F9F7F4" — warm off-white, no clinical white
+
+### Typography
+H1: Public Sans 48px/600, line-height 1.1, letter-spacing -0.02em
+Body: Public Sans 16px/400, line-height 1.6
+
+### Components — Button Primary
+Default: bg {colors.primary}, text {colors.surface-canvas}, rounded {rounded.md}
+Hover: opacity 0.9
+Focus-visible: 2px ring {colors.interaction-focus}
+Disabled: opacity 0.4, cursor not-allowed
+
+### Layout
+Grid: 12 columns, 24px gutters
+Max width: 1200px, centered
+Mobile (<640px): 4 columns, 16px gutters
+```
+
+**The rule**: If a section would make sense in a backend engineer's planning document, it does NOT belong in DESIGN.md. DESIGN.md is the visual language forge uses to write CSS/components — colors, spacing, typography, component states, responsive behavior.

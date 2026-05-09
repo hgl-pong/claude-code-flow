@@ -1,22 +1,35 @@
 ---
 name: Using Claude Code Flow
-version: "1.0.0"
-description: "Use at the start of any development conversation to select the right workflow skill before acting."
+version: "2.0.0"
+description: "Use when starting any task"
 ---
 
 # Using Claude Code Flow
 
-This skill is the entry point for the plugin. Before acting, check whether one of the workflow skills applies.
+<SUBAGENT-STOP>
+If dispatched as a subagent to execute a specific task, skip this skill.
+</SUBAGENT-STOP>
 
-## Core Rule
+## Invocation Rule
 
-If the task might involve code, tests, architecture, debugging, review, documentation, or delivery, pick the matching skill first. User instructions still win.
+If there is even a 1% chance a skill might apply, invoke it. Skill check comes BEFORE any response — including clarifying questions.
 
-## Response Style
+## Instruction Priority
 
-Default to concise answers. Lead with the result, include only the decisions, files, commands, risks, and next steps the user needs. Do not narrate routine process. Expand only when the user asks for details, when trade-offs are genuinely important, or when a failure/blocker needs explanation.
+1. **User's explicit instructions** (CLAUDE.md, direct requests) — highest
+2. **Plugin skills** — override default behavior where they conflict
+3. **Default system prompt** — lowest
 
-Routine final replies should usually be 3-6 bullets or 1-2 short paragraphs.
+## Red Flags — STOP and Check Skills
+
+| Thought | Reality |
+|---------|---------|
+| "This is just a simple question" | Questions are tasks. Check for skills. |
+| "I need more context first" | Skill check comes BEFORE clarifying questions. |
+| "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
+| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "I remember this skill" | Skills evolve. Read current version. |
+| "I'll just do this one thing first" | Check BEFORE doing anything. |
 
 ## Skill Selection
 
@@ -25,7 +38,7 @@ Routine final replies should usually be 3-6 bullets or 1-2 short paragraphs.
 | Prompt contains `ulw` or `ultrawork` | `ultrawork` — full autonomous delivery |
 | Prompt contains `uli` | `ultrawork` (ULI branch) — product iteration loop |
 | New feature, behavior change, refactor, UI work, or multi-file delivery | `brainstorming` first, then `writing-plans` |
-| Task needs planning, sequencing, or cross-agent coordination | `workflow-plan` (or `/plan`, which maps here instead of built-in plan mode) |
+| Task needs planning, sequencing, or cross-agent coordination | `workflow-plan` |
 | Multi-step implementation with approved plan | `dev-orchestrator` |
 | Large task with 3+ subtasks needing parallel agent dispatch | `dispatching-parallel-agents` (invoked by dev-orchestrator) |
 | Bug or failing behavior with unknown cause | `systematic-debugging` |
@@ -34,14 +47,20 @@ Routine final replies should usually be 3-6 bullets or 1-2 short paragraphs.
 | "Is it done?" or final delivery | `verification-before-completion` |
 | Plan or design already approved, need execution | `writing-plans` then `dev-orchestrator` |
 | User asks for "plan mode" or `/plan` | `workflow-plan` |
-| Built-in plan appears relevant | prefer `workflow-plan` and avoid `EnterPlanMode` |
+| Built-in plan appears relevant | prefer `workflow-plan`, avoid `EnterPlanMode` |
+| Implementation complete, tests pass | `finishing-branch` |
+| Received code review feedback | `receiving-code-review` |
+| Creating or editing a skill | `writing-skills` |
 
+## Skill Priority
 
-## Priority
+When multiple skills apply:
+1. **Process skills first** (brainstorming, systematic-debugging) — determines HOW to approach
+2. **Implementation skills second** (testing-strategy, dev-orchestrator) — guides execution
+3. **Verification skills last** (verification-before-completion) — confirms delivery
 
-When multiple skills apply, run them in this order:
-1. Process skills first (brainstorming, systematic-debugging) — determines HOW to approach
-2. Implementation skills second (testing-strategy, dev-orchestrator) — guides execution
-3. Verification skills last (verification-before-completion) — confirms delivery
+## Response Style
 
-**ULW exception:** In `ultrawork` mode the approval gates are automatically bypassed — but verification evidence and test-first are still mandatory.
+Concise. Lead with the result. Include only decisions, files, commands, risks, and next steps. Expand only for trade-offs or failure explanation. Default: 3-6 bullets or 1-2 short paragraphs.
+
+**ULW exception:** In `ultrawork` mode approval gates are bypassed — verification evidence and test-first are still mandatory.

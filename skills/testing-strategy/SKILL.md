@@ -1,139 +1,63 @@
 ---
 name: Testing Strategy
-version: "1.1.0"
-description: "Use for: test writing, TDD, test strategy, coverage, unit/integration/E2E tests, mocking. Triggers on behavior changes."
+version: "2.1.0"
+description: "Use when implementing any feature or bugfix, before writing implementation code"
 ---
 
 # Testing Strategy
 
-Guidelines for effective software testing across all test types.
-
 ## Iron Law
 
-For behavior changes, write or identify a failing test before production code changes.
+**NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST.**
 
-If code was already written as exploration, treat it as a spike: keep the learning, but do not claim TDD for it. Add a regression or characterization test before finalizing the production change.
+For behavior changes, write or identify a failing test before production code. Write code before the test? Delete it. Start over.
 
-## Test Pyramid
+**No exceptions:**
+- Don't keep it as "reference"
+- Don't "adapt" it while writing tests
+- Delete means delete
 
-```
-        /\
-       /  \      E2E Tests (few, slow, high confidence)
-      /----\
-     /      \    Integration Tests (moderate count)
-    /--------\
-   /          \  Unit Tests (many, fast, focused)
-  /____________\
-```
+If code was already written as exploration, treat it as a spike: keep the learning, discard the code, start fresh from the test.
 
-- **Unit tests**: Test individual functions/classes in isolation. Should be the majority of tests.
-- **Integration tests**: Test module interactions with real dependencies. Fewer than unit tests.
-- **E2E tests**: Test complete user workflows. Fewest tests, highest maintenance cost.
+**Violating the letter of this rule is violating the spirit of this rule.**
 
-## Unit Testing
+## TDD: Red-Green-Refactor
 
-### Principles
-- Test behavior, not implementation
-- Each test tests one thing
-- Arrange-Act-Assert pattern
-- Deterministic — no random failures
-- Fast — aim for < 10ms per test
-
-### Test Naming
-```
-test("UserRepository.findById returns null for non-existent user")
-test("PaymentProcessor.charge throws InsufficientFundsError when balance too low")
-test("EmailValidator.isValid returns true for valid email formats")
-```
-
-### What to Test
-- Happy path (expected behavior)
-- Edge cases (empty input, max values, boundary conditions)
-- Error cases (invalid input, network failure, timeout)
-- Business rule violations
-
-## Integration Testing
-
-### Principles
-- Test real interactions between modules
-- Use real databases, APIs, services (not mocks)
-- Focus on contract verification
-- Test error scenarios (connection failures, timeouts)
-
-### Setup
-- Use test databases (in-memory or containerized)
-- Seed with known data
-- Clean up after each test
-
-## Test Organization
-
-```
-src/
-  auth/
-    auth.service.ts
-    auth.service.test.ts      # Co-located tests
-    auth.service.integration.test.ts
-tests/
-  e2e/
-    auth-flow.test.ts          # E2E tests separate
-  fixtures/
-    users.json                 # Test data
-    mock-responses/
-```
-
-## Test Doubles
-
-| Type | When to Use |
-|------|-------------|
-| Stub | Return canned responses |
-| Mock | Verify interactions (called with what args) |
-| Spy | Record calls but use real behavior |
-| Fake | In-memory implementation (e.g., in-memory DB) |
-
-Prefer fakes over mocks when possible — they're simpler and more reliable.
-
-## TDD (Test-Driven Development)
-
-When writing new features:
-1. **Red**: Write a failing test that describes the desired behavior
-2. **Green**: Write the minimum code to make the test pass
-3. **Refactor**: Improve the code while keeping tests green
+1. **RED** — Write one minimal failing test showing desired behavior
+2. **Verify RED** — Run it. Confirm it fails for the right reason (feature missing, not typo)
+3. **GREEN** — Write the simplest code to pass
+4. **Verify GREEN** — Run it. Confirm pass + no regressions
+5. **REFACTOR** — Clean up while keeping tests green. No new behavior.
 
 Required evidence:
 - RED command and expected failure
 - GREEN command and passing result
-- Any broader regression command run before completion
-
-TDD works best for:
-- New modules with clear interfaces
-- Bug fixes (write regression test first)
-- Complex business logic
+- Broader regression command before completion
 
 Allowed exceptions, with user-visible note:
 - Documentation-only edits
-- Pure configuration changes that cannot be reasonably tested in the repo
+- Pure configuration changes that cannot be reasonably tested
 - Throwaway prototypes
 - Generated files where the generator is the tested surface
 
-## Testing Anti-Patterns
+## Red Flags — STOP
 
-- Tests that only assert mocks were called instead of observable behavior
-- Snapshot updates without explaining the behavioral change
-- Broad end-to-end tests where a fast unit or integration test would prove the same thing
-- "Happy path only" coverage on validation, authorization, persistence, or money/data-loss paths
-- Tests added after implementation that were never seen fail
+- Code before test
+- Test passes immediately (tests existing behavior, not new requirement)
+- "I'll write tests after"
+- "This is too simple for TDD"
+- Can't explain why the test failed
 
-## Coverage
+## Rationalization Table
 
-- Aim for high coverage on critical paths (auth, payments, data integrity)
-- Don't chase 100% — diminishing returns
-- Coverage without quality is meaningless
-- Focus on branch coverage over line coverage
+| Excuse | Reality |
+|--------|---------|
+| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
+| "I'll test after" | Tests passing immediately prove nothing. |
+| "Already manually tested" | Manual is ad-hoc. No record, can't re-run. |
+| "Test hard = design unclear" | Listen to the test. Hard to test = hard to use. |
+| "TDD will slow me down" | TDD is faster than debugging. |
 
-## When to Apply
+## Reference
 
-Trigger this skill when:
-- Planning test approach for a feature
-- Writing tests for new or existing code
-- Setting up test infrastructure
-- Deciding between test types or frameworks
+For test patterns, anti-patterns, test doubles, organization, and coverage guidance see `test-patterns.md` in this directory.
