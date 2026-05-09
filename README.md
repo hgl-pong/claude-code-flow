@@ -194,16 +194,44 @@ claude plugin install claude-code-flow@claude-code-flow
 
 ## Statusline
 
-底部状态栏显示：工作流阶段、模式、任务进度、Git 分支、验证状态。
+底部状态栏显示：模型名称、上下文用量（进度条）、会话花费、限额使用率、工作流阶段、任务进度、Git 分支、验证状态。
+
+**自动安装**：插件安装后首次启动 Claude Code 时，`SessionStart` hook 会自动将 statusline 写入 `~/.claude/settings.json`，无需手动配置。重载插件后即生效：
+
+```
+/reload-plugins
+```
+
+**手动配置**（如需覆盖）：编辑 `~/.claude/settings.json`：
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "bash path/to/claude-code-flow/scripts/statusline.sh"
+    "command": "bash /path/to/claude-code-flow/scripts/statusline.sh"
   }
 }
 ```
+
+**效果预览：**
+
+```
+Sonnet myproject  main*↑1 │ ▓▓▓▓▓░░░░░ 47% │ $0.012 │ 5h:23% 7d:41%
+flow:impl 3/5 ✓
+```
+
+| 字段 | 说明 |
+|------|------|
+| 模型名 | 当前模型（蓝色） |
+| 目录名 | 项目目录 |
+| Git 分支 | 绿色=clean，黄色=dirty，红色=behind；`↑N`/`↓N` 显示 ahead/behind |
+| 进度条 | 上下文用量（绿 <70%，黄 70–89%，红 ≥90%） |
+| `$N.NNN` | 当前会话花费（为 0 时隐藏） |
+| `5h:N% 7d:N%` | Pro 用量（≥60% 黄色，≥80% 红色；非 Pro 用户不显示） |
+| `flow:impl 3/5 ✓` | 工作流阶段 + 任务进度 + 验证状态 |
+| `⚡ulw:refactor 2/5 #1` | ULW 自主模式状态 |
+
+依赖：`python3`（必须）或 `jq`（可选，解析更快）。
 
 ## 测试
 
