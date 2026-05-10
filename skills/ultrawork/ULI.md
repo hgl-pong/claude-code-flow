@@ -44,7 +44,7 @@ Each iteration stores artifacts in a folder named by a short English slug derive
 ├── product-state.md              # Shared across all iterations — goal + cumulative features
 ├── <task-slug>/                  # e.g. "add-auth", "fix-login", "build-test-suite"
 │   ├── proposal.md               # PD requirements proposal (PRD for this iteration)
-│   ├── analysis.md               # Scout product analysis
+│   ├── analysis.md               # Research subagent product analysis
 │   ├── plan.md                   # Oracle implementation plan
 │   ├── plan-brief.md             # Agent-readable brief
 │   └── acceptance-report.md     # Acceptance verdict + evidence
@@ -92,15 +92,14 @@ Each pass through this loop is ONE iteration. The iteration number increments ON
 
 ### Step 1 — Product Analysis + Proposal (MUST run every iteration)
 
-**1a. Scout analyzes product state:**
+**1a. Research subagent analyzes product state:**
 
 Update state: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-phase pd_generating`
 
 ```
 Agent({
-  name: "scout",
-  subagent_type: "claude-code-flow:scout",
-  model: "sonnet",
+  description: "Product analysis for ULI iteration",
+  subagent_type: "general-purpose",
   prompt: """
 ## Envelope
 - **Goal:** <product goal>
@@ -110,13 +109,20 @@ Agent({
 - **Last Verdict:** <read from .claude/flow/uli/<slug>/acceptance-report.md, may not exist>
 - **Task Slug:** <slug>
 
+## Research Methodology
+
+You MUST follow these rules:
+- NEVER fabricate information. If you cannot find it, say so.
+- NEVER write to source code files. Write research outputs only.
+- Use `python ~/bin/tavily "query" -n 5` for web searches — NOT the built-in WebSearch tool.
+
 Read .claude/flow/uli/product-state.md, .claude/flow/uli/<slug>/acceptance-report.md, recent git log, and project README.
 Write analysis to .claude/flow/uli/<slug>/analysis.md with: product state summary, gap analysis, top 3 recommended areas with rationale.
 """
 })
 ```
 
-Wait for scout. Read `.claude/flow/uli/<slug>/analysis.md`.
+Wait for research subagent. Read `.claude/flow/uli/<slug>/analysis.md`.
 
 **1b. Oracle proposes requirements:**
 

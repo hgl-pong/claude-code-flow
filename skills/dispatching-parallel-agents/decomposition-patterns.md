@@ -18,7 +18,7 @@ Tasks 2 and 3 run in parallel (both blocked by 1, no file overlap).
 ## Refactor (restructure without behavior change)
 
 ```
-Task 1: Impact analysis             [scout]  no deps
+Task 1: Impact analysis             [research]  no deps
 Task 2: Core structural changes     [forge]  blockedBy: [1], sequential batches
 Task 3: Update callers              [forge]  blockedBy: [2], parallel if caller files disjoint
 Task 4: Regression tests            [prism]  blockedBy: [all forge]

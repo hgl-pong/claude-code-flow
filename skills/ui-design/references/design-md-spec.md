@@ -26,29 +26,35 @@ version: alpha
 name: <design-system-name>          # e.g. "Daylight Prestige", "Carbon Zero"
 description: <optional one-liner>
 colors:
-  primary: "#1A1C1E"                # always hex, SRGB
-  secondary: "#6C7278"
-  tertiary: "#B8422E"
   surface-canvas: "#F9F7F4"
   surface-raised: "#FFFFFF"
   text-heading: "#0F1011"
   text-body: "#3D4147"
   text-muted: "#7A8089"
+  interaction-primary: "#2563EB"
+  interaction-hover: "#1D4ED8"
   interaction-focus: "#2563EB"
-  error: "#DC2626"
-  success: "#16A34A"
+  status-error: "#DC2626"
+  status-success: "#16A34A"
+  border-default: "#E5E7EB"
 typography:
+  display:
+    fontFamily: Public Sans
+    fontSize: 64px
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: -0.03em
   h1:
     fontFamily: Public Sans
-    fontSize: 48px
+    fontSize: 36px
     fontWeight: 600
-    lineHeight: 1.1
+    lineHeight: 1.15
     letterSpacing: -0.02em
   h2:
     fontFamily: Public Sans
-    fontSize: 32px
+    fontSize: 28px
     fontWeight: 600
-    lineHeight: 1.15
+    lineHeight: 1.2
     letterSpacing: -0.015em
   body-md:
     fontFamily: Public Sans
@@ -61,34 +67,66 @@ typography:
     fontWeight: 500
     lineHeight: 1
     letterSpacing: 0.1em
+  code:
+    fontFamily: JetBrains Mono
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.5
+icons:
+  style: outlined
+  sizes:
+    sm: 16px
+    md: 20px
+    lg: 24px
+  strokeWidth: 1.5px
 rounded:
   sm: 4px
   md: 8px
   lg: 16px
   full: 9999px
 spacing:
-  xs: 4px
-  sm: 8px
-  md: 16px
-  lg: 24px
-  xl: 48px
+  space-1: 4px
+  space-2: 8px
+  space-3: 16px
+  space-4: 24px
+  space-5: 32px
+  space-6: 48px
+  space-7: 80px
+transitions:
+  fast: "150ms cubic-bezier(0.16, 1, 0.3, 1)"
+  base: "250ms cubic-bezier(0.16, 1, 0.3, 1)"
+  slow: "400ms cubic-bezier(0.16, 1, 0.3, 1)"
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"
+    backgroundColor: "{colors.interaction-primary}"
     textColor: "{colors.surface-canvas}"
     rounded: "{rounded.md}"
     padding: "12px 20px"
+    transition: "{transitions.fast}"
+  button-primary-hover:
+    backgroundColor: "{colors.interaction-hover}"
+    transition: "{transitions.fast}"
+  button-primary-focus:
+    boxShadow: "0 0 0 2px {colors.interaction-focus}"
+  button-primary-disabled:
+    opacity: "0.4"
+    cursor: "not-allowed"
   input:
     backgroundColor: "{colors.surface-canvas}"
     textColor: "{colors.text-body}"
     rounded: "{rounded.sm}"
+    border: "1px solid {colors.border-default}"
+    transition: "{transitions.fast}"
+  input-focus:
+    borderColor: "{colors.interaction-focus}"
+    boxShadow: "0 0 0 2px {colors.interaction-focus}"
 ---
 ```
 
 **Rules**:
 - Colors must start with `#` (hex SRGB)
 - Token references use `{path.to.token}` syntax
-- `<scale-level>` keys: `xs`, `sm`, `md`, `lg`, `xl`, `full` (or any descriptive string)
+- Spacing tokens use `space-N` naming with semantic purpose (space-1 = inline gap, space-7 = page breathing room)
 - No duplicate section headings
 
 ### Part 2: Markdown Body (8 sections, fixed order)
@@ -97,28 +135,33 @@ components:
 ## Overview
 
 [Brand personality, target audience, emotional response the UI should evoke.
-Be specific: "warm editorial for independent researchers" not "modern and clean".]
+Be specific: "warm editorial for independent researchers" not "modern and clean".
+Includes Emotional Signature: 3-second feeling, reference products, the One Thing.]
 
 ## Colors
 
 [Semantic palette rationale. Why each color, what it communicates.
-Include dark-mode variants if applicable.]
+Include dark-mode variants if applicable.
+Verify all text/background pairs pass WCAG AA (4.5:1).]
 
 ## Typography
 
 [Type scale rationale. Hierarchy decisions. Why these fonts for this product.
-Include web font import or system-font fallback stack.]
+Include web font import or system-font fallback stack.
+Icon system: style family, size scale, stroke width, usage rules.]
 
 ## Layout
 
 [Spacing scale usage. Grid system (columns, gutters, margins).
 Responsive breakpoints: mobile (<640px), tablet (640–1024px), desktop (>1024px).
-Max content width. Container padding at each breakpoint.]
+Max content width. Container padding at each breakpoint.
+Section rhythm pattern. Signature moment for page-level designs.]
 
 ## Elevation & Depth
 
 [Shadow scale. When to use shadow vs border vs color-only separation.
-Z-index layers: base, raised, overlay, modal, tooltip.]
+Z-index layers: base, raised, overlay, modal, tooltip.
+Border radius scale: sm/md/lg rules per container type.]
 
 ## Shapes
 
@@ -129,12 +172,13 @@ Exceptions: inputs use sm, modals use lg, pills use full.]
 
 [Per-component guidance. Each component MUST specify ALL states:
 default, hover, focus-visible, active, disabled, loading, error.
-Empty and success states where applicable.]
+Empty and success states where applicable.
+State transitions must reference transition tokens.]
 
 ### Button
 
 States: default / hover / focus-visible / active / disabled / loading
-[Describe each state with token references]
+[Describe each state with token references and transition token]
 
 ### Input Field
 
@@ -161,8 +205,9 @@ Cross-reference tokens with `{path.to.token}`:
 ```yaml
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"      # references colors.primary
-    rounded: "{rounded.md}"                  # references rounded.md
+    backgroundColor: "{colors.interaction-primary}"
+    rounded: "{rounded.md}"
+    transition: "{transitions.fast}"
 ```
 
 ---
@@ -228,19 +273,20 @@ Primary: "#1A1C1E" — near-black authority, grounds the interface
 Surface canvas: "#F9F7F4" — warm off-white, no clinical white
 
 ### Typography
-H1: Public Sans 48px/600, line-height 1.1, letter-spacing -0.02em
+Display: Public Sans 64px/700, line-height 1.05, letter-spacing -0.03em
 Body: Public Sans 16px/400, line-height 1.6
+Icons: Outlined, 1.5px stroke, sizes 16/20/24px
 
 ### Components — Button Primary
-Default: bg {colors.primary}, text {colors.surface-canvas}, rounded {rounded.md}
-Hover: opacity 0.9
+Default: bg {colors.interaction-primary}, text {colors.surface-canvas}, rounded {rounded.md}, transition {transitions.fast}
+Hover: bg {colors.interaction-hover}
 Focus-visible: 2px ring {colors.interaction-focus}
-Disabled: opacity 0.4, cursor not-allowed
+Disabled: opacity 0.4, cursor not-allowed, aria-disabled true
 
 ### Layout
-Grid: 12 columns, 24px gutters
-Max width: 1200px, centered
+Grid: 8 columns, 24px gutters, max-width 1200px
 Mobile (<640px): 4 columns, 16px gutters
+Spacing rhythm: space-5 → space-6 → space-4 → space-7
 ```
 
-**The rule**: If a section would make sense in a backend engineer's planning document, it does NOT belong in DESIGN.md. DESIGN.md is the visual language forge uses to write CSS/components — colors, spacing, typography, component states, responsive behavior.
+**The rule**: If a section would make sense in a backend engineer's planning document, it does NOT belong in DESIGN.md. DESIGN.md is the visual language forge uses to write CSS/components — colors, spacing, typography, component states, responsive behavior, transitions.

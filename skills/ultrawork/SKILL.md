@@ -30,7 +30,7 @@ Classify the user's true intent (do not take literal words at face value):
 | `implement` | add, create, build, implement, write, make | Brainstorm→Plan→TDD→Review→Accept |
 | `fix` | fix, broken, error, failing, bug, crash | Debug→Fix→Verify |
 | `refactor` | refactor, extract, rename, restructure, clean up | Brainstorm→Plan→Impl→Review |
-| `research` | how does, what is, explain, compare, best practice | Scout→Report |
+| `research` | how does, what is, explain, compare, best practice | Research→Report |
 | `explain` | walk me through, describe, show me | Read→Structured answer |
 | `test` | add tests, write tests, test coverage, unit test | testing-strategy→prism |
 
@@ -53,10 +53,10 @@ Then evaluate the mandatory gates. In ULW autonomous mode, ALL gates are auto-ap
 ULW GATE CHECKLIST (all gates auto-approve but all must execute):
 
 [ ] Brainstorm — always for implement/refactor
-[ ] Research (scout) — always for implement/refactor (auto-skip if pure internal)
+[ ] Research (general-purpose subagent + research skill) — always for implement/refactor (auto-skip if pure internal)
 [ ] Plan (oracle) — ALWAYS mandatory
 [ ] Architecture (oracle) — mandatory when: new system, 3+ modules, cross-cutting change
-[ ] UI Research (scout) — mandatory when task domain is frontend-UI
+[ ] UI Research (general-purpose subagent + research skill) — mandatory when task domain is frontend-UI
 [ ] UI Design (ui-design skill) — mandatory when task domain is frontend-UI
 [ ] Review (sentinel) — ALWAYS mandatory
 [ ] Acceptance (prism) — ALWAYS mandatory
@@ -79,10 +79,10 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 ### `implement` / `refactor`
 
 1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `.claude/flow/ulw/<slug>/phase-context.md`. Do NOT present options.
-2. Research (auto-approve, if checked) — invoke scout for **both** local codebase analysis and external web research. Scout MUST complete before oracle starts — these are sequential, never parallel. Skip only for pure internal logic tasks.
-3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan. Oracle runs **after** scout completes, using scout's findings as input.
+2. Research (auto-approve, if checked) — invoke research subagent (general-purpose + research skill) for **both** local codebase analysis and external web research. Research MUST complete before oracle starts — these are sequential, never parallel. Skip only for pure internal logic tasks.
+3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan. Oracle runs **after** research completes, using research findings as input.
 4. Architecture (auto-approve, if checked) — oracle produces design. Append to `.claude/flow/ulw/<slug>/phase-context.md`.
-5. UI Research (auto-approve, if checked) — scout produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design step.
+5. UI Research (auto-approve, if checked) — research subagent produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design step.
 6. UI Design (auto-approve, if checked) — `ui-design` skill produces `DESIGN.md`. **forge MAY NOT be dispatched until DESIGN.md exists.**
 7. Implementation (Ralph Loop + parallel scheduler):
    - **Ralph Loop**: each agent dispatch is stateless — self-contained prompt, no prior agent output carried forward. PICK → ENVELOPE → DISPATCH → WAIT → VERIFY → RECORD → LOOP.
@@ -102,7 +102,7 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 
 ### `research`
 
-Scout→synthesize→report. No code changes unless user follow-up.
+Research subagent→synthesize→report. No code changes unless user follow-up.
 
 ### `explain`
 

@@ -25,11 +25,12 @@ Auto-recommend: 1-2 subtasks → **quick**; 3-5 → **standard**; 6+ or cross-mo
 
 | Agent | Model | Effort | Role | Gate |
 |-------|-------|--------|------|------|
-| `scout` | haiku | default | Research, analysis | Research |
 | `oracle` | opus | xhigh | Planning + architecture | Plan/Design |
 | `forge` | sonnet | high | Full-stack implementation | Impl |
 | `prism` | sonnet | high | Tests, build, acceptance | Tests/Acceptance |
 | `sentinel` | sonnet | high | Code review (two-stage) | Review |
+
+Research is dispatched as **general-purpose subagents** using the `research` skill methodology. No dedicated agent needed — see `skills/research/references/dispatch-templates.md`.
 
 ## Pipeline Steps
 
@@ -40,7 +41,7 @@ Start with `using-claude-code-flow`. Classify domain (frontend-UI / backend / cr
 See `references/pipeline-operations.md` for full gate checklist and execution details. Record in `<output_dir>/phase-context.md`.
 
 Key rules:
-- **Research Gate → Plan Gate**: scout and oracle are STRICTLY SEQUENTIAL. Scout must finish both local codebase analysis and external web research before oracle starts. Never dispatch them in parallel. Oracle receives scout's findings as direct input.
+- **Research Gate → Plan Gate**: research subagent and oracle are STRICTLY SEQUENTIAL. Research must finish both local codebase analysis and external web research before oracle starts. Never dispatch them in parallel. Oracle receives research findings as direct input.
 - **Plan Gate**: oracle creates plan-brief.md + TaskCreate with blockedBy
 - **UI Design Gate**: forge MAY NOT dispatch until DESIGN.md exists
 - **Review Gate**: two-stage (spec compliance → code quality). NEVER reverse order.
@@ -82,6 +83,7 @@ Concise: outcome, files changed, verification, caveats.
 ## References
 
 - `references/pipeline-operations.md` — Gate checklist, execution details, context envelope template
-- `references/subagent-prompts.md` — Prompt templates for forge, sentinel, prism, scout dispatch
+- `references/subagent-prompts.md` — Prompt templates for forge, sentinel, prism dispatch
+- `skills/research/references/dispatch-templates.md` — Research subagent dispatch templates
 
 Plan authority lives in `plan-state.json` and `workflow-state.json`. The agent-readable brief exports to `<output_dir>/plan-brief.md`.

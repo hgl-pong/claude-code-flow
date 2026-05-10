@@ -23,10 +23,10 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 6. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`.
 7. **Create structured plan state** with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
 8. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `<output_dir>/phase-context.md` (e.g. `.claude/flow/plans/<slug>/`).
-9. **Research** (if checked): invoke scout for **both** local codebase analysis and external web research. Scout MUST complete before oracle starts — these are sequential, never parallel. Scout findings feed directly into oracle's planning context.
-10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan; autonomous→structured plan. Oracle creates tasks via TaskCreate. Oracle runs **after** scout completes, using scout's findings as input.
+9. **Research** (if checked): invoke research subagent (general-purpose + research skill) for **both** local codebase analysis and external web research. Research MUST complete before oracle starts — these are sequential, never parallel. Research findings feed directly into oracle's planning context.
+10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan; autonomous→structured plan. Oracle creates tasks via TaskCreate. Oracle runs **after** research completes, using research findings as input.
 11. **Architecture** (if checked): oracle for architecture.
-12. **UI Research** (if checked, frontend-UI tasks only): scout produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design gate.
+12. **UI Research** (if checked, frontend-UI tasks only): research subagent produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design gate.
 13. **UI Design** (if checked, frontend-UI tasks only): `ui-design` skill → `DESIGN.md`.
 14. **Document auto-review**: if any gate produced documents (plan-brief.md, phase-context.md, DESIGN.md), invoke sentinel with `review_focus: document_quality`. Pass original task description in the envelope. If REQUEST CHANGES → oracle revises → re-review (max 3 rounds). Still failing after 3 rounds → escalate to user. Only proceed to approval gate after APPROVE.
 15. **Create execution handoff**: use `writing-plans` for multi-step work, then build self-contained context envelopes for subagents.

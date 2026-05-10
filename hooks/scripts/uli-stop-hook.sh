@@ -106,7 +106,7 @@ fi
 # Build phase-aware re-injection message
 case "$CURRENT_PHASE" in
   "pd_generating")
-    PHASE_MSG="Product analysis + proposal must run for this iteration. Continue: spawn scout to analyze product state, then oracle to propose requirements, wait for uli/${TASK_SLUG:-<slug>}/proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
+    PHASE_MSG="Product analysis + proposal must run for this iteration. Continue: spawn research subagent to analyze product state, then oracle to propose requirements, wait for uli/${TASK_SLUG:-<slug>}/proposal.md with at least 1 CORE requirement, then proceed to oracle plan."
     ;;
   "dev_pipeline")
     PHASE_MSG="The dev pipeline is still in progress for iteration ${ITERATION}. Continue: complete ALL implementation tasks for this iteration, run sentinel review (two-stage), then run prism acceptance. Do NOT advance to next iteration until acceptance passes."

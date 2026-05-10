@@ -41,7 +41,7 @@ echo "Test 3: Named agents in roster..."
 output="$(run_claude \
   "List the named agents in the dev-orchestrator skill and their roles." \
   "$timeout_seconds")"
-assert_contains "$output" "forge|weaver|sentinel|validator|oracle|atlas|prism|anvil|scout|chronicler" \
+assert_contains "$output" "forge|weaver|sentinel|validator|oracle|atlas|prism|anvil|chronicler" \
   "Named agents appear"
 echo ""
 

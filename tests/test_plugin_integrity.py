@@ -142,7 +142,6 @@ class PluginIntegrityTests(unittest.TestCase):
             "forge": "sonnet",
             "oracle": "opus",
             "prism": "sonnet",
-            "scout": "haiku",
             "sentinel": "sonnet",
             "artist": "haiku",
         }

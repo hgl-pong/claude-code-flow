@@ -59,7 +59,7 @@ Use `isolation: "worktree"` only when file conflict is confirmed.
 | prism (unit/integration) | 2 | |
 | prism (build) | 1 | build is global state |
 | sentinel | 1 per review stage | stage 1 must finish before stage 2 |
-| scout | unlimited | read-only, no conflicts |
+| research (general-purpose) | unlimited | read-only, no conflicts |
 
 ## Completion Handling
 

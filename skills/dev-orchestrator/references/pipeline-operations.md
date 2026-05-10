@@ -11,30 +11,37 @@ GATE CHECKLIST (evaluate for this specific task):
     architecture changes, broad refactors. Skip only for: narrow bug fixes with
     known root cause, config changes, single-file edits with clear spec.
 
-[ ] Gate 2: Research (scout) — see mode table. If mandatory: scout MUST
-    complete BOTH local codebase analysis AND external web research before
-    plan gate. Scout and oracle are SEQUENTIAL — never dispatch oracle
-    until scout finishes and its findings are available.
+[ ] Gate 2: Research (general-purpose subagent + research skill) — see mode
+    table. If mandatory: research subagent MUST complete BOTH local codebase
+    analysis AND external web research before plan gate. Research and oracle
+    are SEQUENTIAL — never dispatch oracle until research finishes and its
+    findings are available.
 
 [ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
     Oracle MUST produce `<output_dir>/plan-brief.md` with TaskCreate tasks.
-    Oracle MUST receive scout's findings as input when Gate 2 was checked.
+    Oracle MUST receive research findings as input when Gate 2 was checked.
 
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
 
-[ ] Gate 5: UI Research (scout) — mandatory when task domain is frontend-UI
-    AND mode is standard+. Scout MUST produce ui-research.md covering:
-    a) Local codebase: existing components, styling patterns, design tokens.
-    b) Competitor analysis: 2-3 similar products in the same domain — UI patterns,
-       visual language, interaction conventions.
-    c) Current design aesthetics: trending visual styles, typography choices,
-       color palettes, and interaction patterns relevant to the product domain.
-    Scout MUST complete before Gate 6 (UI Design) starts.
+[ ] Gate 5: UI Research (general-purpose subagent + research skill) — mandatory
+    when task domain is frontend-UI AND mode is standard+. Research subagent
+    MUST produce ui-research.md with CONCRETE data:
+    a) Local codebase: existing components, styling approach (Tailwind/CSS Modules/etc),
+       actual CSS variables and font imports in use.
+    b) Competitor analysis: 2-3 products — hex values, font names, layout structure,
+       spacing density, component personality, NOT vague "uses a nice palette".
+    c) Design intelligence: specific font pairings, type scale ratios, color families
+       for this domain, grid systems, dark mode strategies.
+    Research MUST complete before Gate 6 (UI Design) starts.
 
 [ ] Gate 6: UI Design (ui-design skill) — mandatory when task domain is frontend-UI
-    AND mode is standard+. UI design skill MUST produce DESIGN.md before forge
-    can be dispatched for UI work.
+    AND mode is standard+. UI design skill MUST produce DESIGN.md following the
+    Design Methodology (emotional signature → color roles → type system → icon
+    system → spacing rhythm → layout grid → elevation strategy → border radius
+    scale → transition tokens → component states). DESIGN.md MUST
+    include layout composition plan for page-level designs. Forge CANNOT be
+    dispatched for UI work until DESIGN.md exists.
 
 [ ] Gate 7: Review (sentinel) — see mode table. If mandatory: sentinel
     MUST approve before acceptance.

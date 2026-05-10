@@ -38,7 +38,7 @@ Each task should be independently understandable. Annotate `agent:` and `blocked
 ```markdown
 ### Task N: <name>
 
-**Agent:** forge | prism | sentinel | scout
+**Agent:** forge | prism | sentinel | research
 **BlockedBy:** [task IDs] | none
 **Files:**
 - Create: `path/to/new-file`
@@ -58,7 +58,7 @@ Each task should be independently understandable. Annotate `agent:` and `blocked
 - `forge` — any file creation/modification
 - `prism` — test runs, build verification, acceptance checks
 - `sentinel` — review only; always after prism; never writes code
-- `scout` — research, analysis, doc reading; writes only analysis output files
+- `research` — research subagent (general-purpose + research skill); analysis, doc reading; writes only analysis output files
 
 **BlockedBy rules:** only add a true data dependency. "Task B needs Task A's output file" → blocked. "Task B is in the same module" → NOT a reason to block; check for file conflict instead.
 

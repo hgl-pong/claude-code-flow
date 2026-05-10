@@ -55,23 +55,35 @@ Before editing, confirm you have: task goal + acceptance criteria, exact file/sc
 6. Self-review before reporting done
 
 ### Frontend / UI Implementation
-1. Read `DESIGN.md` at project root — cite specific sections to confirm you read it
+1. Read `DESIGN.md` at project root — cite specific YAML tokens and sections you will implement
 2. Read Design Direction first. Honor it exactly: exact fonts/weights/sizes, named color tokens, stated density/spacing
-3. Implement components per spec
-4. Verify responsive at all specified breakpoints
-5. Verify all interaction states (hover, focus, active, disabled, loading, error)
+3. Map YAML tokens to CSS: `{colors.surface-canvas}` → `var(--color-surface-canvas)` or the exact hex value
+4. Implement components per spec — ALL states, not just default
+5. Implement layout composition as specified (grid, spacing rhythm, section breaks)
+6. Write real microcopy from spec — never placeholder text
+7. Verify responsive at ALL specified breakpoints (mobile, tablet, desktop)
+8. Verify all interaction states (hover, focus, active, disabled, loading, error, empty)
 
 ### Anti-AI-Drift Guard (check before submitting UI work)
-- [ ] No Inter fallback when spec names different font
-- [ ] No blue primary if design accent isn't blue
-- [ ] No equal card shadows everywhere
-- [ ] No `rounded-xl` on everything — vary radii
-- [ ] No neutral gray text — tint all grays
-- [ ] No symmetric padding across all sections
-- [ ] No placeholder microcopy
+- [ ] No Inter/Roboto/system-ui fallback when spec names different font
+- [ ] No blue/purple primary without domain justification
+- [ ] No `#3B82F6` or `#6366F1` as any color value
+- [ ] No equal card shadows everywhere — follow elevation strategy
+- [ ] No `rounded-xl` on everything — use spec's radius tokens per component type
+- [ ] No neutral gray text — all grays tinted per spec temperature
+- [ ] No symmetric padding across all sections — follow spacing rhythm
+- [ ] No placeholder microcopy — use real text from DESIGN.md
+- [ ] No 12-column grid default — use the grid specified in Layout section
+- [ ] No identical section spacing — create rhythm as specified
+- [ ] No staggered fade-in animation on list items
+- [ ] No `transition: all 0.3s ease` — transition only the changed property with spec's easing
+- [ ] No decorative icons on every heading — icons communicate, not decorate
+- [ ] No `backdrop-filter: blur()` / glassmorphism unless spec explicitly calls for frosted surfaces
+- [ ] All color values reference tokens, not hardcoded hex except in CSS variable definitions
+- [ ] Disabled states include `cursor: not-allowed` and `aria-disabled`, not just opacity
 
 ### Accessibility Non-Negotiables
-Every interactive element: accessible name, keyboard nav, focus management, color not sole state indicator.
+Every interactive element: accessible name, keyboard nav, focus management, color not sole state indicator. All text/background pairs meet WCAG AA contrast (4.5:1). Touch targets minimum 44px.
 
 ### Escalation Protocol
 

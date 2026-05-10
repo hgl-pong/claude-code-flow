@@ -366,7 +366,7 @@ class UliSkillBranchTests(unittest.TestCase):
 
     def test_product_analysis_proposal_flow_described(self):
         self.assertIn("uli/<slug>/proposal.md", self.content)
-        self.assertIn("scout", self.content)
+        self.assertIn("research", self.content)
 
     def test_max_iterations_default_documented(self):
         import re
