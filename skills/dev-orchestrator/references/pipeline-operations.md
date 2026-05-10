@@ -13,7 +13,9 @@ GATE CHECKLIST (evaluate for this specific task):
 
 [ ] Gate 2: Research (general-purpose subagent + research skill) — see mode
     table. If mandatory: research subagent MUST complete BOTH local codebase
-    analysis AND external web research before plan gate. Research and oracle
+    analysis AND external web research before plan gate. **Dispatch with
+    `subagent_type: "general-purpose"` — research is a skill, not an agent.**
+    Research and oracle
     are SEQUENTIAL — never dispatch oracle until research finishes and its
     findings are available.
 

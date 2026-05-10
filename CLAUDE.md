@@ -35,7 +35,7 @@ Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `
 - **Sonnet high** (forge, prism, sentinel): Implementation, testing/acceptance, review
 - **Haiku** (artist): Image generation
 
-Research is handled by the `research` skill — dispatched as general-purpose subagents with inlined methodology. No dedicated research agent needed.
+Research is handled by the `research` skill — dispatched as general-purpose subagents with inlined methodology. No dedicated research agent needed. **Never use `subagent_type: "claude-code-flow:research"` — always use `subagent_type: "general-purpose"`.**
 
 UI design is handled by the `ui-design` skill (not a separate agent). Oracle decides during planning whether to invoke it for frontend-UI tasks.
 
@@ -95,7 +95,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (1136 symbols, 1707 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (1134 symbols, 1707 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

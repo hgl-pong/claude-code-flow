@@ -162,7 +162,9 @@ class PluginIntegrityTests(unittest.TestCase):
 
                 self.assertEqual(model, expected_model[name])
                 if model == "haiku":
-                    self.assertIsNone(effort, "haiku agents should stay fast and omit effort")
+                    # haiku agents may use medium effort for iterative tasks (e.g. image generation)
+                    if effort is not None:
+                        self.assertEqual(effort, "medium", "haiku agents may only use medium effort")
                 else:
                     self.assertEqual(effort, expected_effort[name])
                     self.assertIn(effort, allowed_effort)

@@ -153,6 +153,8 @@ Agent({
 
 ## Research (general-purpose subagent)
 
+**WARNING**: Research is NOT an agent type. Always use `subagent_type: "general-purpose"` with research methodology inlined in the prompt. NEVER use `subagent_type: "claude-code-flow:research"` — that type does not exist.
+
 Research is dispatched as a **general-purpose** subagent using the `research` skill methodology.
 See `skills/research/references/dispatch-templates.md` for dispatch templates (Technical Research, UI Research, Product Analysis).
 

@@ -80,7 +80,7 @@ After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-stat
 ### `implement` / `refactor`
 
 1. Brainstorm (auto-approve) — select simplest approach, write 2-3 line decision to `.claude/flow/ulw/<slug>/phase-context.md`. Do NOT present options.
-2. Research (auto-approve, if checked) — invoke research subagent (general-purpose + research skill) for **both** local codebase analysis and external web research. Research MUST complete before oracle starts — these are sequential, never parallel. Skip only for pure internal logic tasks.
+2. Research (auto-approve, if checked) — invoke research subagent (`subagent_type: "general-purpose"` with research skill inlined) for **both** local codebase analysis and external web research. **NEVER use `subagent_type: "claude-code-flow:research"`.** Research MUST complete before oracle starts — these are sequential, never parallel. Skip only for pure internal logic tasks.
 3. Plan (auto-approve) — use `writing-plans` skill, create atomic tasks with blockedBy dependencies. Do NOT show plan. Oracle runs **after** research completes, using research findings as input.
 4. Architecture (auto-approve, if checked) — oracle produces design. Append to `.claude/flow/ulw/<slug>/phase-context.md`.
 5. UI Research (auto-approve, if checked) — research subagent produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design step.

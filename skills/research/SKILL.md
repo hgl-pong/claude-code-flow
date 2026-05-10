@@ -7,6 +7,8 @@ argument-hint: "<topic to research, or 'user-research'/'synthesis'/'knowledge-sy
 
 # Research
 
+**IMPORTANT**: Research is a SKILL, NOT an agent. Always dispatch with `subagent_type: "general-purpose"`. NEVER use `subagent_type: "claude-code-flow:research"` — that agent type does not exist and will cause an error.
+
 Research subagents are **general-purpose** agents dispatched with inlined methodology. No dedicated agent needed. Research is read-only — dispatch multiple simultaneously with no conflict.
 
 ## Modes

@@ -31,7 +31,7 @@ Auto-recommend: 1-2 subtasks → **quick**; 3-5 → **standard**; 6+ or cross-mo
 | `prism` | sonnet | high | Tests, build, acceptance | Tests/Acceptance |
 | `sentinel` | sonnet | high | Code review (two-stage) | Review |
 
-Research is dispatched as **general-purpose subagents** using the `research` skill methodology. No dedicated agent needed — see `skills/research/references/dispatch-templates.md`.
+Research is dispatched as **general-purpose subagents** using the `research` skill methodology. No dedicated agent needed — see `skills/research/references/dispatch-templates.md`. **NEVER use `subagent_type: "claude-code-flow:research"` — always use `subagent_type: "general-purpose"` with research methodology inlined in the prompt.**
 
 ## Pipeline Steps
 

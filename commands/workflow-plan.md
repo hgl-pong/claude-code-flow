@@ -23,7 +23,7 @@ Start the planning pipeline for a feature or task. This is the plugin-side repla
 6. **Set state**: `flow-state.py set-mode <mode>` + `set-phase plan`.
 7. **Create structured plan state** with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
 8. **Evaluate Gate Checklist** (see `dev-orchestrator` Mandatory Gate Checklist). Record checked gates in `<output_dir>/phase-context.md` (e.g. `.claude/flow/plans/<slug>/`).
-9. **Research** (if checked): invoke research subagent (general-purpose + research skill) for **both** local codebase analysis and external web research. Research MUST complete before oracle starts — these are sequential, never parallel. Research findings feed directly into oracle's planning context.
+9. **Research** (if checked): invoke research subagent (`subagent_type: "general-purpose"` with research skill methodology inlined) for **both** local codebase analysis and external web research. **NEVER use `subagent_type: "claude-code-flow:research"` — that agent type does not exist.** Research MUST complete before oracle starts — these are sequential, never parallel. Research findings feed directly into oracle's planning context.
 10. **Oracle** (if checked): quick→skip unless the user explicitly wants a plan; standard/deep→structured plan; autonomous→structured plan. Oracle creates tasks via TaskCreate. Oracle runs **after** research completes, using research findings as input.
 11. **Architecture** (if checked): oracle for architecture.
 12. **UI Research** (if checked, frontend-UI tasks only): research subagent produces `ui-research.md` covering: (a) local codebase patterns, (b) 2-3 competitor product UI analysis, (c) current design aesthetics and trends relevant to the product domain. Must complete before UI Design gate.

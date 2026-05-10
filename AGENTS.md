@@ -22,12 +22,12 @@ Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance
 - **sentinel**: Sonnet-tier reviewer. READ-ONLY — never modifies code. Two-stage review: spec compliance first, code quality second.
 - **artist**: Haiku-tier image generator. Uses `img generate` and `img describe` for visual assets.
 
-Research is dispatched as general-purpose subagents using the `research` skill methodology — no dedicated agent.
+Research is dispatched as general-purpose subagents using the `research` skill methodology — no dedicated agent. **Never use `subagent_type: "claude-code-flow:research"` — always use `subagent_type: "general-purpose"`.**
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (1136 symbols, 1707 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (1134 symbols, 1707 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
