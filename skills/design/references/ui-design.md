@@ -1,9 +1,3 @@
----
-name: UI Design
-version: "2.1.0"
-description: "Use for: UI/UX design specs, component design, color/typography systems, design tokens. Produces DESIGN.md for forge to implement."
----
-
 # UI Design
 
 Produces a persistent `DESIGN.md` design system document (project root) following the Google open standard. Forge reads it as the implementation contract.
@@ -76,14 +70,14 @@ Follow these phases IN ORDER. Each phase builds on the previous one. Do not skip
 ### Phase 1: Load Design Knowledge (MANDATORY — do this FIRST)
 
 Read ALL of these before making ANY design decisions:
-- `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/anti-ai-design.md` — anti-AI-generic rules (MUST follow every rule)
-- `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-knowledge-base.md` — product references with concrete values
-- `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-md-spec.md` — DESIGN.md format spec (Google open standard)
-- `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/layout-patterns.md` — layout composition patterns
+- `references/anti-ai-design.md` — anti-AI-generic rules (MUST follow every rule)
+- `references/design-knowledge-base.md` — product references with concrete values
+- `references/design-md-spec.md` — DESIGN.md format spec (Google open standard)
+- `references/layout-patterns.md` — layout composition patterns
 
 Violating anti-ai-design.md rules produces AI-generic output. Read them first.
 
-Also read: existing codebase (framework, component library, styling). Read `ui-research.md` if available. Identify domain, users, emotional tone.
+Also read: existing codebase (framework, component library, styling). Read `ui-research-brief.md` if available. Identify domain, users, emotional tone.
 
 **CRITICAL**: Your output is a VISUAL design system. You are NOT writing architecture, data models, API contracts, or system design. If you find yourself describing backend logic, database schemas, or module boundaries, STOP — that belongs in `plan-brief.md`.
 
@@ -106,7 +100,7 @@ Before choosing visual elements, answer these three questions IN WRITING:
 
 1. **What feeling should the user have after 3 seconds?** (not "professional" — try "I trust this with my money" or "I want to explore more")
 2. **What existing product already makes users feel this way?** (name 1-3, from design-knowledge-base.md or beyond)
-3. **What is the ONE visual element that will be memorable?** (not "the color" — try "the 72px serif headline against a near-black surface" or "the hand-drawn illustration in the empty state")
+3. **What is the ONE visual element that will be memorable?** (not "the color" — try "the 72px serif headline against a near-black surface" or "the hand-drawn illustration in the empty state"). Call this **"The One Thing"** — it anchors the entire design's personality.
 
 **Design Direction**: Pick ONE clear aesthetic. Specific like "warm editorial, serif headings, generous whitespace" or "dense data terminal, monospace accents, dark surfaces". From design-knowledge-base.md, select 1-3 reference products. State what you borrow AND what you deliberately diverge from.
 
@@ -321,13 +315,29 @@ For any design that spans a full page or major screen, produce a layout composit
 
 Check if `DESIGN.md` exists in the project root:
 - **Exists** → Read it fully, then extend: add new tokens to YAML frontmatter, add new component sections, update Do's and Don'ts. Never overwrite existing tokens.
-- **Does not exist** → Create `DESIGN.md` at project root following the full spec in `design-md-spec.md`.
+- **Does not exist** → Create `DESIGN.md` at project root following the format below.
 
-Write YAML frontmatter first (machine-readable tokens), then the 8 markdown body sections in spec order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts.
+Write YAML frontmatter first (machine-readable tokens), then the 9 markdown body sections in order.
 
-Derive Do's and Don'ts from the Behavioral Guards in this skill and your specific design decisions. Every Don't should reference a concrete anti-pattern (from Red Flags or anti-ai-design.md). Every Do should reference a rule you followed.
+#### DESIGN.md Section Structure (Google Stitch standard + extended)
 
-Every component in scope for the current task must appear in `## Components` with ALL states specified (default, hover, focus-visible, active, disabled, loading, error). Missing states are a failure.
+| # | Section | What it captures |
+|---|---------|-----------------|
+| 1 | Visual Theme & Atmosphere | Mood, density, design philosophy, emotional signature |
+| 2 | Color Palette & Roles | Semantic name + hex + functional role per color |
+| 3 | Typography Rules | Font families, size/weight/lineHeight/letterSpacing hierarchy table |
+| 4 | Component Stylings | Buttons, cards, inputs, navigation with ALL states |
+| 5 | Layout Principles | Spacing scale, grid system, whitespace rhythm philosophy |
+| 6 | Depth & Elevation | Shadow system, surface hierarchy, z-index layers |
+| 7 | Do's and Don'ts | Design guardrails and anti-patterns with concrete examples |
+| 8 | Responsive Behavior | Breakpoints, touch targets, collapsing/reordering strategy |
+| 9 | Agent Prompt Guide | Quick color reference, ready-to-use prompts for AI agents |
+
+Derive Do's and Don'ts from the Behavioral Guards in this skill. Every Don't should reference a concrete anti-pattern (from Red Flags or anti-ai-design.md). Every Do should reference a rule you followed.
+
+Every component in scope must appear in `## Component Stylings` with ALL states (default, hover, focus-visible, active, disabled, loading, error). Missing states are a failure.
+
+For reference examples, see https://github.com/VoltAgent/awesome-design-md — 69+ real-world DESIGN.md files from sites like Vercel, Stripe, Linear, Notion, Airbnb.
 
 ## Failure Modes
 
@@ -344,14 +354,16 @@ Every component in scope for the current task must appear in `## Components` wit
 
 ## Output
 
-**`DESIGN.md`** (project root, alongside `package.json`/`README.md`): Persistent design system document following the [google-labs-code/design.md](https://github.com/google-labs-code/design.md) open standard.
+**`DESIGN.md`** (project root, alongside `package.json`/`README.md`): Persistent design system document following the [Google Stitch DESIGN.md format](https://stitch.withgoogle.com/docs/design-md/format/).
 
 - **YAML frontmatter**: machine-readable tokens — `colors`, `typography`, `icons`, `rounded`, `spacing`, `transitions`, `components` (with `{token.path}` cross-references)
-- **Markdown body** (8 sections in spec order): Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts
+- **Markdown body** (9 sections in spec order): Visual Theme → Colors → Typography → Components → Layout → Elevation → Do's/Don'ts → Responsive → Agent Prompt Guide
+
+Reference examples: [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — 69+ real-world DESIGN.md files from Vercel, Stripe, Linear, Notion, Airbnb, Spotify, etc.
 
 This is a **persistent project artifact**, not a per-task brief. Forge reads it as the implementation contract. Future UI tasks extend it — never recreate it from scratch.
 
-See `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-md-spec.md` for full format, schema, and examples.
+See `references/design-md-spec.md` for full format, schema, and examples.
 
 ## Self-Review
 
@@ -377,12 +389,20 @@ See `${CLAUDE_PLUGIN_ROOT}/skills/ui-design/references/design-md-spec.md` for fu
 - [ ] YAML frontmatter present with all token groups (colors, typography, icons, rounded, spacing, transitions, components)
 - [ ] All color tokens are semantic names, not raw hex in component rules
 - [ ] Token cross-references use `{path.to.token}` syntax
-- [ ] All 8 markdown body sections present in spec order
+- [ ] All 9 markdown body sections present in spec order
 - [ ] Real content — no lorem ipsum, no "Item 1"
-- [ ] Microcopy for: empty, error, loading, success, onboarding
+- [ ] Microcopy for: page title, nav labels, empty state, error, loading, buttons, form fields
 - [ ] Every in-scope component has ALL states: default, hover, focus-visible, active, disabled, loading, error (empty + success where applicable)
 - [ ] Each state change specifies which transition token to use
 - [ ] Layout composition plan with section rhythm and signature moment (for page-level designs)
 - [ ] Responsive breakpoints with specific column/gutter/padding values
 - [ ] No banned elements (anti-ai-design.md) without justification
 - [ ] Disabled states include `cursor: not-allowed` and `aria-disabled` (not just visual dimming)
+
+## If Connectors Available
+
+If **~~image-gen** is connected:
+- Use `img describe` to analyze existing screenshots or competitor designs during Phase 1
+
+If **~~code-intel** is connected:
+- Use `gitnexus_query` to audit existing codebase components and styling patterns during Phase 1

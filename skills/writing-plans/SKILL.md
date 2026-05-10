@@ -2,6 +2,7 @@
 name: Writing Plans
 version: "2.0.0"
 description: "Use when you have an approved spec or requirements for a multi-step task, before touching code"
+argument-hint: "<feature to plan>"
 ---
 
 # Writing Plans

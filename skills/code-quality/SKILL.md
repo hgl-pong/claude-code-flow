@@ -2,6 +2,7 @@
 name: Code Quality
 version: "1.1.0"
 description: "Use for: code quality, best practices, refactoring, design patterns, SOLID, code smells. Triggers on code review and quality questions."
+argument-hint: "<file or code area to review>"
 ---
 
 # Code Quality Standards

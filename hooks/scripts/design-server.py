@@ -7,7 +7,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
 FLOW_DIR = Path(".claude/flow")
-DESIGN_MD = FLOW_DIR / "DESIGN.md"
+DESIGN_MD = Path("DESIGN.md")  # DESIGN.md lives at project root (alongside CLAUDE.md)
 TEMPLATE_SRC = Path(__file__).resolve().parent.parent / "templates" / "design-viewer.html"
 HTML_DEST = FLOW_DIR / "design-viewer.html"
 

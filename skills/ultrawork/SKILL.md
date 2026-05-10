@@ -2,6 +2,7 @@
 name: Ultrawork
 version: "1.3.0"
 description: "Triggers when user includes ulw/ultrawork in prompt or invokes /ulw."
+argument-hint: "<task to execute autonomously>"
 ---
 
 # Ultrawork (ULW)

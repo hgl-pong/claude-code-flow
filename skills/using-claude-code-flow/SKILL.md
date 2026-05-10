@@ -2,6 +2,7 @@
 name: Using Claude Code Flow
 version: "2.0.0"
 description: "Use when starting any task"
+argument-hint: "<task description>"
 ---
 
 # Using Claude Code Flow

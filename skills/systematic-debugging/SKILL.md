@@ -2,6 +2,7 @@
 name: Systematic Debugging
 version: "2.1.0"
 description: "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes"
+argument-hint: "<bug or error to debug>"
 ---
 
 # Systematic Debugging

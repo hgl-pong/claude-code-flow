@@ -1,7 +1,33 @@
+# Agents
+
+Model-tiered agent pipeline. Each agent is a markdown file in `agents/` with YAML frontmatter specifying model, effort, and tool access.
+
+| Agent | Model | Effort | Tools | Role | Pipeline Gate |
+|-------|-------|--------|-------|------|---------------|
+| `oracle` | opus | xhigh | All | Planning + architecture | Plan/Design |
+| `forge` | sonnet | high | All | Full-stack implementation | Impl |
+| `prism` | sonnet | high | All | Tests, build, acceptance | Tests/Acceptance |
+| `sentinel` | sonnet | high | Read, Grep, Glob | Code review (two-stage) | Review |
+| `artist` | haiku | medium | Read, Write, Bash | Image generation | — |
+
+## Pipeline Flow
+
+```
+Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
+```
+
+- **oracle**: Opus-tier planner. Creates plan-brief.md, decomposes tasks, decides UI design needs. Only agent that produces DESIGN.md for frontend-UI tasks.
+- **forge**: Sonnet-tier implementer. Reads DESIGN.md at project root. Executes implementation tasks from the plan.
+- **prism**: Sonnet-tier tester. Runs tests, build, lint. Performs acceptance verification. Never claims completion without fresh evidence.
+- **sentinel**: Sonnet-tier reviewer. READ-ONLY — never modifies code. Two-stage review: spec compliance first, code quality second.
+- **artist**: Haiku-tier image generator. Uses `img generate` and `img describe` for visual assets.
+
+Research is dispatched as general-purpose subagents using the `research` skill methodology — no dedicated agent.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (705 symbols, 1277 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (694 symbols, 1268 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

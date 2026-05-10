@@ -2,6 +2,7 @@
 name: Dev Orchestrator
 version: "4.1.0"
 description: "Use when executing multi-step development tasks through the agent pipeline"
+argument-hint: "<task description>"
 ---
 
 # Development Orchestrator
@@ -43,7 +44,7 @@ See `references/pipeline-operations.md` for full gate checklist and execution de
 Key rules:
 - **Research Gate → Plan Gate**: research subagent and oracle are STRICTLY SEQUENTIAL. Research must finish both local codebase analysis and external web research before oracle starts. Never dispatch them in parallel. Oracle receives research findings as direct input.
 - **Plan Gate**: oracle creates plan-brief.md + TaskCreate with blockedBy
-- **UI Design Gate**: forge MAY NOT dispatch until DESIGN.md exists
+- **UI Design Gate**: forge MAY NOT dispatch until `DESIGN.md` exists at project root (not inside `.claude/`)
 - **Review Gate**: two-stage (spec compliance → code quality). NEVER reverse order.
 
 ### 9. Implementation Loop

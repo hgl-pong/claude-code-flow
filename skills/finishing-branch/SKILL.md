@@ -2,6 +2,7 @@
 name: Finishing Branch
 version: "1.0.0"
 description: "Use when implementation is complete and tests pass"
+argument-hint: "[merge | pr | keep | discard]"
 ---
 
 # Finishing Branch

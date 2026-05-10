@@ -2,6 +2,7 @@
 name: Receiving Code Review
 version: "1.0.0"
 description: "Use when receiving code review feedback, especially if feedback seems unclear or technically questionable"
+argument-hint: "<review feedback to address>"
 ---
 
 # Receiving Code Review

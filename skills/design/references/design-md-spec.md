@@ -129,46 +129,28 @@ components:
 - Spacing tokens use `space-N` naming with semantic purpose (space-1 = inline gap, space-7 = page breathing room)
 - No duplicate section headings
 
-### Part 2: Markdown Body (8 sections, fixed order)
+### Part 2: Markdown Body (9 sections, fixed order)
 
 ```markdown
-## Overview
+## Visual Theme & Atmosphere
 
 [Brand personality, target audience, emotional response the UI should evoke.
 Be specific: "warm editorial for independent researchers" not "modern and clean".
 Includes Emotional Signature: 3-second feeling, reference products, the One Thing.]
 
-## Colors
+## Color Palette & Roles
 
 [Semantic palette rationale. Why each color, what it communicates.
 Include dark-mode variants if applicable.
 Verify all text/background pairs pass WCAG AA (4.5:1).]
 
-## Typography
+## Typography Rules
 
 [Type scale rationale. Hierarchy decisions. Why these fonts for this product.
 Include web font import or system-font fallback stack.
 Icon system: style family, size scale, stroke width, usage rules.]
 
-## Layout
-
-[Spacing scale usage. Grid system (columns, gutters, margins).
-Responsive breakpoints: mobile (<640px), tablet (640–1024px), desktop (>1024px).
-Max content width. Container padding at each breakpoint.
-Section rhythm pattern. Signature moment for page-level designs.]
-
-## Elevation & Depth
-
-[Shadow scale. When to use shadow vs border vs color-only separation.
-Z-index layers: base, raised, overlay, modal, tooltip.
-Border radius scale: sm/md/lg rules per container type.]
-
-## Shapes
-
-[Border-radius philosophy. When sm/md/lg applies.
-Exceptions: inputs use sm, modals use lg, pills use full.]
-
-## Components
+## Component Stylings
 
 [Per-component guidance. Each component MUST specify ALL states:
 default, hover, focus-visible, active, disabled, loading, error.
@@ -187,6 +169,18 @@ States: default / focus / error / disabled
 
 ### [Add components as needed for the current task]
 
+## Layout Principles
+
+[Spacing scale usage. Grid system (columns, gutters, margins).
+Section rhythm pattern. Signature moment for page-level designs.
+Max content width. Container padding.]
+
+## Depth & Elevation
+
+[Shadow scale. When to use shadow vs border vs color-only separation.
+Z-index layers: base, raised, overlay, modal, tooltip.
+Border radius scale: sm/md/lg rules per container type.]
+
 ## Do's and Don'ts
 
 Do:
@@ -194,6 +188,18 @@ Do:
 
 Don't:
 - [Specific things that would make this look generic or off-brand]
+
+## Responsive Behavior
+
+[Responsive breakpoints: mobile (<640px), tablet (640–1024px), desktop (>1024px).
+Touch targets. Collapsing/reordering strategy.
+Layout changes at each breakpoint.]
+
+## Agent Prompt Guide
+
+[Quick color reference table for AI agents.
+Ready-to-use prompts for generating components in this design system.
+Common token combinations.]
 ```
 
 ---

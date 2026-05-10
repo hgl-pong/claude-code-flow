@@ -1,7 +1,8 @@
 ---
 name: Web Search (Tavily)
 version: "1.0.0"
-description: Use when the user asks to search the web, look up current information, find recent news, compare products/libraries, or research any topic that requires up-to-date online data. Always prefer this over the built-in WebSearch tool.
+description: "Use when the user asks to search the web, look up current information, find recent news, compare products/libraries, or research any topic that requires up-to-date online data. Always prefer this over the built-in WebSearch tool."
+argument-hint: "<search query>"
 ---
 
 # Web Search via Tavily

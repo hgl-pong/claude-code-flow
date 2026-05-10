@@ -2,6 +2,7 @@
 name: Verification Before Completion
 version: "2.0.0"
 description: "Use when about to claim work is complete, fixed, or passing"
+argument-hint: "<claim to verify>"
 ---
 
 # Verification Before Completion

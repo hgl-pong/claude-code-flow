@@ -48,7 +48,7 @@ Include confidence level per finding.
 
 ## UI Research (frontend-UI tasks)
 
-Use when Gate 5 (UI Research) is checked. Dispatch BEFORE UI Design step. See `skills/ui-design/references/` for design domain knowledge.
+Use when Gate 5 (UI Research) is checked. Dispatch BEFORE UI Design step. See `skills/design/references/` for design domain knowledge.
 
 ```
 Agent({

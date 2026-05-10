@@ -21,7 +21,7 @@ Use the `brainstorming` skill to turn the request into a clear design.
 4. Ask only the clarifying questions needed to remove risky ambiguity.
 5. Present 2-3 approaches with trade-offs and a recommendation.
 6. Present the chosen design for approval.
-7. For substantial work, save the spec to `.claude/flow/designs/<topic>-design.md`.
+7. For substantial work, save the spec to `.claude/flow/designs/<topic>-design.md`. This is a design spec — DESIGN.md (visual design system) goes to project root.
 
 ## Output
 

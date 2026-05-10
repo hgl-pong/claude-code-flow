@@ -2,6 +2,7 @@
 name: Writing Skills
 version: "1.1.0"
 description: "Use when creating new skills or editing existing skills — quality standard for skill authoring"
+argument-hint: "<skill to create or improve>"
 ---
 
 # Writing Skills

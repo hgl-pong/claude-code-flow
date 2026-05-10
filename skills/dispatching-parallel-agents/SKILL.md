@@ -2,6 +2,7 @@
 name: Dispatching Parallel Agents
 version: "2.1.0"
 description: "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies"
+argument-hint: "<tasks to dispatch>"
 ---
 
 # Dispatching Parallel Agents

@@ -2,6 +2,7 @@
 name: Executing Plans
 version: "1.0.0"
 description: "Use when you have a written implementation plan to execute in the current session"
+argument-hint: "<plan to execute>"
 ---
 
 # Executing Plans

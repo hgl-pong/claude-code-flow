@@ -217,3 +217,12 @@ Reference these products for specific techniques — always state what you borro
 **What to avoid copying**: The minimal chrome (requires strong content to support it).
 
 **Best for**: Content curation, creative tools, portfolio/showcase interfaces.
+
+---
+
+## Extended Reference Library
+
+For 69+ additional real-world DESIGN.md examples covering every domain (AI tools, fintech, automotive, media, SaaS), see:
+- **Repository**: https://github.com/VoltAgent/awesome-design-md
+- **Browse online**: https://getdesign.md
+- Each file follows the Google Stitch 9-section format with concrete token values
