@@ -8,7 +8,28 @@ import json
 import re
 import sys
 
+EXTERNAL_SOURCE_PATTERN = (
+    r'\bhttps?://\S*(github|gitlab)\S*'
+    r'|(\b(reference|borrow|port|migrate|inspired by|compare with)\b'
+    r'.{0,60}\b(repo|repository|plugin|agent pack|workflow|github|gitlab)\b)'
+    r'|(\b(repo|repository|plugin|agent pack|workflow|github|gitlab)\b'
+    r'.{0,60}\b(reference|borrow|port|migrate|inspired by|compare with)\b)'
+    r'|((参考|借鉴|对比|移植|迁移).{0,30}(仓库|插件|工作流|智能体|代理|github|gitlab|repo|plugin|workflow|agent))'
+)
+
+COORDINATED_DELIVERY_PATTERN = (
+    r'\b(execute|implement|build|deliver|ship|finish|complete|orchestrate|coordinate)\b'
+    r'.*\b(plan|feature|workflow|pipeline|task|tasks|implementation|change|changes|fix|refactor|agents?)\b'
+    r'|\b(multi[- ]?step|end[- ]?to[- ]?end|full[- ]?stack|cross[- ]?(file|domain|module)'
+    r'|approved plan|run the pipeline|handoff to agents?)\b'
+    r'|(执行|实施|实现|构建|交付|完成|编排|协调).{0,30}(计划|方案|功能|工作流|流水线|任务|改动|修改|修复|重构|智能体|代理)'
+    r'|(迭代|优化|增强|改进).{0,30}(工作流|流水线|流程|编排|触发|技能|智能体|代理)'
+    r'|(多步骤|端到端|全栈|跨文件|跨模块|跨领域|已批准的计划|执行计划|运行流水线)'
+)
+
 ROUTING_RULES = [
+    (EXTERNAL_SOURCE_PATTERN, 'workflow-intake', 'External workflow intake detected'),
+    (COORDINATED_DELIVERY_PATTERN, 'dev-orchestrator', 'Coordinated implementation detected'),
     (r'\b(debug|fix|broken|crash|error|failing|bug)\b', 'systematic-debugging', 'Debug pattern detected'),
     (r'\b(review|code.?quality|refactor|clean.?up)\b', 'code-quality', 'Review pattern detected'),
     (r'\b(test|spec|coverage|unit.?test|integration.?test)\b', 'testing-strategy', 'Testing pattern detected'),

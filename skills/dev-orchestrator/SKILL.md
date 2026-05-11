@@ -1,13 +1,26 @@
 ---
 name: Dev Orchestrator
-version: "4.1.0"
-description: "Use when executing multi-step development tasks through the agent pipeline"
-argument-hint: "<task description>"
+version: "4.2.0"
+description: "Use by default for executing implementation work, approved plans, multi-step tasks, feature delivery, cross-file changes, end-to-end fixes, agent orchestration, or any task that needs planning-to-implementation-to-test-to-review coordination."
+argument-hint: "<task description, approved plan, feature, fix, refactor, or delivery goal>"
 ---
 
 # Development Orchestrator
 
-Orchestrate tasks through the development pipeline with model-tiered agents, mode selection, DAG-aware scheduling, and error recovery.
+Orchestrate tasks through the development pipeline with model-tiered agents, mode selection, selective external-intake, DAG-aware scheduling, and error recovery.
+
+## Trigger Bias
+
+Default to this skill whenever the user is asking to **do the work**, not merely discuss it. If a request includes implementation, execution, feature delivery, fixing, refactoring, testing handoff, review handoff, multi-file edits, multiple subtasks, or "finish/ship/deliver this", `dev-orchestrator` should be considered active even when `/workflow-plan` or another process skill also applies.
+
+Strong trigger phrases include:
+
+- "execute the plan", "implement this", "build this", "ship it", "deliver end-to-end"
+- "multi-step", "multiple files", "full-stack", "cross-domain", "coordinate agents"
+- "run the pipeline", "orchestrate", "plan then implement", "fix and verify"
+- "after approval", "use forge/prism/sentinel", "handoff to agents"
+
+Use `workflow-plan` first only when the user is asking primarily for a plan, proposal, or approval gate. Once execution is requested or an approved plan exists, hand to `dev-orchestrator`.
 
 ## Mode Selection
 
@@ -33,15 +46,18 @@ Auto-recommend: 1-2 subtasks → **quick**; 3-5 → **standard**; 6+ or cross-mo
 
 Research is dispatched as **general-purpose subagents** using the `research` skill methodology. No dedicated agent needed — see `skills/research/references/dispatch-templates.md`. **NEVER use `subagent_type: "claude-code-flow:research"` — always use `subagent_type: "general-purpose"` with research methodology inlined in the prompt.**
 
+External workflow references are handled by the `workflow-intake` skill before oracle planning. They are source material, not authority. Intake must strengthen the existing `oracle -> forge -> prism -> sentinel` pipeline and must not create a competing ECC-style surface.
+
 ## Pipeline Steps
 
 ### 1. Analyze + Mode + Domain
-Start with `using-claude-code-flow`. Classify domain (frontend-UI / backend / cross-domain), complexity, select mode. For new features: run `brainstorming` first.
+Start with `using-claude-code-flow`. Classify domain (frontend-UI / backend / cross-domain), complexity, select mode. For new features: run `brainstorming` first. If the request references another repo, agent pack, plugin, or workflow, run `workflow-intake` before oracle planning and pass its adopt/adapt/reject decisions into the plan context.
 
 ### 2. Evaluate Gates → 3-8. Execute Gates
 See `references/pipeline-operations.md` for full gate checklist and execution details. Record in `<output_dir>/phase-context.md`.
 
 Key rules:
+- **Reference Intake Gate → Plan Gate**: outside repos or workflow packs are inspected selectively. Record accepted, adapted, rejected, and deferred ideas in `intake-decision.md`. Do not copy wholesale agent catalogs, command catalogs, hook systems, or runtime dependencies into this workflow.
 - **Research Gate → Plan Gate**: research subagent and oracle are STRICTLY SEQUENTIAL. Research must finish both local codebase analysis and external web research before oracle starts. Never dispatch them in parallel. Oracle receives research findings as direct input.
 - **Plan Gate**: oracle creates plan-brief.md + TaskCreate with blockedBy
 - **UI Design Gate**: forge MAY NOT dispatch until `DESIGN.md` exists at project root (not inside `.claude/`)
@@ -77,6 +93,8 @@ Concise: outcome, files changed, verification, caveats.
 - "I'll skip review for this small change"
 - "The agent output looks fine, I don't need to verify FILES_MODIFIED"
 - "I'll carry this context into the next agent dispatch"
+- "This external workflow is popular, so I'll import its agents/commands wholesale"
+- "A new external runtime is fine because the reference repo uses it"
 - "Stage 1 and Stage 2 can run together"
 - "This frontend task doesn't need ui-design skill" ← if UI Design gate checked → run it
 - "I'll dispatch forge for UI work without DESIGN.md" ← WRONG

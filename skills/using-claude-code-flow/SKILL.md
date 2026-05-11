@@ -40,8 +40,10 @@ If there is even a 1% chance a skill might apply, invoke it. Skill check comes B
 | Prompt contains `uli` | `ultrawork` (ULI branch) — product iteration loop |
 | New feature, behavior change, refactor, UI work, or multi-file delivery | `brainstorming` first, then `writing-plans` |
 | Task needs planning, sequencing, or cross-agent coordination | `workflow-plan` |
-| Multi-step implementation with approved plan | `dev-orchestrator` |
-| Large task with 3+ subtasks needing parallel agent dispatch | `dispatching-parallel-agents` (invoked by dev-orchestrator) |
+| Task references another repo/plugin/agent pack/workflow as inspiration or source material | `workflow-intake` before `workflow-plan` |
+| User asks to implement, build, fix, refactor, ship, deliver, or execute work | `dev-orchestrator` after any required process skill |
+| Multi-step implementation, approved plan, cross-file change, full-stack task, or end-to-end fix | `dev-orchestrator` |
+| Large task with 3+ subtasks needing parallel agent dispatch | `dev-orchestrator`, which invokes `dispatching-parallel-agents` |
 | Bug or failing behavior with unknown cause | `systematic-debugging` |
 | Any production code change | `testing-strategy` with TDD cycle |
 | Code review request | `code-quality` and `sentinel` |
@@ -57,7 +59,7 @@ If there is even a 1% chance a skill might apply, invoke it. Skill check comes B
 
 When multiple skills apply:
 1. **Process skills first** (brainstorming, systematic-debugging) — determines HOW to approach
-2. **Implementation skills second** (testing-strategy, dev-orchestrator) — guides execution
+2. **Implementation skills second** (testing-strategy, dev-orchestrator) — guides execution. Bias toward `dev-orchestrator` when any coordinated delivery is requested.
 3. **Verification skills last** (verification-before-completion) — confirms delivery
 
 ## Response Style

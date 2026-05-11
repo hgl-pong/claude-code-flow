@@ -16,6 +16,8 @@ Model-tiered agent pipeline. Each agent is a markdown file in `agents/` with YAM
 Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
 ```
 
+- **workflow-intake**: When a task references another repo/plugin/workflow, inspect it before planning and record Adopt / Adapt / Reject / Defer decisions. External sources are inspiration, not authority; do not import a second agent or command system wholesale.
+- **dev-orchestrator skill**: Preferred execution trigger after planning, approval, or any multi-step/cross-file implementation request. It coordinates the agent pipeline rather than becoming a separate agent.
 - **oracle**: Opus-tier planner. Creates plan-brief.md, decomposes tasks, decides UI design needs. Only agent that produces DESIGN.md for frontend-UI tasks.
 - **forge**: Sonnet-tier implementer. Reads DESIGN.md at project root. Executes implementation tasks from the plan.
 - **prism**: Sonnet-tier tester. Runs tests, build, lint. Performs acceptance verification. Never claims completion without fresh evidence.
@@ -27,7 +29,7 @@ Research is dispatched as general-purpose subagents using the `research` skill m
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (1134 symbols, 1707 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (476 symbols, 1049 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -123,6 +123,64 @@ class PluginIntegrityTests(unittest.TestCase):
             with self.subTest(file=path.relative_to(ROOT).as_posix()):
                 compile(read_text(path), str(path), "exec")
 
+    def test_keyword_router_prefers_dev_orchestrator_for_coordinated_delivery(self):
+        script = ROOT / "hooks/scripts/keyword-router.py"
+        prompts = [
+            "execute the approved plan and coordinate agents",
+            "implement this full-stack feature end-to-end",
+            "build the multi-step workflow changes",
+            "执行这个计划",
+            "实现这个全栈功能",
+            "迭代优化当前工作流",
+        ]
+
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                result = subprocess.run(
+                    [sys.executable, str(script)],
+                    input=json.dumps({"prompt": prompt}),
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("dev-orchestrator", result.stdout)
+
+    def test_keyword_router_scopes_workflow_intake_to_external_sources(self):
+        script = ROOT / "hooks/scripts/keyword-router.py"
+
+        result = subprocess.run(
+            [sys.executable, str(script)],
+            input=json.dumps({"prompt": "参考 https://github.com/example/agent-pack 优化工作流"}),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("workflow-intake", result.stdout)
+
+        false_positive_prompts = [
+            "copy this text",
+            "import the library",
+        ]
+        for prompt in false_positive_prompts:
+            with self.subTest(prompt=prompt):
+                result = subprocess.run(
+                    [sys.executable, str(script)],
+                    input=json.dumps({"prompt": prompt}),
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn("workflow-intake", result.stdout)
+
+        result = subprocess.run(
+            [sys.executable, str(script)],
+            input=json.dumps({"prompt": "import the data and implement the feature"}),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("dev-orchestrator", result.stdout)
+
     def test_shell_scripts_are_lf_only(self):
         scripts = list((ROOT / "hooks/scripts").glob("*.sh"))
         scripts.extend((ROOT / "scripts").glob("*.sh"))

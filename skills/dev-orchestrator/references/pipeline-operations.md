@@ -19,9 +19,18 @@ GATE CHECKLIST (evaluate for this specific task):
     are SEQUENTIAL — never dispatch oracle until research finishes and its
     findings are available.
 
+[ ] Gate 2a: Reference Intake (workflow-intake skill) — mandatory when the
+    user asks to reference, borrow from, port, import, compare with, or optimize
+    from another repo/plugin/workflow. Produce `<output_dir>/intake-decision.md`
+    before oracle starts. Each source idea must be marked Adopt / Adapt /
+    Reject / Defer. Rejected ideas MUST include a reason. Intake is sequential
+    with oracle planning and must not introduce a second agent taxonomy, command
+    system, hook runtime, or external control plane.
+
 [ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
     Oracle MUST produce `<output_dir>/plan-brief.md` with TaskCreate tasks.
-    Oracle MUST receive research findings as input when Gate 2 was checked.
+    Oracle MUST receive research findings as input when Gate 2 was checked and
+    intake decisions as input when Gate 2a was checked.
 
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
@@ -53,6 +62,8 @@ GATE CHECKLIST (evaluate for this specific task):
 
 EXECUTION RULE: Execute gates in order (1→2→3→4→5→6→7→8), skipping only
 unchecked gates. You MAY NOT skip a checked gate. You MAY NOT reorder gates.
+Gate 2a runs after research when both are checked, otherwise immediately before
+Plan.
 ```
 
 ## Context Envelope Template
@@ -69,6 +80,7 @@ Every agent prompt MUST be self-contained. Omitting fields = incomplete dispatch
 - **Test Command:** `<exact command to run for verification>`
 - **Acceptance Criteria:** <from task description>
 - **Relevant Excerpts:** <requirements/design/code snippets needed to act without reading a separate plan>
+- **Intake Decisions:** <adopt/adapt/reject/defer table when external sources were referenced>
 - **Constraints:** <project conventions, banned patterns, dependency limits>
 - **Out of Scope:** <nearby work the agent must not touch>
 

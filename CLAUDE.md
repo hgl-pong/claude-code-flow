@@ -47,7 +47,11 @@ UI design is handled by the `ui-design` skill (not a separate agent). Oracle dec
 Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
 ```
 
+When work references another repo, plugin, agent pack, or external workflow, run `workflow-intake` before oracle planning. It produces an Adopt / Adapt / Reject / Defer intake record so outside ideas strengthen this workflow without importing a competing ECC-style surface.
+
 `/plan` is the plugin planning entry and routes to `/workflow-plan`; `EnterPlanMode` is guarded so model-triggered built-in plan mode redirects back to the plugin workflow. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
+
+`dev-orchestrator` is the default execution skill once the user asks to implement, execute an approved plan, coordinate agents, touch multiple files, or deliver an end-to-end change. It should trigger more readily than individual execution guidance because it owns the full plan→implementation→test→review handoff.
 
 Modes (`quick/standard/deep/autonomous/ultrawork`) control which gates are enforced. The pipeline is orchestrated by the `dev-orchestrator` skill using Claude Code's built-in `TaskCreate/TaskList/TaskUpdate` for task management.
 
@@ -95,7 +99,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (1134 symbols, 1707 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (476 symbols, 1049 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

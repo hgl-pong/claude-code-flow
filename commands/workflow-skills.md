@@ -7,6 +7,13 @@ description: Manage the skill library — view current skills, review proposals 
 
 Manage the workflow skill library — view, detect, and create skills.
 
+## Placement Policy
+
+- `skills/<name>/SKILL.md` is for curated, shipped, repo-native skills only.
+- Learned, imported, or evolved skills are local-only and must not be copied into `skills/` without an explicit intake decision.
+- External skills must pass `workflow-intake` first: Adopt / Adapt / Reject / Defer, with provenance and rejection reasons recorded.
+- Prefer updating an existing skill when overlap is material; create a new skill only when it owns a distinct workflow lane.
+
 ## Process
 
 1. **Show current library**: Run `python hooks/scripts/skill-detector.py stats` and `python hooks/scripts/skill-detector.py list`
@@ -23,6 +30,7 @@ Manage the workflow skill library — view, detect, and create skills.
    - **Approve**: Create a new skill entry in `skill-seeds.json` and optionally create a `skills/<name>/SKILL.md`
    - **Reject**: Discard the proposal
    - **Defer**: Keep for later
+   - **Intake needed**: If the proposal came from an outside repo/plugin/workflow, run `/workflow-intake` before creating repo files
 
 ## Skill Creation
 

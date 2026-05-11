@@ -82,6 +82,7 @@ Before saying work is done:
 | Bug fixed | Regression test or reproduction now passes |
 | UI works | Screenshot/browser check or explicit render verification |
 | Review passed | Review result and files reviewed |
+| External workflow adapted | Intake decision record showing Adopt / Adapt / Reject / Defer plus normal repo tests |
 
 ## Final Report
 

@@ -19,6 +19,7 @@ Research subagents are **general-purpose** agents dispatched with inlined method
 | **User Research** | "user research plan", "interview guide", "usability test", "survey design" | `references/user-research.md` |
 | **Research Synthesis** | "synthesize research", "find patterns", "analyze interview data" | `references/research-synthesis.md` |
 | **Knowledge Synthesis** | "combine findings", "cross-reference", "merge sources" | `references/knowledge-synthesis.md` |
+| **Workflow Intake Research** | External repo/plugin/workflow comparison before changing this workflow | `skills/workflow-intake/SKILL.md` + this file |
 
 Auto-detect mode from context, or default to Technical Research.
 
@@ -30,6 +31,7 @@ Auto-detect mode from context, or default to Technical Research.
 - User research: planning interviews, designing usability tests, structuring studies
 - Research synthesis: distilling transcripts/surveys into themes and recommendations
 - Knowledge synthesis: merging multi-source results with dedup and confidence scoring
+- Workflow intake: inspect outside workflow systems as evidence for `workflow-intake`, not as content to copy wholesale
 
 **Do NOT use for:** codebase exploration (use gitnexus), simple web lookups (use web-search skill directly), debugging (use systematic-debugging skill).
 
@@ -49,6 +51,14 @@ Source cross-reference: verify claims with 2+ independent sources. Single-source
 
 Web search: `python ~/bin/tavily "query" -n 5` — NOT the built-in WebSearch tool.
 
+## Process (Workflow Intake Research)
+
+1. Bound the source scope: read overview docs, command/agent/skill manifests, hook/runtime docs, and any policy files.
+2. Extract ideas, not files. Group them as agents, skills, commands, hooks, rules, docs, runtime, or tests.
+3. For each idea, note fit with this repo's existing lanes and whether it requires a new dependency.
+4. Flag duplicated surfaces and project-specific content as rejection candidates.
+5. Return findings in an Adopt / Adapt / Reject / Defer table for the `workflow-intake` skill.
+
 ## Common Mistakes
 
 | Failure | Fix |
@@ -65,6 +75,7 @@ Web search: `python ~/bin/tavily "query" -n 5` — NOT the built-in WebSearch to
 - **Findings**: Per finding — topic, result, sources, confidence, relevance
 - **Comparison** (if applicable): Side-by-side pros/cons
 - **Open Questions**: What couldn't be determined
+- **Intake Table** (for workflow intake): source idea, target lane, decision, reason
 
 ## Dispatching
 
