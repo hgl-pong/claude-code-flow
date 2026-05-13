@@ -64,7 +64,7 @@ Modes (`quick/standard/deep/autonomous/ultrawork`) control which gates are enfor
 
 All hooks registered in `hooks/hooks.json`, scripts in `hooks/scripts/`. Scripts use `${CLAUDE_PLUGIN_ROOT}` for portable paths. Key hooks:
 - **PreToolUse(Bash)**: Commit guard — blocks `git commit` when unreviewed files exist
-- **PreToolUse(Agent)**: Agent guard — blocks sentinel without modified files
+- **PreToolUse(Agent)**: Agent guard — blocks sentinel only when no review target is available from workflow-tracked files, git changes, explicit file/directory targets, diff context, or document `review_focus`
 - **PreToolUse(EnterPlanMode)**: Plan guard — blocks built-in plan-mode tool calls and redirects to plugin `/plan` / `/workflow-plan`
 - **PostToolUse(Bash)**: Verification evidence tracking — classifies test/build/lint commands and records results to `verification-evidence.jsonl`
 - **PostToolUse(Write/Edit)**: File modification tracking with agent ownership
@@ -99,7 +99,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (476 symbols, 1049 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (527 symbols, 1102 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
