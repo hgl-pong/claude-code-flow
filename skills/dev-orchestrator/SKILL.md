@@ -51,7 +51,7 @@ External workflow references are handled by the `workflow-intake` skill before o
 ## Pipeline Steps
 
 ### 1. Analyze + Mode + Domain
-Start with `using-claude-code-flow`. Classify domain (frontend-UI / backend / cross-domain), complexity, select mode. For new features: run `brainstorming` first. If the request references another repo, agent pack, plugin, or workflow, run `workflow-intake` before oracle planning and pass its adopt/adapt/reject decisions into the plan context.
+If `dev-orchestrator` was selected by a command, hook, or prior `using-claude-code-flow` pass, continue directly here; do not invoke `using-claude-code-flow` again. Classify domain (frontend-UI / backend / cross-domain), complexity, and mode. For new ambiguous features or substantial design decisions, run `brainstorming` first; skip it for approved specs/plans, narrow fixes, direct execution, and routine maintenance. If the request references another repo, agent pack, plugin, or workflow, run `workflow-intake` before oracle planning and pass its adopt/adapt/reject decisions into the plan context.
 
 ### 2. Evaluate Gates → 3-8. Execute Gates
 See `references/pipeline-operations.md` for full gate checklist and execution details. Record in `<output_dir>/phase-context.md`.

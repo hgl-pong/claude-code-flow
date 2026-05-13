@@ -15,7 +15,7 @@ Use the `writing-plans` skill to produce a task-by-task implementation plan.
 
 ## Process
 
-1. Use `using-claude-code-flow`.
+1. Treat `/write-plan` as the selected route; do not invoke `using-claude-code-flow` again unless no route context exists.
 2. Read the referenced spec or requirements.
 3. Use `writing-plans`.
 4. Map files to responsibilities.

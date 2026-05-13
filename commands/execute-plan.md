@@ -15,7 +15,7 @@ Execute a saved implementation plan using the `dev-orchestrator` pipeline.
 
 ## Process
 
-1. Use `using-claude-code-flow`.
+1. Treat `/execute-plan` as the selected route; do not invoke `using-claude-code-flow` again unless no route context exists.
 2. Use `executing-plans` skill for the execution workflow.
 3. Use `dev-orchestrator` for pipeline management.
 4. Set mode and phase:

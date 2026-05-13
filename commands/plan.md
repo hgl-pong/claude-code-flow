@@ -10,7 +10,7 @@ Use the plugin workflow planning pipeline instead of Claude Code's built-in plan
 ## Process
 
 1. Treat `/plan <task>` as `/workflow-plan <task>`.
-2. Use `using-claude-code-flow`, then continue through the workflow-plan gate checklist.
+2. Treat `/plan` as the selected route to `workflow-plan`; do not invoke `using-claude-code-flow` again unless no route context exists.
 3. Prefer this command for multi-step work, behavior changes, UI work, architecture changes, and cross-file tasks.
 4. Use `/quick-fix` only for narrow single-file fixes with a known root cause.
 5. Do not invoke built-in plan mode.

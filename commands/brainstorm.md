@@ -15,7 +15,7 @@ Use the `brainstorming` skill to turn the request into a clear design.
 
 ## Process
 
-1. Use `using-claude-code-flow` to confirm the workflow path.
+1. Treat `/brainstorm` as the selected route; do not invoke `using-claude-code-flow` again unless no route context exists.
 2. Use `brainstorming`.
 3. Explore the project context relevant to the idea.
 4. Ask only the clarifying questions needed to remove risky ambiguity.

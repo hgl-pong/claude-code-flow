@@ -145,6 +145,45 @@ class PluginIntegrityTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("dev-orchestrator", result.stdout)
 
+    def test_planning_prompts_are_owned_by_workflow_plan_detector(self):
+        keyword_router = ROOT / "hooks/scripts/keyword-router.py"
+        workflow_detector = ROOT / "hooks/scripts/workflow-plan-detector.py"
+        prompt = "I need to plan a multi-step feature that touches UI and backend files."
+
+        keyword_result = subprocess.run(
+            [sys.executable, str(keyword_router)],
+            input=json.dumps({"prompt": prompt}),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(keyword_result.returncode, 0, keyword_result.stderr)
+        self.assertEqual(json.loads(keyword_result.stdout), {})
+
+        workflow_result = subprocess.run(
+            [sys.executable, str(workflow_detector)],
+            input=json.dumps({"prompt": prompt}),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(workflow_result.returncode, 0, workflow_result.stderr)
+        output = json.loads(workflow_result.stdout)
+        self.assertIn("system_prompt_append", output)
+        self.assertIn("Primary route: `/workflow-plan`", output["system_prompt_append"])
+        self.assertIn("Do not separately invoke `using-claude-code-flow`", output["system_prompt_append"])
+
+    def test_workflow_plan_detector_does_not_steal_other_slash_commands(self):
+        script = ROOT / "hooks/scripts/workflow-plan-detector.py"
+        for prompt in ["/brainstorm Improve onboarding", "/write-plan approved-spec.md", "/execute-plan plan.md", "/quick-fix Fix typo"]:
+            with self.subTest(prompt=prompt):
+                result = subprocess.run(
+                    [sys.executable, str(script)],
+                    input=json.dumps({"prompt": prompt}),
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+
     def test_keyword_router_scopes_workflow_intake_to_external_sources(self):
         script = ROOT / "hooks/scripts/keyword-router.py"
 

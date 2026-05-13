@@ -29,7 +29,7 @@ Research is dispatched as general-purpose subagents using the `research` skill m
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (527 symbols, 1102 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (545 symbols, 1120 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

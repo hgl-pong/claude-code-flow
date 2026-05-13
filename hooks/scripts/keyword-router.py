@@ -27,6 +27,15 @@ COORDINATED_DELIVERY_PATTERN = (
     r'|(多步骤|端到端|全栈|跨文件|跨模块|跨领域|已批准的计划|执行计划|运行流水线)'
 )
 
+DEDICATED_WORKFLOW_PLAN_PATTERN = re.compile(
+    r"(?:/plan\b|/workflow[- ]?plan\b|\bworkflow[- ]?plan\b|\bplan\s+mode\b|"
+    r"\bneed\s+a\s+plan\b|\bhelp\s+me\s+plan\b|\bplan\s+first\b|"
+    r"\bplanning\b|\bplan\s+(?:a|an|the|this)\b|\boutline\b|\bnext\s+steps\b|"
+    r"\bmulti[- ]step\s+plan\b|\bcross[- ]?domain\s+plan\b|"
+    r"\barchitecture\s+plan\b|\broadmap\b|\borchestrat(?:e|ion)\s+plan\b)",
+    re.IGNORECASE,
+)
+
 ROUTING_RULES = [
     (EXTERNAL_SOURCE_PATTERN, 'workflow-intake', 'External workflow intake detected'),
     (COORDINATED_DELIVERY_PATTERN, 'dev-orchestrator', 'Coordinated implementation detected'),
@@ -57,6 +66,11 @@ def route_keywords(prompt_text):
         if re.search(pattern, prompt_text, re.IGNORECASE):
             return None
 
+    # Let the dedicated workflow-plan hook own planning prompts so the model
+    # does not receive two independent skill suggestions for one task.
+    if DEDICATED_WORKFLOW_PLAN_PATTERN.search(prompt_text):
+        return None
+
     matches = []
     for pattern, skill, reason in ROUTING_RULES:
         if re.search(pattern, prompt_text, re.IGNORECASE):
@@ -67,7 +81,11 @@ def route_keywords(prompt_text):
 
     # Return first match (highest priority)
     skill, reason = matches[0]
-    return f"[keyword-router] {reason}. Consider using skill: {skill}"
+    return (
+        f"[keyword-router] {reason}. Primary skill: {skill}. "
+        "Use this route unless the active command/skill explicitly asks for a companion skill; "
+        "do not invoke using-claude-code-flow just to re-check routing."
+    )
 
 
 def main():

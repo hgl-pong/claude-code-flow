@@ -1,7 +1,7 @@
 ---
 name: Brainstorming
 version: "3.0.0"
-description: "Turn ideas into clear designs before code. Use when creating features, building components, adding functionality, modifying behavior, exploring a new opportunity, generating solutions, stress-testing an idea, writing a PRD/spec, or when you need a thinking partner before converging on a direction. For PRD/spec writing, see references/write-spec.md."
+description: "Use for ambiguous or substantial product/design decisions before code: new features, major behavior changes, UI/architecture choices, broad refactors, idea exploration, solution generation, assumption testing, or PRD/spec writing. Skip for narrow fixes, approved requirements, routine maintenance, direct execution, or tasks already routed by a command."
 argument-hint: "<idea, feature, or problem to explore>"
 ---
 
@@ -12,6 +12,21 @@ Turn ideas into clear designs. The goal is not ceremony — it is to surface ass
 ## Hard Gate
 
 Do not implement until there is an approved design. For tiny work, the design can be two or three sentences. For larger work, write it as a spec.
+
+## Trigger Boundary
+
+Use this skill when there are real decisions to make before implementation:
+
+- The problem, user outcome, or solution is ambiguous.
+- The task introduces a new feature or substantial behavior change.
+- The work changes UI, architecture, workflow shape, or a broad refactor direction.
+- The user explicitly asks to brainstorm, explore, generate options, stress-test an idea, write a PRD, or write a spec.
+
+Skip this skill when the path is already clear:
+
+- The user asks for direct implementation of approved requirements, an approved plan, or a saved spec.
+- The task is a narrow bug fix, typo, docs-only edit, test-only edit, config tweak, dependency bump, or routine maintenance.
+- A slash command or hook has already routed the task to `/workflow-plan`, `/write-plan`, `/execute-plan`, `/quick-fix`, or `dev-orchestrator`; let that route decide whether brainstorming is needed.
 
 ## Brainstorming Modes
 
@@ -181,4 +196,4 @@ If **~~web-search** is connected:
 
 ## Handoff
 
-After approval, invoke **SUGGESTED: `writing-plans`** for multi-step work or the lightweight TDD path for narrow changes.
+After approval, invoke **SUGGESTED: `writing-plans`** for multi-step work or the lightweight TDD path for narrow changes. Do not invoke `using-claude-code-flow` again after this handoff; the route is already selected.
