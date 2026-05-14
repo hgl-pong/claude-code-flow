@@ -20,7 +20,7 @@ Read `.claude/flow/workflow-state.json` and `.claude/flow/plan-state.json` and d
 - Last updated timestamp
 - Plugin workflow active: yes/no based on `.claude/flow/workflow-state.json`
 - Structured plan state: status, title, task count, and plan hash if `.claude/flow/plan-state.json` exists
-- Planning entry: plugin `/plan` / `/workflow-plan`; if host plan mode is active without workflow state, say to exit host plan mode and rerun `/plan <task>`
+- Planning entry: plugin `/plan`; if host plan mode is active without workflow state, say to exit host plan mode and rerun `/plan <task>`
 
 ### 2. Modified Files
 Read `.claude/flow/modified-files.jsonl` and display:
@@ -62,7 +62,7 @@ Run `git status --short` and `git branch --show-current` to show:
 ## Process
 
 1. Check if `.claude/flow/` directory exists
-2. If not, report "No plugin workflow state found. Start a workflow with /plan or /workflow-plan."
+2. If not, report "No plugin workflow state found. Start a workflow with /plan."
 3. If yes, read each state file and run metrics collection
 4. Format all sections as a clear summary
 5. Include whether the user appears to be in plugin workflow state or only host plan mode

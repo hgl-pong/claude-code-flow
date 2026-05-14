@@ -21,7 +21,7 @@ Resume an interrupted workflow from the most recent state snapshot.
 6. Read `.claude/flow/plans/<task-slug>/phase-context.md` or `.claude/flow/ulw/<task-slug>/phase-context.md` if they exist to recover the plan/architecture context (task-slug from `plan-state.json` or `workflow-state.json`)
 7. Read `.claude/flow/plan-state.json` and the matching `<output_dir>/plan-brief.md` if they exist to recover structured plan state and task details
 8. Display a summary of what was restored and suggest next steps based on the phase:
-   - `plan` → "Plan was in progress. Re-run /workflow-plan to continue."
+   - `plan` → "Plan was in progress. Re-run /plan to continue."
    - `design` → "Architecture design was in progress. Re-run the design step."
    - `impl` → "Implementation was in progress. Review modified files and continue with forge."
    - `review` → "Review was in progress. Check review-result.txt and continue."

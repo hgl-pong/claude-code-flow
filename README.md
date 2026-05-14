@@ -5,7 +5,7 @@ Claude Code 开发工作流插件。6 个专职 Agent + UI 设计 Skill、模型
 ## 核心概念
 
 - **Structured Plan State**: Plan 权威在 `.claude/flow/plan-state.json` 和 `workflow-state.json`，`plan_hash` 追踪方案身份，`plan-brief.md` 是 agent 交接层（含 Decisions/Rejected/Risks 字段）
-- **Plan Mode Routing**: `/plan` 路由到 `/workflow-plan`，`PreToolUse(EnterPlanMode)` 拦截内置 plan mode
+- **Plan Mode Routing**: `/plan` 是唯一插件规划入口，`PreToolUse(EnterPlanMode)` 拦截内置 plan mode
 - **Host-level plan transitions**: Shift+Tab / SDK `set_permission_mode` 等宿主转换无法被插件拦截，需退出后重跑 `/plan`
 - **Quick-fix routing**: 按 `forge` / `prism` 任务域分发，非默认路由到 backend/general
 - **Keyword routing**: UserPromptSubmit hook 自动检测任务模式关键词，推荐匹配 skill
@@ -60,8 +60,7 @@ Review (sentinel) ── 两阶段审查
 
 | 命令 | 说明 |
 |------|------|
-| `/plan <task>` | 插件规划入口，路由到 `/workflow-plan` |
-| `/workflow-plan [--mode] <task>` | 启动规划流水线 |
+| `/plan [--mode] <task>` | 插件规划入口，启动规划流水线 |
 | `/quick-fix <task>` | 快速修复，跳过规划直接实现 |
 | `/execute-plan <plan>` | 执行已批准的方案 |
 | `/workflow-resume` | 恢复中断的工作流 |

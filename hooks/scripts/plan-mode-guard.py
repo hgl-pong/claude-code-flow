@@ -1,15 +1,15 @@
 #!/usr/bin/env python
-"""PreToolUse hook: block built-in EnterPlanMode and redirect to workflow-plan."""
+"""PreToolUse hook: block built-in EnterPlanMode and redirect to plugin plan."""
 
 import json
 import sys
 
 REDIRECT_MESSAGE = {
     "decision": "block",
-    "reason": "Use the plugin workflow plan instead of built-in plan mode.",
+    "reason": "Use the plugin plan command instead of built-in plan mode.",
     "systemMessage": (
         "[Plan Mode Guard] Built-in plan mode is disabled in this plugin workflow. "
-        "Use /plan or workflow-plan instead."
+        "Use /plan instead."
     ),
 }
 

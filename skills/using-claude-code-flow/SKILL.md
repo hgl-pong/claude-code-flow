@@ -1,7 +1,7 @@
 ---
 name: Using Claude Code Flow
 version: "2.1.0"
-description: "Use once as a workflow router when no command, hook, or active skill has already selected the path. Skip for subagents and for tasks already routed to workflow-plan, brainstorm, write-plan, execute-plan, quick-fix, or dev-orchestrator."
+description: "Use once as a workflow router when no command, hook, or active skill has already selected the path. Skip for subagents and for tasks already routed to plan, brainstorm, write-plan, execute-plan, quick-fix, or dev-orchestrator."
 argument-hint: "<task description>"
 ---
 
@@ -17,7 +17,7 @@ Use this skill as a **single routing pass**, not as a recurring companion skill.
 
 Invoke it only when the entry path is unclear. If a slash command, hook hint, active workflow phase, or already-loaded skill has selected a primary route, follow that route directly and do not re-invoke this skill just to confirm.
 
-Skill check comes before substantive work, but it should produce one primary route plus any explicitly required companion skills. It should not create a `using-claude-code-flow -> workflow-plan -> using-claude-code-flow -> brainstorming` loop.
+Skill check comes before substantive work, but it should produce one primary route plus any explicitly required companion skills. It should not create a `using-claude-code-flow -> plan -> using-claude-code-flow -> brainstorming` loop.
 
 ## Instruction Priority
 
@@ -29,9 +29,9 @@ Skill check comes before substantive work, but it should produce one primary rou
 
 Do not invoke this skill again when any of these is already true:
 
-- The prompt starts with `/plan`, `/workflow-plan`, `/brainstorm`, `/write-plan`, `/execute-plan`, or `/quick-fix`.
+- The prompt starts with `/plan`, `/brainstorm`, `/write-plan`, `/execute-plan`, or `/quick-fix`.
 - A hook already says `Primary skill:` or routes to a specific workflow skill.
-- You are inside `workflow-plan`, `brainstorming`, `writing-plans`, `executing-plans`, `quick-fix`, or `dev-orchestrator`.
+- You are inside `plan`, `brainstorming`, `writing-plans`, `executing-plans`, `quick-fix`, or `dev-orchestrator`.
 - The task is an approved plan/spec moving into execution.
 
 In those cases, treat the selected command or skill as authoritative and continue with its local checklist.
@@ -54,8 +54,8 @@ In those cases, treat the selected command or skill as authoritative and continu
 | Prompt contains `ulw` or `ultrawork` | `ultrawork` - full autonomous delivery |
 | Prompt contains `uli` | `ultrawork` (ULI branch) - product iteration loop |
 | Ambiguous new feature, substantial behavior change, UI/architecture decision, broad refactor, or exploratory product work | `brainstorming`, then `writing-plans` only if execution needs a task plan |
-| Task primarily asks for a proposal, plan, sequencing, approval gate, or cross-agent coordination | `workflow-plan` |
-| Task references another repo/plugin/agent pack/workflow as inspiration or source material | `workflow-intake` before `workflow-plan` |
+| Task primarily asks for a proposal, plan, sequencing, approval gate, or cross-agent coordination | `plan` |
+| Task references another repo/plugin/agent pack/workflow as inspiration or source material | `workflow-intake` before `plan` |
 | User asks to implement, build, fix, refactor, ship, deliver, or execute work | `dev-orchestrator` after any required process skill |
 | Multi-step implementation, approved plan, cross-file change, full-stack task, or end-to-end fix | `dev-orchestrator` |
 | Large task with 3+ subtasks needing parallel agent dispatch | `dev-orchestrator`, which invokes `dispatching-parallel-agents` |
@@ -64,8 +64,8 @@ In those cases, treat the selected command or skill as authoritative and continu
 | Code review request | `code-quality` and `sentinel` |
 | "Is it done?" or final delivery | `verification-before-completion` |
 | Plan or design already approved, need execution | `dev-orchestrator`; use `writing-plans` only if no executable task plan exists |
-| User asks for "plan mode" or `/plan` | `workflow-plan` |
-| Built-in plan appears relevant | prefer `workflow-plan`, avoid `EnterPlanMode` |
+| User asks for "plan mode" or `/plan` | `plan` |
+| Built-in plan appears relevant | prefer `plan`, avoid `EnterPlanMode` |
 | Implementation complete, tests pass | `finishing-branch` |
 | Received code review feedback | `receiving-code-review` |
 | Creating or editing a skill | `writing-skills` |
@@ -74,7 +74,7 @@ In those cases, treat the selected command or skill as authoritative and continu
 
 When multiple skills apply:
 
-1. **Primary route first** - choose one owner (`workflow-plan`, `brainstorming`, `quick-fix`, or `dev-orchestrator`).
+1. **Primary route first** - choose one owner (`plan`, `brainstorming`, `quick-fix`, or `dev-orchestrator`).
 2. **Process skills second** - use `brainstorming` or `systematic-debugging` only when their trigger conditions are met.
 3. **Implementation skills third** - use `testing-strategy` and `dev-orchestrator` for code delivery.
 4. **Verification skills last** - use `verification-before-completion` before final delivery.

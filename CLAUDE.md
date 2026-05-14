@@ -49,7 +49,7 @@ Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance
 
 When work references another repo, plugin, agent pack, or external workflow, run `workflow-intake` before oracle planning. It produces an Adopt / Adapt / Reject / Defer intake record so outside ideas strengthen this workflow without importing a competing ECC-style surface.
 
-`/plan` is the plugin planning entry and routes to `/workflow-plan`; `EnterPlanMode` is guarded so model-triggered built-in plan mode redirects back to the plugin workflow. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
+`/plan` is the plugin planning entry; `EnterPlanMode` is guarded so model-triggered built-in plan mode redirects back to the plugin workflow. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
 
 `dev-orchestrator` is the default execution skill once the user asks to implement, execute an approved plan, coordinate agents, touch multiple files, or deliver an end-to-end change. It should trigger more readily than individual execution guidance because it owns the full plan→implementation→test→review handoff.
 
@@ -65,7 +65,7 @@ Modes (`quick/standard/deep/autonomous/ultrawork`) control which gates are enfor
 All hooks registered in `hooks/hooks.json`, scripts in `hooks/scripts/`. Scripts use `${CLAUDE_PLUGIN_ROOT}` for portable paths. Key hooks:
 - **PreToolUse(Bash)**: Commit guard — blocks `git commit` when unreviewed files exist
 - **PreToolUse(Agent)**: Agent guard — blocks sentinel only when no review target is available from workflow-tracked files, git changes, explicit file/directory targets, diff context, or document `review_focus`
-- **PreToolUse(EnterPlanMode)**: Plan guard — blocks built-in plan-mode tool calls and redirects to plugin `/plan` / `/workflow-plan`
+- **PreToolUse(EnterPlanMode)**: Plan guard — blocks built-in plan-mode tool calls and redirects to plugin `/plan`
 - **PostToolUse(Bash)**: Verification evidence tracking — classifies test/build/lint commands and records results to `verification-evidence.jsonl`
 - **PostToolUse(Write/Edit)**: File modification tracking with agent ownership
 - **Stop**: ULW/ULI stop hooks block exit until completion tags detected
@@ -99,7 +99,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (545 symbols, 1120 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (542 symbols, 1119 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

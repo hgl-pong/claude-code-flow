@@ -27,8 +27,8 @@ COORDINATED_DELIVERY_PATTERN = (
     r'|(多步骤|端到端|全栈|跨文件|跨模块|跨领域|已批准的计划|执行计划|运行流水线)'
 )
 
-DEDICATED_WORKFLOW_PLAN_PATTERN = re.compile(
-    r"(?:/plan\b|/workflow[- ]?plan\b|\bworkflow[- ]?plan\b|\bplan\s+mode\b|"
+DEDICATED_PLAN_PATTERN = re.compile(
+    r"(?:/plan\b|\bplan\s+mode\b|"
     r"\bneed\s+a\s+plan\b|\bhelp\s+me\s+plan\b|\bplan\s+first\b|"
     r"\bplanning\b|\bplan\s+(?:a|an|the|this)\b|\boutline\b|\bnext\s+steps\b|"
     r"\bmulti[- ]step\s+plan\b|\bcross[- ]?domain\s+plan\b|"
@@ -42,7 +42,7 @@ ROUTING_RULES = [
     (r'\b(debug|fix|broken|crash|error|failing|bug)\b', 'systematic-debugging', 'Debug pattern detected'),
     (r'\b(review|code.?quality|refactor|clean.?up)\b', 'code-quality', 'Review pattern detected'),
     (r'\b(test|spec|coverage|unit.?test|integration.?test)\b', 'testing-strategy', 'Testing pattern detected'),
-    (r'\b(plan|architect|design|blueprint)\b', 'workflow-plan', 'Planning pattern detected'),
+    (r'\b(plan|architect|design|blueprint)\b', 'plan', 'Planning pattern detected'),
     (r'\b(brainstorm|idea|explore|spike)\b', 'brainstorming', 'Brainstorm pattern detected'),
     (r'\b(verify|acceptance|done|complete|ship)\b', 'verification-before-completion', 'Verification pattern detected'),
     (r'\b(search|research|look.?up|find.?out|docs?)\b', 'web-search', 'Research pattern detected'),
@@ -66,9 +66,9 @@ def route_keywords(prompt_text):
         if re.search(pattern, prompt_text, re.IGNORECASE):
             return None
 
-    # Let the dedicated workflow-plan hook own planning prompts so the model
+    # Let the dedicated plan hook own planning prompts so the model
     # does not receive two independent skill suggestions for one task.
-    if DEDICATED_WORKFLOW_PLAN_PATTERN.search(prompt_text):
+    if DEDICATED_PLAN_PATTERN.search(prompt_text):
         return None
 
     matches = []

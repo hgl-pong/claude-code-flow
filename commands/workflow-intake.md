@@ -21,7 +21,7 @@ Run a selective intake pass before changing this workflow based on an outside so
 4. For every candidate, choose Adopt / Adapt / Reject / Defer.
 5. Prefer strengthening existing `oracle`, `forge`, `prism`, `sentinel`, skill, command, hook, or verification lanes over adding new parallel surfaces.
 6. Write `<output_dir>/intake-decision.md` for standard/deep/autonomous workflow changes.
-7. Hand accepted/adapted ideas to `/workflow-plan`; rejected ideas stay documented and are not ported.
+7. Hand accepted/adapted ideas to `/plan`; rejected ideas stay documented and are not ported.
 
 ## Guardrails
 
@@ -35,4 +35,3 @@ Run a selective intake pass before changing this workflow based on an outside so
 ```
 /workflow-intake https://github.com/example/agent-pack improve planning and review gates
 ```
-

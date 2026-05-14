@@ -11,7 +11,7 @@ Orchestrate tasks through the development pipeline with model-tiered agents, mod
 
 ## Trigger Bias
 
-Default to this skill whenever the user is asking to **do the work**, not merely discuss it. If a request includes implementation, execution, feature delivery, fixing, refactoring, testing handoff, review handoff, multi-file edits, multiple subtasks, or "finish/ship/deliver this", `dev-orchestrator` should be considered active even when `/workflow-plan` or another process skill also applies.
+Default to this skill whenever the user is asking to **do the work**, not merely discuss it. If a request includes implementation, execution, feature delivery, fixing, refactoring, testing handoff, review handoff, multi-file edits, multiple subtasks, or "finish/ship/deliver this", `dev-orchestrator` should be considered active even when `/plan` or another process skill also applies.
 
 Strong trigger phrases include:
 
@@ -20,7 +20,7 @@ Strong trigger phrases include:
 - "run the pipeline", "orchestrate", "plan then implement", "fix and verify"
 - "after approval", "use forge/prism/sentinel", "handoff to agents"
 
-Use `workflow-plan` first only when the user is asking primarily for a plan, proposal, or approval gate. Once execution is requested or an approved plan exists, hand to `dev-orchestrator`.
+Use `plan` first only when the user is asking primarily for a plan, proposal, or approval gate. Once execution is requested or an approved plan exists, hand to `dev-orchestrator`.
 
 ## Mode Selection
 

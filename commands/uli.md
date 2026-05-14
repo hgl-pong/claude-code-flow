@@ -50,7 +50,7 @@ User prompt → uli-detector hook → ULI MODE ACTIVE → ultrawork skill (ULI b
 ## Do Not Use When
 
 - One specific task → `/ulw`
-- Want to approve plan first → `/workflow-plan`
+- Want to approve plan first → `/plan`
 - Ambiguous, want exploration → `/brainstorm`
 
 ## Process

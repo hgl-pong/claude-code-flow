@@ -73,14 +73,15 @@ class PluginIntegrityTests(unittest.TestCase):
                     self.assertTrue((ROOT / rel).exists(), f"missing hook target: {rel}")
 
         hooks_text = read_text(ROOT / "hooks/hooks.json")
-        self.assertIn("workflow-plan-detector.py", hooks_text)
+        self.assertIn("plan-detector.py", hooks_text)
         self.assertIn("plan-mode-guard.py", hooks_text)
         self.assertIn('"matcher": "EnterPlanMode"', hooks_text)
-        self.assertTrue((ROOT / "hooks/scripts/workflow-plan-detector.py").exists())
+        self.assertTrue((ROOT / "hooks/scripts/plan-detector.py").exists())
+        old_plan_command = "workflow" + "-plan"
+        self.assertFalse((ROOT / "commands" / f"{old_plan_command}.md").exists())
         self.assertTrue((ROOT / "hooks/scripts/plan-mode-guard.py").exists())
 
         plan_cmd = read_text(ROOT / "commands/plan.md")
-        workflow_plan = read_text(ROOT / "commands/workflow-plan.md")
         workflow_status = read_text(ROOT / "commands/workflow-status.md")
         write_plan = read_text(ROOT / "commands/write-plan.md")
         using_flow = read_text(ROOT / "skills/using-claude-code-flow/SKILL.md")
@@ -90,18 +91,17 @@ class PluginIntegrityTests(unittest.TestCase):
         claude_md = read_text(ROOT / "CLAUDE.md")
         guard_text = read_text(ROOT / "hooks/scripts/plan-mode-guard.py")
 
-        self.assertIn("/workflow-plan", plan_cmd)
+        self.assertIn("/plan [--mode", plan_cmd)
         self.assertIn("EnterPlanMode", plan_cmd)
         self.assertIn("host plan mode", plan_cmd.lower())
-        self.assertIn("workflow-planning pipeline", plan_cmd)
-        self.assertIn("plugin-side replacement", workflow_plan)
+        self.assertIn("plugin-side replacement", plan_cmd)
         self.assertIn("Plugin workflow active", workflow_status)
         self.assertIn("structured plan state", workflow_status.lower())
         self.assertIn("plan-state.json", write_plan)
         self.assertIn("plan-init", write_plan)
-        self.assertIn("Use /plan or workflow-plan instead.", guard_text)
+        self.assertIn("Use /plan instead.", guard_text)
         self.assertIn("avoid `EnterPlanMode`", using_flow)
-        self.assertIn("prefer `workflow-plan`", using_flow.lower())
+        self.assertIn("prefer `plan`", using_flow.lower())
         self.assertIn("plan-state.json", orchestrator)
         self.assertIn("plan-brief.md", orchestrator)
         self.assertIn("workflow-state.json", orchestrator)
@@ -113,7 +113,7 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("PreToolUse(EnterPlanMode)", claude_md)
         self.assertIn("Shift+Tab", claude_md)
         self.assertIn("`/plan` is the plugin planning entry", claude_md)
-        self.assertIn("workflow-plan", claude_md)
+        self.assertNotIn(old_plan_command, claude_md)
 
     def test_python_hook_scripts_compile(self):
         scripts = sorted((ROOT / "hooks/scripts").glob("*.py"))
@@ -145,9 +145,9 @@ class PluginIntegrityTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("dev-orchestrator", result.stdout)
 
-    def test_planning_prompts_are_owned_by_workflow_plan_detector(self):
+    def test_planning_prompts_are_owned_by_plan_detector(self):
         keyword_router = ROOT / "hooks/scripts/keyword-router.py"
-        workflow_detector = ROOT / "hooks/scripts/workflow-plan-detector.py"
+        plan_detector = ROOT / "hooks/scripts/plan-detector.py"
         prompt = "I need to plan a multi-step feature that touches UI and backend files."
 
         keyword_result = subprocess.run(
@@ -160,7 +160,7 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertEqual(json.loads(keyword_result.stdout), {})
 
         workflow_result = subprocess.run(
-            [sys.executable, str(workflow_detector)],
+            [sys.executable, str(plan_detector)],
             input=json.dumps({"prompt": prompt}),
             text=True,
             capture_output=True,
@@ -168,11 +168,11 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertEqual(workflow_result.returncode, 0, workflow_result.stderr)
         output = json.loads(workflow_result.stdout)
         self.assertIn("system_prompt_append", output)
-        self.assertIn("Primary route: `/workflow-plan`", output["system_prompt_append"])
+        self.assertIn("Primary route: `/plan`", output["system_prompt_append"])
         self.assertIn("Do not separately invoke `using-claude-code-flow`", output["system_prompt_append"])
 
-    def test_workflow_plan_detector_does_not_steal_other_slash_commands(self):
-        script = ROOT / "hooks/scripts/workflow-plan-detector.py"
+    def test_plan_detector_does_not_steal_other_slash_commands(self):
+        script = ROOT / "hooks/scripts/plan-detector.py"
         for prompt in ["/brainstorm Improve onboarding", "/write-plan approved-spec.md", "/execute-plan plan.md", "/quick-fix Fix typo"]:
             with self.subTest(prompt=prompt):
                 result = subprocess.run(

@@ -33,8 +33,8 @@ User prompt → ulw-detector hook → ULW MODE ACTIVE → ultrawork skill
 ## Do Not Use When
 
 - Ambiguous task, want to discuss options → `/brainstorm`
-- Need to review plan first → `/workflow-plan`
-- Want to see architecture first → `/workflow-plan --mode deep`
+- Need to review plan first → `/plan`
+- Want to see architecture first → `/plan --mode deep`
 
 ## Process
 

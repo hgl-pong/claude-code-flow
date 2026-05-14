@@ -26,7 +26,7 @@ Skip this skill when the path is already clear:
 
 - The user asks for direct implementation of approved requirements, an approved plan, or a saved spec.
 - The task is a narrow bug fix, typo, docs-only edit, test-only edit, config tweak, dependency bump, or routine maintenance.
-- A slash command or hook has already routed the task to `/workflow-plan`, `/write-plan`, `/execute-plan`, `/quick-fix`, or `dev-orchestrator`; let that route decide whether brainstorming is needed.
+- A slash command or hook has already routed the task to `/plan`, `/write-plan`, `/execute-plan`, `/quick-fix`, or `dev-orchestrator`; let that route decide whether brainstorming is needed.
 
 ## Brainstorming Modes
 

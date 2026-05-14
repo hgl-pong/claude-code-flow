@@ -26,7 +26,7 @@ Use this skill before planning when the task includes any of:
 
 Create or update `<output_dir>/intake-decision.md` when the intake affects planning. The record must include:
 
-`<output_dir>` resolves to the active workflow plan directory, normally `.claude/flow/plans/<slug>/`.
+`<output_dir>` resolves to the active plugin plan output directory, normally `.claude/flow/plans/<slug>/`.
 
 ```markdown
 # Intake Decision
