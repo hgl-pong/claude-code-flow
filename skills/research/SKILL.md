@@ -33,7 +33,7 @@ Auto-detect mode from context, or default to Technical Research.
 - Knowledge synthesis: merging multi-source results with dedup and confidence scoring
 - Workflow intake: inspect outside workflow systems as evidence for `workflow-intake`, not as content to copy wholesale
 
-**Do NOT use for:** codebase exploration (use gitnexus), simple web lookups (use web-search skill directly), debugging (use systematic-debugging skill).
+**Do NOT use for:** codebase exploration (use gitnexus), simple lookups that do not require synthesis, debugging (use systematic-debugging skill).
 
 ## Iron Law
 
@@ -48,8 +48,6 @@ Source cross-reference: verify claims with 2+ independent sources. Single-source
 3. Cross-reference multiple sources, verify currency (dates, deprecation notices)
 4. Prefer official docs, standards, release notes
 5. Synthesize structured summary with confidence levels (High/Medium/Low)
-
-Web search: `python ~/bin/tavily "query" -n 5` — NOT the built-in WebSearch tool.
 
 ## Process (Workflow Intake Research)
 
@@ -85,9 +83,6 @@ See `references/dispatch-templates.md` for prompt templates (Technical Research,
 
 If **~~code-intel** is connected:
 - Cross-reference code search results with documentation
-
-If **~~web-search** is connected:
-- Fill gaps in source coverage with supplementary queries
 
 ## Tips
 

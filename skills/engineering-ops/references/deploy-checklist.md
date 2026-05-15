@@ -116,9 +116,6 @@ If **~~code-intel** is connected:
 - Use `gitnexus_impact` to verify the PR diff blast radius matches expected scope
 - Use `gitnexus_query` to find execution flows affected by the changes
 
-If **~~web-search** is connected:
-- Check for known vulnerabilities in dependency versions being deployed
-
 ## Tips
 
 1. **Time-box monitoring.** Define how long you watch after deploy before declaring success. Five minutes is not enough for most services; 30-60 minutes catches most regressions.

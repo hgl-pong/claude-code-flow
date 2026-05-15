@@ -184,10 +184,6 @@ If **~~code-intel** is connected:
 - Query existing patterns to ground brainstorming in codebase reality
 - Check impact of proposed approaches on existing symbols
 
-If **~~web-search** is connected:
-- Research competitor solutions and industry patterns
-- Validate assumptions against current best practices
-
 ## Tips
 
 1. **Be opinionated** — "I think approach B is stronger because..." beats listing pros/cons

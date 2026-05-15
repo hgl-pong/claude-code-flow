@@ -39,5 +39,4 @@ If each fix reveals new problems in different places, or fixes require massive r
 
 **Enhanced** (with connected tools):
 - + GitNexus: `gitnexus_query` to find execution flows, `gitnexus_context` on suspect symbols, `gitnexus_impact` on fix targets
-- + Tavily: search for known issues, library-specific debugging patterns
 - + IDE MCP: breakpoints, call stacks, watch variables

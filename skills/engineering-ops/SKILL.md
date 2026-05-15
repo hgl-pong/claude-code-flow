@@ -45,9 +45,6 @@ If **~~code-intel** is connected:
 - `gitnexus_impact` -- blast radius of proposed changes, refactoring targets, deploy diffs
 - `gitnexus_context` -- trace dependencies, call chains, symbol relationships
 
-If **~~web-search** is connected:
-- Research technology comparisons, known vulnerabilities, best practices
-
 If **~~browser** is connected:
 - Run post-deploy smoke tests: navigate to key pages, verify content renders, screenshot evidence
 - Automate deploy verification: click through critical flows, check for console errors

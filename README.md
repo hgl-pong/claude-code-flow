@@ -91,20 +91,24 @@ Review (sentinel) ── 两阶段审查
 
 ## Skills
 
-Skills 使用渐进式披露：精简 SKILL.md（< 3000 词）+ `references/` 按需加载。所有 skill 支持 Standalone 模式（零工具可用）+ Enhanced 模式（连接 GitNexus/Tavily 等增强）。
+Skills 使用渐进式披露：精简 SKILL.md（< 3000 词）+ `references/` 按需加载。所有 skill 支持 Standalone 模式（零工具可用）+ Enhanced 模式（连接 GitNexus 等增强）。
 
 | Skill | 触发场景 |
 |-------|----------|
 | `dev-orchestrator` | 多步开发任务编排、Agent 调度、流水线管理 |
 | `using-claude-code-flow` | 未被命令或 hook 路由时做一次 workflow skill 选择 |
 | `ui-design` | UI/UX 设计规格、组件设计、色彩/排版系统、design tokens |
+| `figma` | Figma MCP context, assets, variables, and design-to-code workflows |
+| `figma-use` | Required guardrail before direct `use_figma` tool calls |
+| `figma-implement-design` | Implement application UI from Figma designs |
+| `figma-generate-design` | Generate or update Figma screens from code or descriptions |
+| `figma-generate-library` | Build design system libraries in Figma |
 | `brainstorming` | 将粗略想法细化为批准的设计 |
 | `writing-plans` | 从设计创建实现计划（含 Decisions/Rejected/Risks） |
 | `testing-strategy` | 测试策略、TDD、测试金字塔 |
 | `code-quality` | 代码质量标准、最佳实践 |
 | `systematic-debugging` | 系统化调试：复现 → 定位 → 证明 → 修复 |
 | `verification-before-completion` | 完成前要求新鲜验证证据 |
-| `web-search` | Tavily CLI 联网搜索 |
 
 ## 模式选择
 
@@ -161,10 +165,6 @@ claude-code-flow/
 npm install -g gitnexus
 gitnexus analyze .
 
-# Tavily（联网搜索）
-pip install tavily-python
-echo "your-api-key" > ~/.tavily
-cp skills/web-search/tavily-cli ~/bin/tavily && chmod +x ~/bin/tavily
 ```
 
 ### 可选

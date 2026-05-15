@@ -91,9 +91,6 @@ Adapt tone to context, not personality.
 
 ## If Connectors Available
 
-If **~~web-search** is connected:
-- Research competitor copy patterns for similar UI patterns
-
 ## Tips
 
 - Read copy aloud. If it sounds robotic, rewrite it.

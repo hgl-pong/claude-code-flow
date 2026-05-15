@@ -136,9 +136,6 @@ If **~~code-intel** is connected:
 - Use `gitnexus_context` to trace the call chain from error surface to root cause
 - Use `gitnexus_impact` to assess blast radius before applying mitigations
 
-If **~~web-search** is connected:
-- Search for known issues with error messages or library versions involved
-
 ## Tips
 
 1. **Mitigate first, fix second.** During an active incident, prioritize restoring service over finding the perfect fix. A rollback is better than a 2-hour investigation while users are down.

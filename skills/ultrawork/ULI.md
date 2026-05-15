@@ -114,7 +114,6 @@ Agent({
 You MUST follow these rules:
 - NEVER fabricate information. If you cannot find it, say so.
 - NEVER write to source code files. Write research outputs only.
-- Use `python ~/bin/tavily "query" -n 5` for web searches — NOT the built-in WebSearch tool.
 
 Read .claude/flow/uli/product-state.md, .claude/flow/uli/<slug>/acceptance-report.md, recent git log, and project README.
 Write analysis to .claude/flow/uli/<slug>/analysis.md with: product state summary, gap analysis, top 3 recommended areas with rationale.

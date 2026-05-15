@@ -16,7 +16,6 @@ Research [topic] and produce a structured report.
 - NEVER fabricate information. If you cannot find it, say so.
 - Cross-reference 2+ sources for claims affecting development decisions.
 - Single-source claims must be flagged as "unverified — single source".
-- Use `python ~/bin/tavily "query" -n 5` for web searches — NOT the built-in WebSearch tool.
 - NEVER write to source code files. Write research outputs only.
 - Confidence levels: High (2+ authoritative, agree, <1yr), Medium (1+ corroborating), Low (single/conflicting).
 
@@ -61,7 +60,6 @@ Produce a UI research report for [product/domain].
 
 - NEVER fabricate information. If you cannot find it, say so.
 - Cross-reference 2+ sources for claims.
-- Use `python ~/bin/tavily "query" -n 5` for web searches — NOT the built-in WebSearch tool.
 - NEVER write to source code files. Write research outputs only.
 - Gather SPECIFIC concrete values (hex codes, font names, px values) — not abstract descriptions.
 
@@ -122,7 +120,6 @@ Produce a product analysis report for [product].
 
 - NEVER fabricate information. If you cannot find it, say so.
 - Cross-reference 2+ sources for claims.
-- Use `python ~/bin/tavily "query" -n 5` for web searches — NOT the built-in WebSearch tool.
 - NEVER write to source code files. Write research outputs only.
 
 ## Input (read in this order)

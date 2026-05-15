@@ -45,7 +45,6 @@ ROUTING_RULES = [
     (r'\b(plan|architect|design|blueprint)\b', 'plan', 'Planning pattern detected'),
     (r'\b(brainstorm|idea|explore|spike)\b', 'brainstorming', 'Brainstorm pattern detected'),
     (r'\b(verify|acceptance|done|complete|ship)\b', 'verification-before-completion', 'Verification pattern detected'),
-    (r'\b(search|research|look.?up|find.?out|docs?)\b', 'web-search', 'Research pattern detected'),
     (r'\b(write|create|implement|build|add)\b.*\b(plan|spec|design)\b', 'writing-plans', 'Plan writing detected'),
 ]
 

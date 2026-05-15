@@ -55,6 +55,40 @@ class PluginIntegrityTests(unittest.TestCase):
                 self.assertRegex(fm, r"(?m)^name:\s*.+")
                 self.assertRegex(fm, r"(?m)^description:\s*.+")
 
+    def test_figma_skills_are_built_in(self):
+        expected = {
+            "figma",
+            "figma-code-connect-components",
+            "figma-create-design-system-rules",
+            "figma-create-new-file",
+            "figma-generate-design",
+            "figma-generate-library",
+            "figma-implement-design",
+            "figma-use",
+        }
+
+        for skill in expected:
+            with self.subTest(skill=skill):
+                self.assertTrue((ROOT / "skills" / skill / "SKILL.md").exists())
+
+        self.assertFalse((ROOT / "temp").exists())
+
+    def test_web_search_skill_removed(self):
+        removed_skill = "web" + "-search"
+        self.assertFalse((ROOT / "skills" / removed_skill).exists())
+
+        text_paths = [
+            *ROOT.glob("*.md"),
+            *ROOT.glob("commands/*.md"),
+            *ROOT.glob("skills/**/*.md"),
+            *ROOT.glob("hooks/scripts/*.py"),
+        ]
+        banned_terms = ["tav" + "ily", "trav" + "ily", removed_skill, "~~" + removed_skill, "Web" + "Search", "TAV" + "ILY"]
+        banned = re.compile("|".join(re.escape(term) for term in banned_terms), re.I)
+        for path in text_paths:
+            with self.subTest(file=path.relative_to(ROOT).as_posix()):
+                self.assertIsNone(banned.search(read_text(path)))
+
     def test_hooks_reference_existing_scripts(self):
         hooks = json.loads(read_text(ROOT / "hooks/hooks.json"))
         commands = []
@@ -219,6 +253,18 @@ class PluginIntegrityTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("dev-orchestrator", result.stdout)
+
+    def test_keyword_router_does_not_route_to_removed_web_search_skill(self):
+        script = ROOT / "hooks/scripts/keyword-router.py"
+        removed_skill = "web" + "-search"
+        result = subprocess.run(
+            [sys.executable, str(script)],
+            input=json.dumps({"prompt": "look up the latest docs for this library"}),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn(removed_skill, result.stdout)
 
     def test_shell_scripts_are_lf_only(self):
         scripts = list((ROOT / "hooks/scripts").glob("*.sh"))

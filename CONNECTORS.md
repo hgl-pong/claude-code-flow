@@ -5,7 +5,7 @@ External tools available to skills via MCP servers. Skills reference these with 
 | Category | Placeholder | Tool |
 |----------|------------|------|
 | Code intelligence | `~~code-intel` | GitNexus (query, context, impact, rename) |
-| Web search | `~~web-search` | Tavily CLI (`~/bin/tavily`) |
+| Figma | `~~figma` | Figma MCP server (`use_figma`, file/design context tools) |
 | Image generation | `~~image-gen` | img-cli (`img generate`, `img describe`) |
 | Browser automation | `~~browser` | Playwright MCP (`@playwright/mcp`) — navigate, screenshot, click, type, assert |
 | Output processing | `~~context-mode` | context-mode (ctx_execute, ctx_batch_execute, ctx_search) |
