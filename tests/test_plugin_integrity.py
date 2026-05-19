@@ -36,10 +36,35 @@ class PluginIntegrityTests(unittest.TestCase):
         for rel in [
             ".claude-plugin/plugin.json",
             ".claude-plugin/marketplace.json",
+            ".codex-plugin/plugin.json",
+            "hooks/codex-hooks.json",
             "hooks/hooks.json",
         ]:
             with self.subTest(file=rel):
                 json.loads(read_text(ROOT / rel))
+
+    def test_codex_manifest_exposes_skills_and_hooks(self):
+        manifest = json.loads(read_text(ROOT / ".codex-plugin/plugin.json"))
+        self.assertEqual(manifest["skills"], "./skills/")
+        self.assertEqual(manifest["hooks"], "./hooks/codex-hooks.json")
+        self.assertEqual(manifest["mcpServers"], "./.mcp.json")
+
+        hooks = json.loads(read_text(ROOT / "hooks/codex-hooks.json"))
+        commands = []
+        for entries in hooks.get("hooks", {}).values():
+            for entry in entries:
+                for hook in entry.get("hooks", []):
+                    command = hook.get("command", "")
+                    if command:
+                        commands.append(command)
+
+        self.assertGreater(len(commands), 0, "expected Codex hook commands")
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertIn("${PLUGIN_ROOT}", command)
+                self.assertNotIn("${CLAUDE_PLUGIN_ROOT}", command)
+                for rel in re.findall(r"\$\{PLUGIN_ROOT\}/([^\s]+)", command):
+                    self.assertTrue((ROOT / rel).exists(), f"missing hook target: {rel}")
 
     def test_markdown_assets_have_required_frontmatter(self):
         paths = []
