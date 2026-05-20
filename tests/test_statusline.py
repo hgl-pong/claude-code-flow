@@ -27,13 +27,28 @@ def _find_bash():
 BASH = _find_bash()
 
 
+def _bash_path(path):
+    """Translate a local path into the path syntax understood by the selected bash."""
+    resolved = Path(path).resolve()
+    if os.name != "nt":
+        return str(resolved)
+
+    bash_exe = Path(shutil.which(BASH) or BASH)
+    if "WindowsApps" in str(bash_exe):
+        drive = resolved.drive.rstrip(":").lower()
+        tail = resolved.as_posix()[len(resolved.drive):]
+        return f"/mnt/{drive}{tail}"
+
+    return resolved.as_posix()
+
+
 def run_statusline(stdin_json=None, cwd=None, extra_env=None):
     """Run statusline.sh, optionally piping JSON on stdin. Returns (stdout, stderr)."""
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
     proc = subprocess.run(
-        [BASH, str(SCRIPT)],
+        [BASH, _bash_path(SCRIPT)],
         input=stdin_json.encode() if stdin_json else b"",
         capture_output=True,
         cwd=str(cwd or ROOT),
@@ -79,7 +94,7 @@ def make_json(**fields):
 
 class StatuslineSyntaxTest(unittest.TestCase):
     def test_bash_syntax(self):
-        result = subprocess.run([BASH, "-n", str(SCRIPT)], capture_output=True)
+        result = subprocess.run([BASH, "-n", _bash_path(SCRIPT)], capture_output=True)
         self.assertEqual(result.returncode, 0, f"bash -n failed:\n{result.stderr.decode()}")
 
 
@@ -216,7 +231,7 @@ class StatuslineExtrasTest(unittest.TestCase):
 
 class StatuslineFlowStateTest(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
+        self._tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=(os.name == "nt"))
         self.flow_dir = Path(self._tmp.name) / ".claude" / "flow"
         self.flow_dir.mkdir(parents=True)
 

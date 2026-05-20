@@ -7,10 +7,12 @@ description: Show the full execution timeline for the current or most recent wor
 
 Display a chronological timeline of all workflow events for the current session.
 
+Use `skills/dev-orchestrator/references/diagnostics.md` as the source of truth for timeline inputs, runtime files, and command boundaries.
+
 ## Process
 
-1. Run `python hooks/scripts/metrics.py raw 50` to get recent execution log entries
-2. If no entries, report "No timeline data available."
+1. Run `python hooks/scripts/metrics.py raw 50` to get recent execution log entries.
+2. If no entries exist, report "No timeline data available."
 3. Display events in chronological order, formatted as a timeline:
    ```
    10:00:00 [session_start] branch=main
@@ -21,15 +23,10 @@ Display a chronological timeline of all workflow events for the current session.
    ...
    10:30:00 [workflow_stop] phase=review tasks=5/5 modified=8
    ```
-4. Color-code by event type:
-   - session_start/end: neutral
-   - phase_transition: blue
-   - agent_complete: green (success)
-   - tool_guard_block: red
-   - review_result: yellow
-   - error: red
-5. If available, show duration between phase transitions
-6. Show total session duration at the end
+4. Highlight important event types: session lifecycle, phase transitions, agent completion, guard blocks, review results, verification evidence, and errors.
+5. If available, show duration between phase transitions.
+6. Show total session duration at the end.
+7. Do not modify any state files; this is a read-only command.
 
 ## Usage
 
@@ -39,7 +36,6 @@ Display a chronological timeline of all workflow events for the current session.
 
 ## Notes
 
-- Read-only command — never modifies state
-- Data sourced from `.claude/flow/exec-log.jsonl`
-- Use `/workflow-status` for current state snapshot
-- Use `/workflow-metrics` for cross-session analysis
+- Data is sourced from `.claude/flow/exec-log.jsonl`.
+- Use `/workflow-status` for current state snapshot.
+- Use `/workflow-metrics` for cross-session analysis.

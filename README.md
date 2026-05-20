@@ -1,6 +1,6 @@
 # Claude Code Flow
 
-Claude Code 开发工作流插件。6 个专职 Agent + UI 设计 Skill、模型分层、门控流水线、会话持久化、关键词路由。
+Claude Code 开发工作流插件。5 个专职 Agent + Design/UI skill、模型分层、门控流水线、会话持久化、关键词路由。
 
 ## 核心概念
 
@@ -9,6 +9,24 @@ Claude Code 开发工作流插件。6 个专职 Agent + UI 设计 Skill、模型
 - **Host-level plan transitions**: Shift+Tab / SDK `set_permission_mode` 等宿主转换无法被插件拦截，需退出后重跑 `/plan`
 - **Quick-fix routing**: 按 `forge` / `prism` 任务域分发，非默认路由到 backend/general
 - **Keyword routing**: UserPromptSubmit hook 自动检测任务模式关键词，推荐匹配 skill
+
+## 事实来源
+
+为避免同一条工作流规则散落在多处，维护时按下面的文件作为权威来源：
+
+| 主题 | 权威文件 |
+|------|----------|
+| Agent 职责、模型、行为约束 | `agents/*.md` |
+| Gate checklist、顺序、调度、验收 | `skills/dev-orchestrator/references/pipeline-operations.md` |
+| Review 命令边界、sentinel 输入、修复循环 | `skills/dev-orchestrator/references/review.md` |
+| 诊断命令数据源与输出规则 | `skills/dev-orchestrator/references/diagnostics.md` |
+| 执行编排触发与模式选择 | `skills/dev-orchestrator/SKILL.md` |
+| Subagent prompt 模板 | `skills/dev-orchestrator/references/subagent-prompts.md` |
+| Slash command 入口 | `commands/*.md`（只做薄路由，不复制完整 gate 规则） |
+| 运行态 plan/workflow 数据 | `.claude/flow/plan-state.json`、`.claude/flow/workflow-state.json` |
+| Hook 注册与运行脚本 | `hooks/hooks.json`、`hooks/scripts/*` |
+
+顶层 README、CLAUDE.md 和 AGENTS.md 只保留概览与导航；如果流程细节冲突，以表中权威文件为准。
 
 ## Agent
 
@@ -20,7 +38,7 @@ Claude Code 开发工作流插件。6 个专职 Agent + UI 设计 Skill、模型
 | `sentinel` | Sonnet high | 代码审查（两阶段） | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
 | `artist` | Haiku | 图像生成与识别 | Role → Iron Law → Guards → Process → Failure Modes → Self-Review |
 
-研究由 `research` skill 处理，通过 general-purpose subagent 调度，无需专用 agent。所有 agent 统一 prompt schema。`sentinel` 是只读 agent。UI 设计由 `ui-design` skill 处理。
+研究由 `research` skill 处理，通过 general-purpose subagent 调度，无需专用 agent。所有 agent 统一 prompt schema。`sentinel` 是只读 agent。UI 设计由 `design` skill 的 `ui-design` 模式处理。
 
 ## 工作流
 
@@ -38,7 +56,7 @@ Plan + Architecture (oracle)
   auto:     自动批准
       |
       v
-UI Design (ui-design skill) ── 仅前端任务 + standard 以上模式，oracle 决定
+UI Design (design skill: ui-design mode) ── 仅前端任务 + standard 以上模式，oracle 决定
       |
       v
 Implementation (forge) ── 全栈实现
@@ -97,7 +115,7 @@ Skills 使用渐进式披露：精简 SKILL.md（< 3000 词）+ `references/` �
 |-------|----------|
 | `dev-orchestrator` | 多步开发任务编排、Agent 调度、流水线管理 |
 | `using-claude-code-flow` | 未被命令或 hook 路由时做一次 workflow skill 选择 |
-| `ui-design` | UI/UX 设计规格、组件设计、色彩/排版系统、design tokens |
+| `design` (`ui-design` mode) | UI/UX 设计规格、组件设计、色彩/排版系统、design tokens |
 | `figma` | Figma MCP context, assets, variables, and design-to-code workflows |
 | `figma-use` | Required guardrail before direct `use_figma` tool calls |
 | `figma-implement-design` | Implement application UI from Figma designs |

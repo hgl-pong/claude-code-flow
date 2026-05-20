@@ -7,6 +7,10 @@ description: Standalone code review — review specific files, functions, or rec
 
 Perform a focused code review on specified targets, or handle external review feedback.
 
+Use this command for standalone review outside the active workflow pipeline. Use `/workflow-review` when review is a gate for an approved plan, workflow-tracked changes, or plan/design documents.
+
+Use `skills/dev-orchestrator/references/review.md` as the source of truth for review command boundaries, target selection, sentinel dispatch inputs, and outcome handling.
+
 ## Arguments
 
 - **Target**: File path, directory, or `--diff` for uncommitted changes
@@ -15,20 +19,10 @@ Perform a focused code review on specified targets, or handle external review fe
 
 ## Process
 
-### Reviewing Code (default)
-
-1. Identify files to review from arguments or git diff
-2. Read the target files or diff enough to give sentinel concrete context
-3. Invoke sentinel with the target files, relevant diff excerpts, focus area, and any available requirements
-4. Present the review report to the user
-
-### Receiving Review Feedback (--receive)
-
-1. Use `receiving-code-review` skill
-2. READ all feedback completely before reacting
-3. VERIFY each suggestion against codebase reality
-4. EVALUATE technical correctness before implementing
-5. IMPLEMENT one item at a time with testing
+1. If the request is tied to an approved plan, workflow state, workflow-tracked changes, or plan/design documents, route to `/workflow-review`.
+2. For default review mode, follow the standalone review rules in `skills/dev-orchestrator/references/review.md` and invoke sentinel with concrete targets, excerpts, focus, and any available requirements.
+3. For `--receive`, use `skills/receiving-code-review/SKILL.md`; verify each feedback item against the codebase before implementing, then test each implemented item.
+4. Present the review report or feedback-response summary using the reference output contract.
 
 ## Usage
 
@@ -40,20 +34,10 @@ Perform a focused code review on specified targets, or handle external review fe
 /code-review --receive                         # Handle external review feedback
 ```
 
-## Output
+## Source of Truth
 
-### Review Report (default)
-
-Structured review report with:
-- Critical issues (must fix)
-- Warnings (should fix)
-- Suggestions (nice to have)
-- Architecture compliance check
-- Exact `file:line` evidence for every finding
-
-### Received Feedback (--receive)
-
-- Verified understanding of each feedback item
-- Technical evaluation of each suggestion
-- Implemented fixes with test evidence
-- Pushback on incorrect suggestions with reasoning
+- Review command boundaries and output contract: `skills/dev-orchestrator/references/review.md`
+- Review agent behavior: `agents/sentinel.md`
+- Review quality standards: `skills/code-quality/SKILL.md`
+- External feedback handling: `skills/receiving-code-review/SKILL.md`
+- Pipeline review gate: `/workflow-review` and `skills/dev-orchestrator/references/pipeline-operations.md`

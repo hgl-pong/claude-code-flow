@@ -7,31 +7,18 @@ description: Start the review pipeline — sentinel reviews recent changes or pl
 
 Start the review pipeline for recent changes or plan/design documents.
 
+Use this command for workflow-gated review. For an ad hoc review of arbitrary files or a diff, prefer `/code-review`.
+
+Use `skills/dev-orchestrator/references/review.md` as the source of truth for review target selection, sentinel dispatch inputs, output contract, and fix-loop outcome handling.
+
 ## Process
 
-1. **Identify review target**:
-   - `--docs` flag: review plan/design documents (plan-brief.md, phase-context.md, DESIGN.md, etc.)
-   - If no arguments: review uncommitted changes (git diff)
-   - If arguments provided: review specified files or commit range
+1. Follow the workflow-gated target rules in `skills/dev-orchestrator/references/review.md`.
+2. Gather plan/design documents, workflow state, git diff, and pasted requirements needed for a self-contained sentinel dispatch.
+3. Invoke sentinel with the review focus and evidence contract from the review reference.
+4. Handle `APPROVE`, `REQUEST CHANGES`, and `NEEDS DISCUSSION` using the shared outcome rules.
 
-2. **Gather context**:
-   - `--docs`: find documents in `.claude/flow/plans/` and `.claude/flow/designs/`
-   - Otherwise: check for an approved plan file, read the changed files
-
-3. **Invoke sentinel** with:
-   - Task description
-   - `--docs`: set `review_focus: document_quality`, paste full document content
-   - Otherwise: plan/spec excerpt (paste the relevant requirements; do not only reference the path)
-   - Files to review and diff summary
-   - Focus areas (if specified)
-   - Required output: `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION`, with exact `file:line` for every finding
-
-4. **Handle review outcome**:
-   - **APPROVE**: Report success
-   - **REQUEST CHANGES**:
-     - `--docs`: oracle revises the document, then re-review (max 3 rounds)
-     - Otherwise: spawn forge to fix issues, then re-review (max 3 rounds)
-   - **NEEDS DISCUSSION**: Present findings to user
+Keep the review loop aligned with `skills/dev-orchestrator/references/pipeline-operations.md`; that reference owns the full review/acceptance gate behavior.
 
 ## Usage
 
@@ -43,6 +30,9 @@ Start the review pipeline for recent changes or plan/design documents.
 /workflow-review --plan docs/auth-plan.md     # Review against specific plan
 ```
 
-## Max Review Rounds
+## Source of Truth
 
-If after 3 review rounds there are still issues, escalate to the user for a decision.
+- Review command boundaries and outcome handling: `skills/dev-orchestrator/references/review.md`
+- Review gate ordering: `skills/dev-orchestrator/references/pipeline-operations.md`
+- Sentinel behavior: `agents/sentinel.md`
+- Document review rules: `agents/sentinel.md` with `review_focus: document_quality`

@@ -158,6 +158,8 @@ unknown          → investigate (max 2 retries), escalate
 
 ## Subagent-Driven Review (deep/autonomous mode)
 
+Use `references/review.md` for review command boundaries, sentinel dispatch inputs, output contract, and fix-loop outcome handling. This section owns only pipeline review scheduling.
+
 For deep and autonomous modes, dispatch each review stage as a **separate sentinel subagent** for zero context contamination:
 
 1. Dispatch sentinel with `review_focus: spec_compliance` in the context envelope → spec-only review

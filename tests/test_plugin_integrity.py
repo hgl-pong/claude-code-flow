@@ -32,6 +32,12 @@ def frontmatter_dict(path):
 
 
 class PluginIntegrityTests(unittest.TestCase):
+    def test_local_runtime_mirrors_are_ignored(self):
+        ignore_text = read_text(ROOT / ".gitignore")
+        for rel in [".claude/", ".codex/", ".agents/", ".gitnexus"]:
+            with self.subTest(path=rel):
+                self.assertIn(rel, ignore_text)
+
     def test_plugin_metadata_and_hooks_json_parse(self):
         for rel in [
             ".claude-plugin/plugin.json",
@@ -96,6 +102,17 @@ class PluginIntegrityTests(unittest.TestCase):
             with self.subTest(skill=skill):
                 self.assertTrue((ROOT / "skills" / skill / "SKILL.md").exists())
 
+        # Figma skills are vendored plugin surfaces. Shared icons/assets/licenses
+        # are intentionally duplicated per skill directory so each skill remains
+        # self-contained when copied or packaged.
+        for shared in ["assets/icon.svg", "assets/figma.png"]:
+            hashes = {
+                (ROOT / "skills" / skill / shared).read_bytes()
+                for skill in expected
+                if (ROOT / "skills" / skill / shared).exists()
+            }
+            self.assertEqual(len(hashes), 1, f"expected shared Figma asset to match: {shared}")
+
         self.assertFalse((ROOT / "temp").exists())
 
     def test_web_search_skill_removed(self):
@@ -142,12 +159,20 @@ class PluginIntegrityTests(unittest.TestCase):
 
         plan_cmd = read_text(ROOT / "commands/plan.md")
         workflow_status = read_text(ROOT / "commands/workflow-status.md")
+        workflow_metrics = read_text(ROOT / "commands/workflow-metrics.md")
+        workflow_timeline = read_text(ROOT / "commands/workflow-timeline.md")
+        code_review = read_text(ROOT / "commands/code-review.md")
+        workflow_review = read_text(ROOT / "commands/workflow-review.md")
         write_plan = read_text(ROOT / "commands/write-plan.md")
         using_flow = read_text(ROOT / "skills/using-claude-code-flow/SKILL.md")
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+        diagnostics = read_text(ROOT / "skills/dev-orchestrator/references/diagnostics.md")
+        review_reference = read_text(ROOT / "skills/dev-orchestrator/references/review.md")
+        pipeline_operations = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
         writing_plans = read_text(ROOT / "skills/writing-plans/SKILL.md")
         readme = read_text(ROOT / "README.md")
         claude_md = read_text(ROOT / "CLAUDE.md")
+        agents_md = read_text(ROOT / "AGENTS.md")
         guard_text = read_text(ROOT / "hooks/scripts/plan-mode-guard.py")
 
         self.assertIn("/plan [--mode", plan_cmd)
@@ -169,10 +194,61 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("plan-state.json", readme.lower())
         self.assertIn("plan_hash", readme)
         self.assertIn("host-level plan transitions", readme.lower())
+        self.assertIn("事实来源", readme)
+        self.assertIn("Source of Truth", claude_md)
+        self.assertIn("Source of Truth", agents_md)
         self.assertIn("PreToolUse(EnterPlanMode)", claude_md)
         self.assertIn("Shift+Tab", claude_md)
         self.assertIn("`/plan` is the plugin planning entry", claude_md)
         self.assertNotIn(old_plan_command, claude_md)
+
+        self.assertIn("skills/dev-orchestrator/references/pipeline-operations.md", plan_cmd)
+        self.assertIn("Source of Truth", plan_cmd)
+        for duplicated_gate_detail in [
+            "Research (if checked)",
+            "Reference Intake (if checked)",
+            "Document auto-review",
+            "UI Research (if checked",
+            "NEVER use `subagent_type",
+        ]:
+            self.assertNotIn(duplicated_gate_detail, plan_cmd)
+
+        self.assertIn("Workflow Diagnostics Reference", diagnostics)
+        self.assertIn("metrics.py collect", diagnostics)
+        for diagnostic_cmd in [workflow_status, workflow_metrics, workflow_timeline]:
+            self.assertIn("skills/dev-orchestrator/references/diagnostics.md", diagnostic_cmd)
+            self.assertIn("read-only command", diagnostic_cmd.lower())
+        for duplicated_diagnostic_detail in [
+            "Read `.claude/flow/workflow-state.json` and `.claude/flow/plan-state.json`",
+            "Color-code by event type",
+            "### Session Overview",
+            "### Agent Efficiency",
+            "### Guard Activity",
+        ]:
+            self.assertNotIn(duplicated_diagnostic_detail, workflow_status)
+            self.assertNotIn(duplicated_diagnostic_detail, workflow_metrics)
+            self.assertNotIn(duplicated_diagnostic_detail, workflow_timeline)
+
+        self.assertIn("Review Workflow Reference", review_reference)
+        self.assertIn("Sentinel Dispatch Contract", review_reference)
+        self.assertIn("Stop after 3 review rounds", review_reference)
+        self.assertIn("skills/dev-orchestrator/references/review.md", code_review)
+        self.assertIn("skills/dev-orchestrator/references/review.md", workflow_review)
+        self.assertIn("references/review.md", pipeline_operations)
+        self.assertIn("skills/dev-orchestrator/references/review.md", readme)
+        self.assertIn("skills/dev-orchestrator/references/review.md", claude_md)
+        self.assertIn("skills/dev-orchestrator/references/review.md", agents_md)
+        for duplicated_review_detail in [
+            "Identify review target",
+            "Gather context",
+            "Max Review Rounds",
+            "Critical issues (must fix)",
+            "Warnings (should fix)",
+            "Suggestions (nice to have)",
+            "Verified understanding of each feedback item",
+        ]:
+            self.assertNotIn(duplicated_review_detail, code_review)
+            self.assertNotIn(duplicated_review_detail, workflow_review)
 
     def test_python_hook_scripts_compile(self):
         scripts = sorted((ROOT / "hooks/scripts").glob("*.py"))

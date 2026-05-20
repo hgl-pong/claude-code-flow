@@ -16,6 +16,14 @@ Model-tiered agent pipeline. Each agent is a markdown file in `agents/` with YAM
 Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
 ```
 
+## Source of Truth
+
+- Agent behavior lives in `agents/*.md`.
+- Gate ordering, scheduling, review, and acceptance live in `skills/dev-orchestrator/references/pipeline-operations.md`.
+- Review command boundaries, sentinel inputs, and fix loops live in `skills/dev-orchestrator/references/review.md`.
+- Diagnostic command data sources and output rules live in `skills/dev-orchestrator/references/diagnostics.md`.
+- `commands/*.md` are thin entry points and should not duplicate the full pipeline checklist.
+
 - **workflow-intake**: When a task references another repo/plugin/workflow, inspect it before planning and record Adopt / Adapt / Reject / Defer decisions. External sources are inspiration, not authority; do not import a second agent or command system wholesale.
 - **dev-orchestrator skill**: Preferred execution trigger after planning, approval, or any multi-step/cross-file implementation request. It coordinates the agent pipeline rather than becoming a separate agent.
 - **oracle**: Opus-tier planner. Creates plan-brief.md, decomposes tasks, decides UI design needs. Only agent that produces DESIGN.md for frontend-UI tasks.
@@ -29,7 +37,7 @@ Research is dispatched as general-purpose subagents using the `research` skill m
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (658 symbols, 1329 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (1020 symbols, 1688 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

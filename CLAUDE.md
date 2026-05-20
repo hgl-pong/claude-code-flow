@@ -28,6 +28,24 @@ bash tests/skill-triggering/run-all.sh
 
 ## Architecture
 
+### Source of Truth
+
+Keep workflow details in one place:
+
+| Topic | Authoritative file |
+|---|---|
+| Agent roles, models, and behavioral constraints | `agents/*.md` |
+| Gate checklist, ordering, scheduling, review, and acceptance | `skills/dev-orchestrator/references/pipeline-operations.md` |
+| Review command boundaries, sentinel inputs, and fix loops | `skills/dev-orchestrator/references/review.md` |
+| Diagnostic runtime files, metrics commands, and output rules | `skills/dev-orchestrator/references/diagnostics.md` |
+| Orchestration trigger bias and mode selection | `skills/dev-orchestrator/SKILL.md` |
+| Subagent prompt templates | `skills/dev-orchestrator/references/subagent-prompts.md` |
+| Slash command entry points | `commands/*.md` as thin routers |
+| Runtime workflow state | `.claude/flow/plan-state.json` and `.claude/flow/workflow-state.json` |
+| Hook registration and scripts | `hooks/hooks.json` and `hooks/scripts/*` |
+
+Top-level docs should summarize and link to these files rather than duplicating long gate checklists.
+
 ### Model-Tiered Agent Pipeline
 
 Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `model` alias and, for Opus/Sonnet agents, an `effort` level:
@@ -98,7 +116,7 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **claude-code-flow** (658 symbols, 1329 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **claude-code-flow** (1020 symbols, 1688 relationships, 23 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
