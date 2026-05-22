@@ -114,10 +114,6 @@ Who to ask for what. Prefer roles over names (names change).
 
 ## If Connectors Available
 
-If **~~code-intel** is connected:
-- Use `gitnexus_context` to trace code structure and dependencies before writing architecture docs
-- Use `gitnexus_query` to find all callers of an API endpoint when writing API docs
-
 ## Tips
 
 - Write the README first, then expand into specialized docs. A good README eliminates 80% of questions.

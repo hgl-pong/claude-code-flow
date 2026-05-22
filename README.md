@@ -81,13 +81,6 @@ claude-code-flow/
 
 ## Installation
 
-### Required
-
-```bash
-npm install -g gitnexus
-gitnexus analyze .
-```
-
 ### Optional
 
 ```bash

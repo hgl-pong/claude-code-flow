@@ -140,10 +140,6 @@ Required evidence:
 
 ## If Connectors Available
 
-If **~~code-intel** is connected:
-- Use `gitnexus_query` to find execution flows and identify all code paths needing coverage
-- Use `gitnexus_impact` to understand which functions callers depend on (higher risk → more tests)
-
 If **~~browser** is connected:
 - Run live E2E smoke tests against a running dev server
 - Take screenshots to verify UI rendering after changes

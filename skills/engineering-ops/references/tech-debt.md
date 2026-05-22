@@ -69,10 +69,6 @@ Every item in the remediation plan must include a **business justification** -- 
 
 ## If Connectors Available
 
-If **~~code-intel** is connected:
-- Run symbol impact analysis before scoring debt items -- upstream dependency maps validate risk scores
-- Use `gitnexus_impact` on proposed refactoring targets to estimate true effort (blast radius = effort proxy)
-
 ## Tips
 
 - Run a full audit quarterly; spot-check specific areas after major feature work.

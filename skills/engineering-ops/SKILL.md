@@ -40,11 +40,6 @@ For each mode, see **references/<topic>.md** for detailed workflow, templates, a
 
 ## If Connectors Available
 
-If **~~code-intel** is connected:
-- `gitnexus_query` -- search for prior ADRs, execution flows, related decisions
-- `gitnexus_impact` -- blast radius of proposed changes, refactoring targets, deploy diffs
-- `gitnexus_context` -- trace dependencies, call chains, symbol relationships
-
 If **~~browser** is connected:
 - Run post-deploy smoke tests: navigate to key pages, verify content renders, screenshot evidence
 - Automate deploy verification: click through critical flows, check for console errors

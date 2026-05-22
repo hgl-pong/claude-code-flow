@@ -46,10 +46,6 @@ If **~~image-gen** is connected:
 - Use `img describe` to analyze screenshots for layout, color, typography, and contrast details
 - Generate annotated screenshots highlighting issues, token boundaries, or state differences
 
-If **~~code-intel** is connected:
-- Run `gitnexus_query` to find component usage across the codebase (system mode)
-- Run `gitnexus_impact` before renaming tokens to assess blast radius (system mode)
-
 If **~~browser** is connected:
 - Navigate to running app to visually verify design implementation against DESIGN.md tokens
 - Screenshot pages for critique mode instead of requiring user-provided screenshots

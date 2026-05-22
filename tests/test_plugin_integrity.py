@@ -34,7 +34,7 @@ def frontmatter_dict(path):
 class PluginIntegrityTests(unittest.TestCase):
     def test_local_runtime_mirrors_are_ignored(self):
         ignore_text = read_text(ROOT / ".gitignore")
-        for rel in [".claude/", ".codex/", ".agents/", ".gitnexus"]:
+        for rel in [".claude/", ".codex/", ".agents/"]:
             with self.subTest(path=rel):
                 self.assertIn(rel, ignore_text)
 
@@ -258,8 +258,6 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Source of Truth", readme)
         self.assertNotIn(".claude/skills", claude_md)
         self.assertNotIn(".claude/skills", agents_md)
-        self.assertIn(".agents/skills/gitnexus/gitnexus-exploring/SKILL.md", claude_md)
-        self.assertIn(".agents/skills/gitnexus/gitnexus-exploring/SKILL.md", agents_md)
         self.assertIn("Source of Truth", claude_md)
         self.assertIn("Source of Truth", agents_md)
         self.assertIn("Shift+Tab", claude_md)

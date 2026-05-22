@@ -156,7 +156,7 @@ case "$EFFORT" in
 esac
 
 THINK_PART=""
-[ "$THINKING" = "true" ] && THINK_PART=" 💭"
+[ "$THINKING" = "true" ] && THINK_PART=" Thinking"
 
 VIM_PART=""
 [ -n "$VIM_MODE" ] && VIM_PART="${SEP}${CYN}${VIM_MODE}${R}"

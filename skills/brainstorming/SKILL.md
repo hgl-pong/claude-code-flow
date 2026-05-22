@@ -178,12 +178,6 @@ Before user review:
 - **One-idea brainstorm** — Acknowledge first idea, then push for alternatives
 - **Analysis paralysis** — If circling, prompt: "If you had to pick one direction right now?"
 
-## If Connectors Available
-
-If **~~code-intel** is connected:
-- Query existing patterns to ground brainstorming in codebase reality
-- Check impact of proposed approaches on existing symbols
-
 ## Tips
 
 1. **Be opinionated** — "I think approach B is stronger because..." beats listing pros/cons

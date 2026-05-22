@@ -38,5 +38,4 @@ If each fix reveals new problems in different places, or fixes require massive r
 - Reproduce, localize, prove, fix, verify with project's test runner
 
 **Enhanced** (with connected tools):
-- + GitNexus: `gitnexus_query` to find execution flows, `gitnexus_context` on suspect symbols, `gitnexus_impact` on fix targets
 - + IDE MCP: breakpoints, call stacks, watch variables

@@ -6,8 +6,6 @@
 
 Pull activity from git and PR history. Use when you want a data-driven update.
 
-If **~~code-intel** is connected: prefer `gitnexus_detect_changes` and `gitnexus_query` for richer codebase activity data (affected symbols, execution flows, impact analysis) over raw git commands.
-
 ```bash
 git log --since="yesterday" --author="$(git config user.name)" --oneline --no-merges
 git log --since="1 week ago" --author="$(git config user.name)" --format="%h %s" --no-merges
@@ -59,10 +57,6 @@ Adapt the output for the audience:
 Specify which format when triggering the skill. Default is team standup.
 
 ## If Connectors Available
-
-If **~~code-intel** is connected:
-- Use `gitnexus_context` on recently changed symbols to summarize what each commit actually did (not just the commit message)
-- Query open PRs and their review status to surface items for Today and Blockers sections
 
 ## Tips
 

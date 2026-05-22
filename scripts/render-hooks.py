@@ -91,7 +91,6 @@ REGISTRY = [
             ("python", "hooks/scripts/auto-statusline.py", 5, ["claude"]),
             ("python", "hooks/scripts/session-check.py", 10),
             ("python", "hooks/scripts/flow-state.py snapshot", 5),
-            ("python", "hooks/scripts/gitnexus-check.py", 5),
         ],
     },
     {
@@ -141,7 +140,6 @@ REGISTRY = [
             ("python", "hooks/scripts/ulw-stop-hook.py", 10, ["codex"]),
             ("python", "hooks/scripts/uli-stop-hook.py", 10, ["codex"]),
             ("python", "hooks/scripts/on-workflow-stop.py", 10),
-            ("python", "hooks/scripts/gitnexus-update.py", 30),
         ],
     },
     {

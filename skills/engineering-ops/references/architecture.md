@@ -82,11 +82,6 @@ Design a new component or system. Follow this framework:
 
 ## If Connectors Available
 
-If **~~code-intel** is connected:
-- Use `gitnexus_query` to search for prior ADRs and related design decisions in the codebase
-- Use `gitnexus_impact` to check blast radius of proposed architectural changes
-- Use `gitnexus_context` to understand current dependencies before designing new components
-
 ## Tips
 
 1. **State constraints upfront.** Budget, timeline, team skills, and existing infrastructure are as important as technical trade-offs. A technically superior option that the team can't maintain is the wrong choice.

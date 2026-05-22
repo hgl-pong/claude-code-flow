@@ -137,10 +137,6 @@ Forms, navigation, data display, feedback — reusable interaction patterns.
 
 ## If Connectors Available
 
-If **~~code-intel** is connected:
-- Run `gitnexus_query` to find all component usage across the codebase
-- Run `gitnexus_impact` before renaming or restructuring tokens to assess blast radius
-
 ## Tips
 
 - Start with audit mode to understand the current state before documenting or extending.

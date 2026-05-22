@@ -67,11 +67,6 @@
             "type": "command",
             "command": "python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py snapshot",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "python ${PLUGIN_ROOT}/hooks/scripts/gitnexus-check.py",
-            "timeout": 5
           }
         ]
       }
@@ -126,11 +121,6 @@
             "type": "command",
             "command": "python ${PLUGIN_ROOT}/hooks/scripts/on-workflow-stop.py",
             "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "python ${PLUGIN_ROOT}/hooks/scripts/gitnexus-update.py",
-            "timeout": 30
           }
         ]
       }

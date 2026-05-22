@@ -403,6 +403,3 @@ See `references/design-md-spec.md` for full format, schema, and examples.
 
 If **~~image-gen** is connected:
 - Use `img describe` to analyze existing screenshots or competitor designs during Phase 1
-
-If **~~code-intel** is connected:
-- Use `gitnexus_query` to audit existing codebase components and styling patterns during Phase 1
