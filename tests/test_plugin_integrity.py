@@ -93,7 +93,7 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertNotIn("skills", claude_manifest)
 
         root_agents = sorted(path.stem for path in (ROOT / "agents").glob("*.md"))
-        self.assertEqual(root_agents, ["artist", "forge", "oracle", "prism", "sentinel"])
+        self.assertEqual(root_agents, ["forge", "oracle", "prism", "sentinel"])
         self.assertFalse((ROOT / ".claude" / "agents").exists())
         self.assertFalse((ROOT / ".codex" / "agents").exists())
 
@@ -496,7 +496,6 @@ class PluginIntegrityTests(unittest.TestCase):
             "oracle": "opus",
             "prism": "sonnet",
             "sentinel": "sonnet",
-            "artist": "haiku",
         }
         expected_effort = {
             "forge": "high",

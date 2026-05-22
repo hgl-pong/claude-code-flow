@@ -11,7 +11,6 @@ STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 AGENT_MODELS = {
     "oracle": "opus", "forge": "sonnet",
     "prism": "sonnet", "sentinel": "sonnet",
-    "artist": "haiku",
 }
 
 def get_session_id():

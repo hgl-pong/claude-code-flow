@@ -400,6 +400,3 @@ See `references/design-md-spec.md` for full format, schema, and examples.
 - [ ] Disabled states include `cursor: not-allowed` and `aria-disabled` (not just visual dimming)
 
 ## If Connectors Available
-
-If **~~image-gen** is connected:
-- Use `img describe` to analyze existing screenshots or competitor designs during Phase 1

@@ -115,12 +115,6 @@ Systematic WCAG 2.1 AA audit covering perceivable, operable, understandable, and
 | 3 | [Next priority] | Medium | Low | 3.3.1 |
 ```
 
-## If Connectors Available
-
-If **~~image-gen** is connected:
-- Use `img describe` to analyze screenshots for contrast, text readability, and layout issues
-- Generate annotated screenshots highlighting accessibility violations with callouts
-
 ## Tips
 
 - Start with automated tools (axe, Lighthouse) to catch the easy 30%, then manually test keyboard and screen reader paths.

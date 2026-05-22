@@ -80,12 +80,6 @@ Can everyone use this? Check color contrast (WCAG AA), touch targets (44px minim
 3. [Third most impactful]
 ```
 
-## If Connectors Available
-
-If **~~image-gen** is connected:
-- Use `img describe` to analyze uploaded screenshots for layout, color, and typography details
-- Generate annotated comparison images showing before/after for recommendations
-
 ## Tips
 
 - Share context: what product, who are the users, what is the primary task? Critique without context is guessing.

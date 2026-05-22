@@ -1,7 +1,7 @@
 interface:
   display_name: "Claude Code Flow Agents"
-  short_description: "Use the shared oracle, forge, prism, sentinel, and artist agent roster from the repository root."
-  default_prompt: "Use $dev-orchestrator with the shared root agents: oracle for planning, forge for implementation, prism for acceptance, sentinel for review, and artist for visuals."
+  short_description: "Use the shared oracle, forge, prism, and sentinel agent roster from the repository root."
+  default_prompt: "Use $dev-orchestrator with the shared root agents: oracle for planning, forge for implementation, prism for acceptance, sentinel for review."
 
 shared_agents:
   source: "../../../agents"
@@ -10,4 +10,3 @@ shared_agents:
     - forge
     - prism
     - sentinel
-    - artist

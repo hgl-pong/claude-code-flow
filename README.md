@@ -81,12 +81,6 @@ claude-code-flow/
 
 ## Installation
 
-### Optional
-
-```bash
-cd vendor/img-cli && pip install -e . && cd ../..
-```
-
 ### Claude Code plugin
 
 ```text

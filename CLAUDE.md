@@ -102,4 +102,3 @@ Runtime state lives in `.claude/flow/` (gitignored). Key files:
 - **Review is two-stage**: spec compliance first, code quality second — never reverse the order
 - **Verification evidence**: Never claim completion without fresh test/build/lint evidence recorded by hooks
 - **Plugin installation**: `/plugin marketplace add hgl-pong/claude-code-flow` then `/plugin install` then `/reload-plugins`
-- **img-cli**: Installed from `vendor/img-cli` submodule via `pip install -e vendor/img-cli`. Artist agent uses `img generate` and `img describe`.

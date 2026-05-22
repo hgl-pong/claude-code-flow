@@ -42,10 +42,6 @@ Each mode has a detailed workflow and output template:
 
 ## If Connectors Available
 
-If **~~image-gen** is connected:
-- Use `img describe` to analyze screenshots for layout, color, typography, and contrast details
-- Generate annotated screenshots highlighting issues, token boundaries, or state differences
-
 If **~~browser** is connected:
 - Navigate to running app to visually verify design implementation against DESIGN.md tokens
 - Screenshot pages for critique mode instead of requiring user-provided screenshots

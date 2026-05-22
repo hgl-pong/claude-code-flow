@@ -106,12 +106,6 @@ Translate a visual design into an engineering-ready specification. The goal: a d
 - Screen reader: [announcements expected]
 ```
 
-## If Connectors Available
-
-If **~~image-gen** is connected:
-- Use `img describe` to extract layout measurements, color values, and typography from screenshots
-- Generate annotated screenshots highlighting token boundaries and state differences
-
 ## Tips
 
 - Pair the handoff with a DESIGN.md if the project has one — reference its tokens directly.
