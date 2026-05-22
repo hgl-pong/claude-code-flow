@@ -60,11 +60,14 @@ Each iteration stores artifacts in a folder named by a short English slug derive
 
 ## Step 0 — Initialize
 
-1. Write ULI state file via: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-init "<GOAL_FROM_USER_PROMPT>"` (default: max_iterations=10)
-2. Set mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous`
-3. Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan`
+Use `${PLUGIN_ROOT}` below as the host-neutral plugin root. In Claude Code command
+examples, `${CLAUDE_PLUGIN_ROOT}` is an equivalent root variable.
+
+1. Write ULI state file via: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-init "<GOAL_FROM_USER_PROMPT>"` (default: max_iterations=10)
+2. Set mode: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous`
+3. Set phase: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan`
 4. Create/verify `.claude/flow/uli/product-state.md` (goal + completed features + known gaps).
-5. Derive iteration-1 slug from the first iteration's expected goal (kebab-case, 2–4 words). Set via: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-task "<slug>"`; creates `.claude/flow/uli/<slug>/`.
+5. Derive iteration-1 slug from the first iteration's expected goal (kebab-case, 2-4 words). Set via: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-task "<slug>"`; creates `.claude/flow/uli/<slug>/`.
 6. Branch off main: `git checkout -b uli/$(date +%Y%m%d-%H%M%S)-iteration-loop`
 
 ## Iteration Loop (Steps 1-5, repeat until max_iterations or goal achieved)
@@ -94,7 +97,7 @@ Each pass through this loop is ONE iteration. The iteration number increments ON
 
 **1a. Research subagent analyzes product state:**
 
-Update state: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-phase pd_generating`
+Update state: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-phase pd_generating`
 
 ```
 Agent({
@@ -208,7 +211,7 @@ On ACCEPT:
 5. Check loop condition:
    - If `iteration >= max_iterations` → Step 6
    - If product goal fully achieved → Step 6
-   - Else → increment: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-next`; derive next iteration's slug from its expected goal and set via `uli-set-task <next-slug>`, then go to Step 1
+   - Else -> increment: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-next`; derive next iteration's slug from its expected goal and set via `uli-set-task <next-slug>`, then go to Step 1
 
 **REJECT** (first time): route back to Step 3 with gap list (max 2 retry loops within this iteration).
 

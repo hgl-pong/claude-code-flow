@@ -1,18 +1,33 @@
 #!/usr/bin/env python
 """SubagentStop: log agent completion with structured data."""
-import json, os, sys
+import json, os, re, sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 FLOW_DIR = os.path.join(".claude", "flow")
 EXEC_LOG = os.path.join(FLOW_DIR, "exec-log.jsonl")
 SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
 STATE_FILE = os.path.join(FLOW_DIR, "workflow-state.json")
 
-AGENT_MODELS = {
-    "oracle": "opus", "forge": "sonnet",
-    "prism": "sonnet", "sentinel": "sonnet",
-    "artist": "haiku",
-}
+def agent_models():
+    models = {}
+    agents_dir = Path(__file__).resolve().parents[2] / "agents"
+    for path in agents_dir.glob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        match = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
+        if not match:
+            continue
+        fields = {}
+        for line in match.group(1).splitlines():
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            fields[key.strip()] = value.strip().strip('"')
+        name = fields.get("name")
+        model = fields.get("model")
+        if name and model:
+            models[name] = model
+    return models
 
 def get_session_id():
     if os.path.exists(SESSION_ID_FILE):
@@ -48,7 +63,7 @@ def main():
         "session_id": get_session_id(),
         "event": "agent_complete",
         "agent": agent_name,
-        "model": AGENT_MODELS.get(agent_name, "unknown"),
+        "model": agent_models().get(agent_name, "unknown"),
         "status": "success",
         "phase": get_phase(),
     }

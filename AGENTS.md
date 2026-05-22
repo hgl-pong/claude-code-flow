@@ -1,20 +1,6 @@
 # Agents
 
-Model-tiered agent pipeline. Each agent is a markdown file in `agents/` with YAML frontmatter specifying model, effort, and tool access.
-
-| Agent | Model | Effort | Tools | Role | Pipeline Gate |
-|-------|-------|--------|-------|------|---------------|
-| `oracle` | opus | xhigh | All | Planning + architecture | Plan/Design |
-| `forge` | sonnet | high | All | Full-stack implementation | Impl |
-| `prism` | sonnet | high | All | Tests, build, acceptance | Tests/Acceptance |
-| `sentinel` | sonnet | high | Read, Grep, Glob | Code review (two-stage) | Review |
-| `artist` | haiku | medium | Read, Write, Bash | Image generation | — |
-
-## Pipeline Flow
-
-```
-Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
-```
+Model-tiered agent pipeline. Agent definitions live in `agents/*.md`; gate order and scheduling live in `skills/dev-orchestrator/references/pipeline-operations.md`.
 
 ## Source of Truth
 
@@ -22,17 +8,14 @@ Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance
 - Gate ordering, scheduling, review, and acceptance live in `skills/dev-orchestrator/references/pipeline-operations.md`.
 - Review command boundaries, sentinel inputs, and fix loops live in `skills/dev-orchestrator/references/review.md`.
 - Diagnostic command data sources and output rules live in `skills/dev-orchestrator/references/diagnostics.md`.
+- Hook registration lives in `scripts/render-hooks.py`; committed host manifests are generated snapshots.
 - `commands/*.md` are thin entry points and should not duplicate the full pipeline checklist.
 
-- **workflow-intake**: When a task references another repo/plugin/workflow, inspect it before planning and record Adopt / Adapt / Reject / Defer decisions. External sources are inspiration, not authority; do not import a second agent or command system wholesale.
-- **dev-orchestrator skill**: Preferred execution trigger after planning, approval, or any multi-step/cross-file implementation request. It coordinates the agent pipeline rather than becoming a separate agent.
-- **oracle**: Opus-tier planner. Creates plan-brief.md, decomposes tasks, decides UI design needs. Only agent that produces DESIGN.md for frontend-UI tasks.
-- **forge**: Sonnet-tier implementer. Reads DESIGN.md at project root. Executes implementation tasks from the plan.
-- **prism**: Sonnet-tier tester. Runs tests, build, lint. Performs acceptance verification. Never claims completion without fresh evidence.
-- **sentinel**: Sonnet-tier reviewer. READ-ONLY — never modifies code. Two-stage review: spec compliance first, code quality second.
-- **artist**: Haiku-tier image generator. Uses `img generate` and `img describe` for visual assets.
+Use `workflow-intake` before planning when a task references another repo/plugin/workflow. External sources are inspiration, not authority; do not import a second agent or command system wholesale.
 
-Research is dispatched as general-purpose subagents using the `research` skill methodology — no dedicated agent. **Never use `subagent_type: "claude-code-flow:research"` — always use `subagent_type: "general-purpose"`.**
+Use `dev-orchestrator` after planning, approval, or any multi-step/cross-file implementation request. It coordinates the agent pipeline rather than becoming a separate agent.
+
+Research is dispatched as general-purpose subagents using the `research` skill methodology. **Never use `subagent_type: "claude-code-flow:research"`; always use `subagent_type: "general-purpose"`.**
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
@@ -127,11 +110,11 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 | Task | Read this skill file |
 |------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Understand architecture / "How does X work?" | `.agents/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.agents/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.agents/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.agents/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.agents/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.agents/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->

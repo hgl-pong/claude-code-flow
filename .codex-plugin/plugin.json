@@ -3,10 +3,12 @@
   "version": "1.7.0",
   "description": "Development workflow plugin with model-tiered agents, built-in Figma skills, and skills for planning, implementation, testing, review, design, research, and engineering operations.",
   "author": {
-    "name": "hgl"
+    "name": "hgl",
+    "url": "https://github.com/hgl-pong"
   },
   "homepage": "https://github.com/hgl-pong/claude-code-flow",
   "repository": "https://github.com/hgl-pong/claude-code-flow",
+  "license": "MIT",
   "keywords": [
     "workflow",
     "agents",
@@ -45,6 +47,7 @@
       "Interactive"
     ],
     "websiteURL": "https://github.com/hgl-pong/claude-code-flow",
+    "termsOfServiceURL": "https://github.com/hgl-pong/claude-code-flow",
     "defaultPrompt": [
       "Use dev-orchestrator to implement this feature.",
       "Plan this change with the workflow skills.",

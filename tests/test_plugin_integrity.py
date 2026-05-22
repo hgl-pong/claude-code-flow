@@ -43,6 +43,7 @@ class PluginIntegrityTests(unittest.TestCase):
             ".claude-plugin/plugin.json",
             ".claude-plugin/marketplace.json",
             ".codex-plugin/plugin.json",
+            ".agents/plugins/marketplace.json",
             "hooks/codex-hooks.json",
             "hooks/hooks.json",
         ]:
@@ -51,9 +52,19 @@ class PluginIntegrityTests(unittest.TestCase):
 
     def test_codex_manifest_exposes_skills_and_hooks(self):
         manifest = json.loads(read_text(ROOT / ".codex-plugin/plugin.json"))
+        self.assertEqual(manifest["name"], "claude-code-flow")
         self.assertEqual(manifest["skills"], "./skills/")
         self.assertEqual(manifest["hooks"], "./hooks/codex-hooks.json")
         self.assertEqual(manifest["mcpServers"], "./.mcp.json")
+        self.assertEqual(manifest["license"], "MIT")
+
+        interface = manifest["interface"]
+        self.assertEqual(interface["displayName"], "Claude Code Flow")
+        self.assertEqual(interface["category"], "Productivity")
+        self.assertIn("Interactive", interface["capabilities"])
+        self.assertLessEqual(len(interface["defaultPrompt"]), 3)
+        for prompt in interface["defaultPrompt"]:
+            self.assertLessEqual(len(prompt), 128)
 
         hooks = json.loads(read_text(ROOT / "hooks/codex-hooks.json"))
         commands = []
@@ -69,8 +80,58 @@ class PluginIntegrityTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertIn("${PLUGIN_ROOT}", command)
                 self.assertNotIn("${CLAUDE_PLUGIN_ROOT}", command)
+                self.assertNotRegex(command, r"^\s*bash\b")
                 for rel in re.findall(r"\$\{PLUGIN_ROOT\}/([^\s]+)", command):
                     self.assertTrue((ROOT / rel).exists(), f"missing hook target: {rel}")
+
+    def test_claude_and_codex_share_root_skills_and_agents(self):
+        claude_manifest = json.loads(read_text(ROOT / ".claude-plugin/plugin.json"))
+        codex_manifest = json.loads(read_text(ROOT / ".codex-plugin/plugin.json"))
+
+        self.assertEqual(codex_manifest["skills"], "./skills/")
+        self.assertTrue((ROOT / "skills/dev-orchestrator/SKILL.md").exists())
+        self.assertNotIn("skills", claude_manifest)
+
+        root_agents = sorted(path.stem for path in (ROOT / "agents").glob("*.md"))
+        self.assertEqual(root_agents, ["artist", "forge", "oracle", "prism", "sentinel"])
+        self.assertFalse((ROOT / ".claude" / "agents").exists())
+        self.assertFalse((ROOT / ".codex" / "agents").exists())
+
+        overlay = read_text(ROOT / "skills/dev-orchestrator/agents/openai.yaml")
+        self.assertIn("display_name: \"Claude Code Flow Agents\"", overlay)
+        self.assertIn('source: "../../../agents"', overlay)
+        for agent in root_agents:
+            self.assertIn(f"    - {agent}", overlay)
+
+    def test_codex_shared_surfaces_use_host_neutral_root_in_commands(self):
+        codex_loaded_paths = [
+            *ROOT.glob("skills/**/*.md"),
+            *ROOT.glob("agents/*.md"),
+        ]
+        command_re = re.compile(r"`[^`]*(?:python|bash|node|npx)\s+\$\{CLAUDE_PLUGIN_ROOT\}[^`]*`")
+        for path in codex_loaded_paths:
+            with self.subTest(file=path.relative_to(ROOT).as_posix()):
+                self.assertIsNone(command_re.search(read_text(path)))
+
+    def test_codex_marketplace_points_to_this_plugin(self):
+        marketplace = json.loads(read_text(ROOT / ".agents/plugins/marketplace.json"))
+        self.assertEqual(marketplace["name"], "claude-code-flow")
+        self.assertEqual(marketplace["interface"]["displayName"], "Claude Code Flow")
+
+        entries = marketplace["plugins"]
+        self.assertEqual(len(entries), 1)
+        entry = entries[0]
+        self.assertEqual(entry["name"], "claude-code-flow")
+        self.assertEqual(entry["source"], {"source": "local", "path": "../.."})
+        self.assertEqual(
+            entry["policy"],
+            {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+        )
+        self.assertEqual(entry["category"], "Productivity")
+        plugin_manifest = (
+            ROOT / ".agents/plugins" / entry["source"]["path"] / ".codex-plugin/plugin.json"
+        ).resolve()
+        self.assertTrue(plugin_manifest.exists())
 
     def test_markdown_assets_have_required_frontmatter(self):
         paths = []
@@ -194,10 +255,13 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("plan-state.json", readme.lower())
         self.assertIn("plan_hash", readme)
         self.assertIn("host-level plan transitions", readme.lower())
-        self.assertIn("事实来源", readme)
+        self.assertIn("Source of Truth", readme)
+        self.assertNotIn(".claude/skills", claude_md)
+        self.assertNotIn(".claude/skills", agents_md)
+        self.assertIn(".agents/skills/gitnexus/gitnexus-exploring/SKILL.md", claude_md)
+        self.assertIn(".agents/skills/gitnexus/gitnexus-exploring/SKILL.md", agents_md)
         self.assertIn("Source of Truth", claude_md)
         self.assertIn("Source of Truth", agents_md)
-        self.assertIn("PreToolUse(EnterPlanMode)", claude_md)
         self.assertIn("Shift+Tab", claude_md)
         self.assertIn("`/plan` is the plugin planning entry", claude_md)
         self.assertNotIn(old_plan_command, claude_md)
@@ -250,8 +314,55 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertNotIn(duplicated_review_detail, code_review)
             self.assertNotIn(duplicated_review_detail, workflow_review)
 
+    def test_top_level_docs_do_not_duplicate_workflow_tables(self):
+        docs = {
+            "README.md": read_text(ROOT / "README.md"),
+            "CLAUDE.md": read_text(ROOT / "CLAUDE.md"),
+            "AGENTS.md": read_text(ROOT / "AGENTS.md"),
+        }
+        forbidden = [
+            "| Agent | Model | Effort",
+            "Plan + Architecture (oracle)",
+            "Testing + Acceptance (prism)",
+            "| Mode | Research | Architecture",
+            "| Mode | Use Case | Research",
+            "| Event | Purpose |",
+            "SubagentStart / SubagentStop",
+        ]
+        for name, text in docs.items():
+            for phrase in forbidden:
+                with self.subTest(file=name, phrase=phrase):
+                    self.assertNotIn(phrase, text)
+
+    def test_readme_is_clean_utf8_without_mojibake(self):
+        readme = read_text(ROOT / "README.md")
+        mojibake_markers = [
+            "\ufffd",
+            "\u9239",
+            "\u4e63",
+            "\u6d5c\u5b22\u7584",
+            "\u93cd\u5fc3",
+            "\u935b\u4ee4\u62a4",
+            "\u59af",
+            "\u9396",
+        ]
+        for phrase in mojibake_markers:
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, readme)
+
+    def test_hook_manifests_match_renderer(self):
+        for host in ["claude", "codex"]:
+            with self.subTest(host=host):
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / "scripts/render-hooks.py"), host, "--check"],
+                    text=True,
+                    capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+
     def test_python_hook_scripts_compile(self):
         scripts = sorted((ROOT / "hooks/scripts").glob("*.py"))
+        scripts.extend(sorted((ROOT / "scripts").glob("*.py")))
         self.assertGreater(len(scripts), 0, "expected Python hook scripts")
 
         for path in scripts:
@@ -412,6 +523,24 @@ class PluginIntegrityTests(unittest.TestCase):
                 else:
                     self.assertEqual(effort, expected_effort[name])
                     self.assertIn(effort, allowed_effort)
+
+    def test_agent_completion_reads_root_agent_metadata(self):
+        payload = {"name": "oracle"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "hooks/scripts/on-agent-complete.py")],
+                cwd=tmp,
+                input=json.dumps(payload),
+                text=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            log_path = Path(tmp) / ".claude" / "flow" / "exec-log.jsonl"
+            entry = json.loads(log_path.read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(entry["agent"], "oracle")
+            self.assertEqual(entry["model"], "opus")
 
     def test_flow_state_get_merges_partial_state_with_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:

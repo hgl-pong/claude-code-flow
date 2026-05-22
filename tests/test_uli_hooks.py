@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "hooks" / "scripts"
 DETECTOR = str(SCRIPTS / "uli-detector.py")
 STOP_HOOK = str(SCRIPTS / "uli-stop-hook.sh")
+PORTABLE_STOP_HOOK = str(SCRIPTS / "uli-stop-hook.py")
+PORTABLE_ULW_STOP_HOOK = str(SCRIPTS / "ulw-stop-hook.py")
 
 # Shell tests require bash + jq (unavailable on bare Windows)
 BASH_AVAILABLE = shutil.which("bash") is not None and shutil.which("jq") is not None
@@ -55,12 +57,9 @@ def make_assistant_line(text: str) -> dict:
     }
 
 
-def run_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> tuple:
-    """Run uli-stop-hook.sh with given state and transcript, return (returncode, stdout).
-
-    If tmp_dir is provided, state file is written there (so caller can inspect it
-    after the hook runs). Otherwise a fresh temp dir is used and cleaned up.
-    """
+def run_hook(script_cmd: list[str], state_filename: str, state: dict, transcript_lines: list,
+             tmp_dir: str = None) -> tuple:
+    """Run a stop hook with given state/transcript, return (returncode, stdout)."""
     own_tmp = tmp_dir is None
     if own_tmp:
         tmp_dir = tempfile.mkdtemp()
@@ -70,7 +69,7 @@ def run_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> t
         flow_dir = tmp_path / ".claude" / "flow"
         flow_dir.mkdir(parents=True, exist_ok=True)
 
-        state_file = flow_dir / "uli-state.json"
+        state_file = flow_dir / state_filename
         state_file.write_text(json.dumps(state), encoding="utf-8")
 
         transcript_file = tmp_path / "transcript.jsonl"
@@ -85,7 +84,7 @@ def run_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> t
         })
 
         result = subprocess.run(
-            ["bash", STOP_HOOK],
+            script_cmd,
             input=hook_input,
             text=True,
             capture_output=True,
@@ -95,6 +94,53 @@ def run_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> t
     finally:
         if own_tmp:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def run_portable_ulw_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> tuple:
+    """Run portable Python ulw-stop-hook.py with given state and transcript."""
+    return run_hook([sys.executable, PORTABLE_ULW_STOP_HOOK], "ulw-state.json", state, transcript_lines, tmp_dir)
+
+
+def run_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> tuple:
+    """Run uli-stop-hook.sh with given state and transcript, return (returncode, stdout)."""
+    return run_hook(["bash", STOP_HOOK], "uli-state.json", state, transcript_lines, tmp_dir)
+
+
+def run_portable_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> tuple:
+    """Run portable Python uli-stop-hook.py with given state and transcript."""
+    return run_hook([sys.executable, PORTABLE_STOP_HOOK], "uli-state.json", state, transcript_lines, tmp_dir)
+
+
+def make_uli_state(**overrides) -> dict:
+    base = {
+        "active": True,
+        "session_id": "test-123",
+        "goal": "build a calculator",
+        "iteration": 1,
+        "max_iterations": 10,
+        "current_phase": "dev_pipeline",
+        "current_task_slug": "build-calculator",
+        "pd_proposal_ready": True,
+        "acceptance_status": None,
+        "started_at": "2026-04-30T00:00:00Z",
+    }
+    base.update(overrides)
+    return base
+
+
+def make_ulw_state(**overrides) -> dict:
+    base = {
+        "active": True,
+        "session_id": "test-123",
+        "intent": "implement",
+        "prompt": "build a calculator app",
+        "task_done": 0,
+        "task_total": 2,
+        "iteration": 0,
+        "max_iterations": 25,
+    }
+    base.update(overrides)
+    return base
 
 
 # ---------------------------------------------------------------------------
@@ -169,25 +215,110 @@ class UliDetectorTests(unittest.TestCase):
 # Stop hook tests (bash — skipped on Windows without Git Bash / WSL)
 # ---------------------------------------------------------------------------
 
+
+class PortableUliStopHookTests(unittest.TestCase):
+    """Tests for the Python stop hook used by Codex and other non-bash hosts."""
+
+    def _active_state(self, **overrides) -> dict:
+        return make_uli_state(**overrides)
+
+    def test_no_uli_done_tag_blocks_exit(self):
+        code, out = run_portable_stop_hook(
+            self._active_state(),
+            [make_assistant_line("Still working on the implementation...")],
+        )
+        self.assertEqual(code, 0)
+        data = json.loads(out)
+        self.assertEqual(data.get("decision"), "block")
+        self.assertIn("systemMessage", data)
+
+    def test_uli_done_tag_allows_exit_and_marks_inactive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = run_portable_stop_hook(
+                self._active_state(),
+                [make_assistant_line("Done. <uli-done>Built calculator</uli-done>")],
+                tmp_dir=tmp,
+            )
+            self.assertEqual(code, 0)
+            self.assertIn("complete", out.lower())
+            state = json.loads(
+                (Path(tmp) / ".claude" / "flow" / "uli-state.json").read_text(encoding="utf-8")
+            )
+            self.assertFalse(state["active"])
+
+    def test_missing_transcript_stops_instead_of_looping_forever(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            flow_dir = Path(tmp) / ".claude" / "flow"
+            flow_dir.mkdir(parents=True, exist_ok=True)
+            state_file = flow_dir / "uli-state.json"
+            state_file.write_text(json.dumps(self._active_state()), encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, PORTABLE_STOP_HOOK],
+                input=json.dumps({"session_id": "test-123", "transcript_path": "missing.jsonl"}),
+                text=True,
+                capture_output=True,
+                cwd=tmp,
+            )
+            self.assertEqual(result.returncode, 0)
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            self.assertFalse(state["active"])
+
+
+class PortableUlwStopHookTests(unittest.TestCase):
+    """Tests for the Python ULW stop hook used by Codex and other non-bash hosts."""
+
+    def _active_state(self, **overrides) -> dict:
+        return make_ulw_state(**overrides)
+
+    def test_no_ulw_done_tag_blocks_exit(self):
+        code, out = run_portable_ulw_stop_hook(
+            self._active_state(),
+            [make_assistant_line("Still working on implementation...")],
+        )
+        self.assertEqual(code, 0)
+        data = json.loads(out)
+        self.assertEqual(data.get("decision"), "block")
+        self.assertIn("systemMessage", data)
+
+    def test_ulw_done_tag_allows_exit_and_marks_inactive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code, out = run_portable_ulw_stop_hook(
+                self._active_state(),
+                [make_assistant_line("Done. <ulw-done>Built calculator</ulw-done>")],
+                tmp_dir=tmp,
+            )
+            self.assertEqual(code, 0)
+            self.assertIn("complete", out.lower())
+            state = json.loads(
+                (Path(tmp) / ".claude" / "flow" / "ulw-state.json").read_text(encoding="utf-8")
+            )
+            self.assertFalse(state["active"])
+
+    def test_missing_transcript_stops_instead_of_looping_forever(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            flow_dir = Path(tmp) / ".claude" / "flow"
+            flow_dir.mkdir(parents=True, exist_ok=True)
+            state_file = flow_dir / "ulw-state.json"
+            state_file.write_text(json.dumps(self._active_state()), encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, PORTABLE_ULW_STOP_HOOK],
+                input=json.dumps({"session_id": "test-123", "transcript_path": "missing.jsonl"}),
+                text=True,
+                capture_output=True,
+                cwd=tmp,
+            )
+            self.assertEqual(result.returncode, 0)
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            self.assertFalse(state["active"])
+
 @SKIP_BASH
 class UliStopHookTests(unittest.TestCase):
     """Tests for uli-stop-hook.sh block/allow decisions."""
 
     def _active_state(self, **overrides) -> dict:
-        base = {
-            "active": True,
-            "session_id": "test-123",
-            "goal": "build a calculator",
-            "iteration": 1,
-            "max_iterations": 10,
-            "current_phase": "dev_pipeline",
-            "current_task_slug": "build-calculator",
-            "pd_proposal_ready": True,
-            "acceptance_status": None,
-            "started_at": "2026-04-30T00:00:00Z",
-        }
-        base.update(overrides)
-        return base
+        return make_uli_state(**overrides)
 
     def test_no_state_file_allows_exit(self):
         """When uli-state.json doesn't exist, hook must exit 0 (allow exit)."""

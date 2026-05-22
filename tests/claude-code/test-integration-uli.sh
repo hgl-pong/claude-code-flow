@@ -5,7 +5,7 @@
 #   1. uli-detector hook fires and ULI MODE ACTIVE is injected
 #   2. ultrawork skill (ULI branch) is invoked
 #   3. PD agent spawns and writes uli/proposal.md
-#   4. Dev pipeline executes (forge/weaver or equivalent)
+#   4. Dev pipeline executes (forge/prism or equivalent)
 #   5. uli-state.json exists with expected structure
 #   6. uli/acceptance-report.md or <uli-done> emitted
 #   7. product-state.md is created/updated

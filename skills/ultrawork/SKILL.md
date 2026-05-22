@@ -15,12 +15,15 @@ Full-autonomous single-task execution. No approval gates. Stop Hook prevents exi
 
 Triggered by: `ulw-detector` hook (user wrote `ulw`/`ultrawork`), or `/ulw` invocation.
 
+Use `${PLUGIN_ROOT}` below as the host-neutral plugin root. In Claude Code command
+examples, `${CLAUDE_PLUGIN_ROOT}` is an equivalent root variable.
+
 **Immediately on activation:**
 
-1. Write ULW state file via: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-init "<ORIGINAL_PROMPT>"`
-2. Set workflow mode: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous`
-3. Set phase: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan`
-4. Derive a task slug (2–4 words kebab-case) from the task description; set via `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-task "<slug>"` — creates `.claude/flow/ulw/<slug>/`. All subsequent file writes for this task go inside this directory.
+1. Write ULW state file via: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-init "<ORIGINAL_PROMPT>"`
+2. Set workflow mode: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode autonomous`
+3. Set phase: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py set-phase plan`
+4. Derive a task slug (2-4 words kebab-case) from the task description; set via `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-task "<slug>"` - creates `.claude/flow/ulw/<slug>/`. All subsequent file writes for this task go inside this directory.
 
 ## Step 1 — Intent Gate
 
@@ -37,7 +40,7 @@ Classify the user's true intent (do not take literal words at face value):
 
 Ambiguous signals: pick the less destructive action first. **Never ask for clarification in ULW mode** — decide and proceed.
 
-Update state: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-intent <CLASSIFIED_INTENT>`
+Update state: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-intent <CLASSIFIED_INTENT>`
 
 ## Step 1b — Domain Detection + Gate Checklist
 
@@ -74,8 +77,8 @@ Record checked gates in `.claude/flow/ulw/<slug>/phase-context.md` under `## Gat
 
 ## Step 3 — Execute Intent Pipeline
 
-After creating tasks with TaskCreate, update totals: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-total <N>`
-After each task completes: `python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-inc-done`
+After creating tasks with TaskCreate, update totals: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-set-total <N>`
+After each task completes: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py ulw-inc-done`
 
 ### `implement` / `refactor`
 

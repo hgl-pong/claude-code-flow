@@ -42,52 +42,43 @@ Keep workflow details in one place:
 | Subagent prompt templates | `skills/dev-orchestrator/references/subagent-prompts.md` |
 | Slash command entry points | `commands/*.md` as thin routers |
 | Runtime workflow state | `.claude/flow/plan-state.json` and `.claude/flow/workflow-state.json` |
-| Hook registration and scripts | `hooks/hooks.json` and `hooks/scripts/*` |
+| Hook registration and scripts | `scripts/render-hooks.py` renders `hooks/hooks.json` and `hooks/codex-hooks.json`; scripts live in `hooks/scripts/*` |
 
 Top-level docs should summarize and link to these files rather than duplicating long gate checklists.
 
-### Model-Tiered Agent Pipeline
-
-Agents are markdown files in `agents/` with YAML frontmatter. Each specifies a `model` alias and, for Opus/Sonnet agents, an `effort` level:
-- **Opus xhigh** (oracle): Planning, architecture, system decomposition, UI design decisions
-- **Sonnet high** (forge, prism, sentinel): Implementation, testing/acceptance, review
-- **Haiku** (artist): Image generation
-
-Research is handled by the `research` skill — dispatched as general-purpose subagents with inlined methodology. No dedicated research agent needed. **Never use `subagent_type: "claude-code-flow:research"` — always use `subagent_type: "general-purpose"`.**
-
-UI design is handled by the `ui-design` skill (not a separate agent). Oracle decides during planning whether to invoke it for frontend-UI tasks.
-
-`sentinel` is the only READ-ONLY agent — it produces review reports, never modifies code.
-
 ### Workflow Pipeline
 
-```
-Plan + Architecture (oracle) → Implementation (forge) → Testing + Acceptance (prism) → Review (sentinel)
-```
+Agent definitions live in `agents/*.md`; the pipeline contract lives in
+`skills/dev-orchestrator/references/pipeline-operations.md`. This file only
+names the routing rules Claude Code needs at session start.
 
-When work references another repo, plugin, agent pack, or external workflow, run `workflow-intake` before oracle planning. It produces an Adopt / Adapt / Reject / Defer intake record so outside ideas strengthen this workflow without importing a competing ECC-style surface.
+Research is handled by the `research` skill, dispatched as general-purpose
+subagents with inlined methodology. No dedicated research agent exists. **Never
+use `subagent_type: "claude-code-flow:research"`; always use
+`subagent_type: "general-purpose"`.**
 
-`/plan` is the plugin planning entry; `EnterPlanMode` is guarded so model-triggered built-in plan mode redirects back to the plugin workflow. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
+When work references another repo, plugin, agent pack, or external workflow,
+run `workflow-intake` before oracle planning. It records Adopt / Adapt / Reject /
+Defer decisions without importing a competing workflow surface.
 
-`dev-orchestrator` is the default execution skill once the user asks to implement, execute an approved plan, coordinate agents, touch multiple files, or deliver an end-to-end change. It should trigger more readily than individual execution guidance because it owns the full plan→implementation→test→review handoff.
+`/plan` is the plugin planning entry; `EnterPlanMode` is guarded so model-triggered
+built-in plan mode redirects back to the plugin workflow. Host-level plan transitions
+such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
 
-Modes (`quick/standard/deep/autonomous/ultrawork`) control which gates are enforced. The pipeline is orchestrated by the `dev-orchestrator` skill using Claude Code's built-in `TaskCreate/TaskList/TaskUpdate` for task management.
+`dev-orchestrator` is the default execution skill once the user asks to implement,
+execute an approved plan, coordinate agents, touch multiple files, or deliver an
+end-to-end change.
 
 ### Autonomous Modes
 
 - **ULW (Ultrawork)**: Single-task full-autonomous execution. A stop hook (`ulw-stop-hook.sh`) blocks exit until `<ulw-done>` is emitted in the transcript.
 - **ULI (Ultra Loop Iteration)**: Product iteration loop with PD agent proposing requirements each cycle. Stop hook blocks until `<uli-done>`.
 
-### Hook System (13 event types)
+### Hook System
 
-All hooks registered in `hooks/hooks.json`, scripts in `hooks/scripts/`. Scripts use `${CLAUDE_PLUGIN_ROOT}` for portable paths. Key hooks:
-- **PreToolUse(Bash)**: Commit guard — blocks `git commit` when unreviewed files exist
-- **PreToolUse(Agent)**: Agent guard — blocks sentinel only when no review target is available from workflow-tracked files, git changes, explicit file/directory targets, diff context, or document `review_focus`
-- **PreToolUse(EnterPlanMode)**: Plan guard — blocks built-in plan-mode tool calls and redirects to plugin `/plan`
-- **PostToolUse(Bash)**: Verification evidence tracking — classifies test/build/lint commands and records results to `verification-evidence.jsonl`
-- **PostToolUse(Write/Edit)**: File modification tracking with agent ownership
-- **Stop**: ULW/ULI stop hooks block exit until completion tags detected
-- **PreCompact/PostCompact**: State preservation across context compaction
+Hook manifests are generated snapshots from `scripts/render-hooks.py`; scripts
+live in `hooks/scripts/`. Do not hand-maintain duplicated Claude/Codex hook
+tables in documentation.
 
 ### State Machine
 
@@ -206,11 +197,11 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 
 | Task | Read this skill file |
 |------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Understand architecture / "How does X work?" | `.agents/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.agents/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.agents/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.agents/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.agents/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.agents/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->

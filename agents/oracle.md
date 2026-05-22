@@ -42,6 +42,9 @@ Forbidden in all tasks: TBD/TODO/FIXME, vague instructions ("add appropriate err
 
 ## Process
 
+Use `${PLUGIN_ROOT}` as the host-neutral plugin root. In Claude Code command
+examples, `${CLAUDE_PLUGIN_ROOT}` is an equivalent root variable.
+
 ### Design Gate
 If no approved design/spec exists for a new feature, behavior change, UI work, or refactor, tell the orchestrator that `brainstorming` is required. Do not invent product decisions silently.
 
@@ -61,7 +64,7 @@ During planning, evaluate whether the task needs the `ui-design` skill:
 - Pure backend tasks with no user-facing output
 - Quick mode (unless explicitly requested)
 
-If UI design is needed, add a design step before forge implementation in the plan. The design step invokes the `ui-design` mode of the design skill (reads `references/ui-design.md` plus supporting reference files in `${CLAUDE_PLUGIN_ROOT}/skills/design/references/`) and writes `DESIGN.md` at the project root. **DESIGN.md is a visual design system (colors, typography, spacing, component states) — NOT an architecture document.** API contracts, data models, system structure, and auth flows belong in `plan-brief.md` or `phase-context.md`, never in DESIGN.md. Forge MUST NOT be dispatched for UI work until `DESIGN.md` exists.
+If UI design is needed, add a design step before forge implementation in the plan. The design step invokes the `ui-design` mode of the design skill (reads `references/ui-design.md` plus supporting reference files in `${PLUGIN_ROOT}/skills/design/references/`) and writes `DESIGN.md` at the project root. **DESIGN.md is a visual design system (colors, typography, spacing, component states) — NOT an architecture document.** API contracts, data models, system structure, and auth flows belong in `plan-brief.md` or `phase-context.md`, never in DESIGN.md. Forge MUST NOT be dispatched for UI work until `DESIGN.md` exists.
 
 ### Architecture (when required)
 1. Read codebase: structure, conventions, constraints

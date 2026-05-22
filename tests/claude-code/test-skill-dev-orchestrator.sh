@@ -23,7 +23,7 @@ assert_contains "$output" "brainstorm|design|plan|implement|review|accept" "Pipe
 echo ""
 
 # ------------------------------------------------------------------
-# Test 2: Mode selection (quick / standard / full)
+# Test 2: Mode selection (quick / standard / deep / autonomous)
 # ------------------------------------------------------------------
 echo "Test 2: Mode selection described..."
 output="$(run_claude \
@@ -31,7 +31,8 @@ output="$(run_claude \
   "$timeout_seconds")"
 assert_contains "$output" "quick" "mentions quick mode"
 assert_contains "$output" "standard" "mentions standard mode"
-assert_contains "$output" "full|comprehensive" "mentions full mode"
+assert_contains "$output" "deep" "mentions deep mode"
+assert_contains "$output" "autonomous" "mentions autonomous mode"
 echo ""
 
 # ------------------------------------------------------------------
@@ -41,8 +42,10 @@ echo "Test 3: Named agents in roster..."
 output="$(run_claude \
   "List the named agents in the dev-orchestrator skill and their roles." \
   "$timeout_seconds")"
-assert_contains "$output" "forge|weaver|sentinel|validator|oracle|atlas|prism|anvil|chronicler" \
-  "Named agents appear"
+assert_contains "$output" "oracle" "oracle agent appears"
+assert_contains "$output" "forge" "forge agent appears"
+assert_contains "$output" "prism" "prism agent appears"
+assert_contains "$output" "sentinel" "sentinel agent appears"
 echo ""
 
 # ------------------------------------------------------------------
@@ -63,7 +66,7 @@ echo "Test 5: Acceptance testing gate..."
 output="$(run_claude \
   "What is the acceptance gate in dev-orchestrator? Which agent handles it?" \
   "$timeout_seconds")"
-assert_contains "$output" "validator|acceptance" "validator/acceptance mentioned"
+assert_contains "$output" "prism|acceptance" "prism/acceptance mentioned"
 assert_contains "$output" "functional|behav|end.to.end|E2E|integrat" "Describes acceptance testing"
 echo ""
 
