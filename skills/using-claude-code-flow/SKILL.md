@@ -68,7 +68,6 @@ In those cases, treat the selected command or skill as authoritative and continu
 | Built-in plan appears relevant | prefer `plan`, avoid `EnterPlanMode` |
 | Implementation complete, tests pass | `finishing-branch` |
 | Received code review feedback | `receiving-code-review` |
-| Creating or editing a skill | `writing-skills` |
 
 ## Skill Priority
 
