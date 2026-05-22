@@ -399,4 +399,24 @@ See `references/design-md-spec.md` for full format, schema, and examples.
 - [ ] No banned elements (anti-ai-design.md) without justification
 - [ ] Disabled states include `cursor: not-allowed` and `aria-disabled` (not just visual dimming)
 
+## Phase 7: Design Viewer (Optional)
+
+After DESIGN.md is written or updated, ask the user:
+
+> DESIGN.md has been produced. Would you like to open the **Design Viewer** to visually inspect and adjust tokens in a browser?
+
+If yes, start the viewer server:
+```bash
+python hooks/scripts/design-server.py
+```
+Tell the user to open **http://localhost:8765**. The viewer:
+- Parses DESIGN.md markdown tables
+- Renders live previews (buttons, cards, inputs, headings)
+- Lets users tweak colors, typography, spacing, radius, shadows with visual controls
+- Saves changes directly back to DESIGN.md via `/api/save`
+
+Wait for the user to finish editing (they'll confirm), then re-read DESIGN.md to pick up any manual adjustments before proceeding.
+
+Skip this phase if the session is non-interactive, the user declines, or DESIGN.md was not produced.
+
 ## If Connectors Available

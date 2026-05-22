@@ -40,6 +40,25 @@ Each mode has a detailed workflow and output template:
 - **Copy**: See `references/ux-copy.md` for copy patterns, voice/tone guidance, and output template
 - **UI Design**: See `references/ui-design.md` for 6-phase DESIGN.md production (color/type/spacing/icon/elevation/radius/transition systems, component states, layout composition). Also loads `references/anti-ai-design.md`, `references/design-knowledge-base.md`, `references/design-md-spec.md`, `references/layout-patterns.md`, `references/ui-research-brief.md` for knowledge base.
 
+## Design Viewer (ui-design mode only)
+
+After producing or updating DESIGN.md, offer the user an interactive visual editor:
+
+> DESIGN.md has been produced. Would you like to open the **Design Viewer** to visually inspect and adjust tokens (colors, typography, spacing, etc.) in a browser?
+
+If the user agrees, run:
+```bash
+python hooks/scripts/design-server.py
+```
+Then tell the user: **Open http://localhost:8765 in your browser** to edit tokens visually. Changes save directly back to DESIGN.md.
+
+The viewer parses DESIGN.md tables, renders live previews (buttons, cards, inputs, headings), and lets the user tweak values with color pickers, sliders, and text fields.
+
+**When NOT to offer:**
+- Non-interactive session (CI, headless, piped)
+- User is in a hurry and explicitly skips review
+- DESIGN.md was not produced or updated
+
 ## If Connectors Available
 
 If **~~browser** is connected:

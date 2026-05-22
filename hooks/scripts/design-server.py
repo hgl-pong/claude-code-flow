@@ -77,10 +77,6 @@ def update_design_md(updates):
             cells = [c.strip() for c in stripped.split("|")[1:-1]]
             if len(cells) >= 2 and cells[0] in updates and not _is_header_row(cells):
                 new_val = updates[cells[0]]
-                new_val = updates[cells[0]]
-                cells[1] = f" {new_val} "
-                while len("|".join([""] + cells + [""])) - len(stripped) < 0:
-                    cells[1] += " "
                 parts = stripped.split("|")
                 parts[2] = f" {new_val} "
                 lines[i] = "|".join(parts)
