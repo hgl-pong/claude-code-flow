@@ -1,6 +1,16 @@
 ---
 name: write-tests
 description: Standalone test writing — generate tests for specified modules, functions, or files.
+argument-hint: "<feature, file, or test goal>"
+allowed-tools:
+  - Agent
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Write
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk python -m unittest*)
 ---
 
 # Write Tests

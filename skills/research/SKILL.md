@@ -2,11 +2,40 @@
 name: Research
 version: "2.0.0"
 description: "Research libraries, APIs, competitors, products, user studies, findings, gaps, and multi-source knowledge synthesis."
-when_to_use: "Trigger on 'research', 'compare libraries', 'evaluate API', 'competitor analysis', 'user research', 'synthesize findings', 'gap analysis'."
+when_to_use: "Trigger on 'research', 'compare libraries', 'evaluate API', 'best practices', 'competitor analysis', 'user research', 'synthesize findings'. Skip debugging."
 argument-hint: "<topic to research, or 'user-research'/'synthesis'/'knowledge-synthesis' for specialized modes>"
 ---
 
 # Research
+
+## Use / Skip
+
+Use for:
+- Technical research: library evaluation, API comparison, best practices investigation
+- Product analysis: gap analysis, competitor analysis (ULI mode)
+- UI research: competitor visual analysis, design intelligence gathering
+- User research: planning interviews, designing usability tests, structuring studies
+- Research synthesis: distilling transcripts/surveys into themes and recommendations
+- Knowledge synthesis: merging multi-source results with dedup and confidence scoring
+- Workflow intake: inspect outside workflow systems as evidence for `workflow-intake`, not as content to copy wholesale
+
+Skip for simple lookups that do not require synthesis, debugging, or implementation.
+
+## Done When
+
+Claims are sourced, uncertainty is labeled, local context is considered when relevant, and recommendations include tradeoffs plus next action.
+
+## Output
+
+Structured research report with these sections:
+
+1. **Research Question** — what was investigated and why
+2. **Local Context** — existing code, patterns, dependencies, constraints, gaps
+3. **External Findings** — per-finding: topic, result, sources (URLs), confidence level
+4. **Comparison** (if evaluating options) — side-by-side with decision criteria
+5. **Recommendations** — ranked, with trade-offs and confidence
+6. **Open Questions** — what couldn't be determined, what needs prototype/spike
+7. **Intake Table** (for workflow intake only) — source idea, target lane, decision, reason
 
 **IMPORTANT**: Research is a SKILL, NOT an agent. Always dispatch with `subagent_type: "general-purpose"`. NEVER use `subagent_type: "claude-code-flow:research"` — that agent type does not exist and will cause an error.
 
@@ -23,18 +52,6 @@ Research subagents are **general-purpose** agents dispatched with inlined method
 | **Workflow Intake Research** | External repo/plugin/workflow comparison before changing this workflow | `skills/workflow-intake/SKILL.md` + this file |
 
 Auto-detect mode from context, or default to Technical Research.
-
-## When to Use
-
-- Technical research: library evaluation, API comparison, best practices investigation
-- Product analysis: gap analysis, competitor analysis (ULI mode)
-- UI research: competitor visual analysis, design intelligence gathering
-- User research: planning interviews, designing usability tests, structuring studies
-- Research synthesis: distilling transcripts/surveys into themes and recommendations
-- Knowledge synthesis: merging multi-source results with dedup and confidence scoring
-- Workflow intake: inspect outside workflow systems as evidence for `workflow-intake`, not as content to copy wholesale
-
-**Do NOT use for:** simple lookups that do not require synthesis, debugging (use systematic-debugging skill).
 
 ## Iron Law
 
@@ -105,18 +122,6 @@ Deliverable: a "Local Context" section that prevents re-inventing what already e
 | Scope drift | Stay focused on what was asked |
 | Unactionable findings | Include versions, APIs, trade-offs |
 | Fabricated URLs | Only cite URLs you actually visited |
-
-## Output
-
-Structured research report with these sections:
-
-1. **Research Question** — what was investigated and why
-2. **Local Context** — existing code, patterns, dependencies, constraints, gaps
-3. **External Findings** — per-finding: topic, result, sources (URLs), confidence level
-4. **Comparison** (if evaluating options) — side-by-side with decision criteria
-5. **Recommendations** — ranked, with trade-offs and confidence
-6. **Open Questions** — what couldn't be determined, what needs prototype/spike
-7. **Intake Table** (for workflow intake only) — source idea, target lane, decision, reason
 
 ## Dispatching
 

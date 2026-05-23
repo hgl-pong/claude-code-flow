@@ -1,6 +1,13 @@
 ---
 name: brainstorm
 description: Refine a rough feature, refactor, or architecture idea into an approved design before implementation.
+argument-hint: "<idea, problem, or feature>"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
 ---
 
 # Brainstorm

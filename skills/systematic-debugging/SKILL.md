@@ -2,7 +2,7 @@
 name: Systematic Debugging
 version: "2.1.0"
 description: "Debug bugs, test failures, crashes, build failures, regressions, and unexpected behavior via root-cause analysis."
-when_to_use: "Trigger on 'bug', 'failing test', 'error', 'crash', 'broken', 'regression', 'unexpected behavior', 'build failed'."
+when_to_use: "Trigger on 'bug', 'failing test', 'error', 'crash', 'broken', 'regression', 'unexpected behavior', 'build failed'. Skip feature planning."
 argument-hint: "<bug or error to debug>"
 ---
 
@@ -16,9 +16,11 @@ If you haven't completed Phase 1, you cannot propose fixes. Patching without und
 
 **Violating the letter of this process is violating the spirit of debugging.**
 
-## When to Use
+## Use / Skip
 
-Use for ANY technical issue — test failures, bugs, unexpected behavior, performance problems, build failures. Especially under time pressure, when "just one quick fix" seems obvious, or after previous fixes didn't work.
+Use for ANY technical issue — test failures, bugs, crashes, regressions, unexpected behavior, performance problems, and build failures. Especially under time pressure, when "just one quick fix" seems obvious, or after previous fixes didn't work.
+
+Skip for new feature planning, broad code review, or implementation requests without a failing symptom.
 
 ## The Four Phases
 
@@ -51,10 +53,15 @@ Complete each phase before proceeding to the next. See `phases.md` in this direc
 
 **All of these mean: STOP. Return to Phase 1.**
 
-## Completion Evidence
+## Done When
+
+The issue is reproduced, root cause is identified, a minimal fix is made, regression coverage exists when feasible, and verification passes.
+
+## Output
 
 Report:
 - Reproduction command or scenario
 - Root cause
+- Fix
 - Regression test added
 - Verification command and result

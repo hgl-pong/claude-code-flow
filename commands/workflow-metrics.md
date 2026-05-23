@@ -1,6 +1,9 @@
 ---
 name: workflow-metrics
 description: Show cross-session workflow metrics: completion rates, agent efficiency trends, common failure patterns.
+allowed-tools:
+  - Read
+  - Bash(rtk python hooks/scripts/metrics.py aggregate*)
 ---
 
 # Workflow Metrics

@@ -2,13 +2,27 @@
 name: Planning
 version: "1.0.0"
 description: "Write and execute implementation plans with task breakdowns, approval gates, and verification steps."
-when_to_use: "Trigger on 'write a plan', 'plan this feature', 'create tasks', 'execute the plan', 'run the plan', approved spec/requirements."
+when_to_use: "Trigger on 'write a plan', 'plan this feature', 'create tasks', 'execute the plan', approved spec/requirements. Skip simple fixes."
 argument-hint: "<feature to plan or plan to execute>"
 ---
 
 # Planning
 
 Write executable plans and drive them to completion. Two phases: **write** the plan, then **execute** the plan.
+
+## Use / Skip
+
+Use for explicit planning, approved specs, task breakdowns, and plan execution. Do not use for narrow fixes, pure review, or exploratory brainstorming before requirements are clear.
+
+## Done When
+
+Every requirement maps to executable tasks with exact files, commands, expected results, dependencies, and verification evidence.
+
+## Output
+
+- Goal / decisions / risks
+- Ordered tasks with blocked-by relationships
+- Verification commands and expected outcomes
 
 ## Iron Law
 

@@ -1,6 +1,14 @@
 ---
 name: finish
 description: Complete development work — verify tests, then handle merge, PR, or cleanup.
+allowed-tools:
+  - Bash(rtk git status*)
+  - Bash(rtk git diff*)
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk git merge*)
+  - Bash(rtk git branch*)
+  - Bash(rtk git worktree*)
+  - Bash(rtk gh pr create*)
 ---
 
 # Finish Branch

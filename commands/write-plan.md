@@ -1,6 +1,16 @@
 ---
 name: write-plan
 description: Create a concrete, test-first implementation plan from approved requirements and persist it as structured workflow state.
+argument-hint: "<task or requirements>"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Write
+  - Edit
+  - TaskCreate
+  - TaskUpdate
+  - Bash(rtk python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py*)
 ---
 
 # Write Plan

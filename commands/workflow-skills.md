@@ -1,6 +1,13 @@
 ---
 name: workflow-skills
 description: Manage the skill library — view current skills, review proposals for new skills, and approve or reject them.
+allowed-tools:
+  - Read
+  - Glob
+  - Write
+  - Edit
+  - Bash(rtk python hooks/scripts/skill-detector.py*)
+  - Bash(rtk python hooks/scripts/eval-gate.py*)
 ---
 
 # Workflow Skills

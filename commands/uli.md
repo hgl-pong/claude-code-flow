@@ -1,6 +1,17 @@
 ---
 name: uli
 description: "Ultra Loop Iteration — autonomous product iteration. Type 'uli' in prompt or /uli <goal>. PD agent proposes requirements each cycle, dev pipeline executes, hard acceptance validates. Loops until goal reached or max_iterations."
+argument-hint: "<product goal>"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - TaskCreate
+  - TaskUpdate
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk git status*)
 ---
 
 # ULI — Ultra Loop Iteration Mode

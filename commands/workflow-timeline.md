@@ -1,6 +1,9 @@
 ---
 name: workflow-timeline
 description: Show the full execution timeline for the current or most recent workflow session.
+allowed-tools:
+  - Read
+  - Bash(rtk python hooks/scripts/metrics.py raw*)
 ---
 
 # Workflow Timeline

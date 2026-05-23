@@ -2,7 +2,7 @@
 name: Brainstorming
 version: "3.0.0"
 description: "Brainstorm ambiguous features, product ideas, UI/architecture choices, broad refactors, PRDs, specs, and assumptions before code."
-when_to_use: "Trigger on 'brainstorm', 'explore options', 'new feature', 'PRD', 'write a spec', 'architecture choice', 'broad refactor'."
+when_to_use: "Trigger on 'brainstorm', 'explore options', 'new feature', 'PRD', 'write a spec', 'architecture choice'. Skip approved/direct tasks."
 argument-hint: "<idea, feature, or problem to explore>"
 ---
 
@@ -14,7 +14,7 @@ Turn ideas into clear designs. The goal is not ceremony — it is to surface ass
 
 Do not implement until there is an approved design. For tiny work, the design can be two or three sentences. For larger work, write it as a spec.
 
-## Trigger Boundary
+## Use / Skip
 
 Use this skill when there are real decisions to make before implementation:
 
@@ -28,6 +28,17 @@ Skip this skill when the path is already clear:
 - The user asks for direct implementation of approved requirements, an approved plan, or a saved spec.
 - The task is a narrow bug fix, typo, docs-only edit, test-only edit, config tweak, dependency bump, or routine maintenance.
 - A slash command or hook has already routed the task to `/plan`, `/write-plan`, `/execute-plan`, `/quick-fix`, or `dev-orchestrator`; let that route decide whether brainstorming is needed.
+
+## Done When
+
+The decision space is clear, assumptions are named, tradeoffs are explicit, and the user has an approved direction or spec.
+
+## Output
+
+- Problem / goal
+- Options and tradeoffs
+- Recommendation
+- Open questions / approval needed
 
 ## Brainstorming Modes
 

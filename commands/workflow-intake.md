@@ -1,6 +1,14 @@
 ---
 name: workflow-intake
 description: "Selectively inspect an external repo, plugin, agent pack, or workflow and decide what to adopt, adapt, reject, or defer for Claude Code Flow."
+argument-hint: "<external repo, plugin, workflow, or source>"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+  - WebFetch
+  - Bash(rtk git status*)
 ---
 
 # Workflow Intake

@@ -2,11 +2,26 @@
 name: Testing Strategy
 version: "3.0.0"
 description: "Design test strategies, test plans, TDD coverage, regression tests, unit/integration/E2E checks before code."
-when_to_use: "Trigger on 'how should we test', 'test strategy', 'write tests', 'test plan', 'what tests', 'TDD', feature or bugfix before code."
+when_to_use: "Trigger on 'how should we test', 'test strategy', 'write tests', 'test plan', 'what tests', 'TDD'. Skip pure code review/docs."
 argument-hint: "<feature or component to test>"
 ---
 
 # Testing Strategy
+
+## Use / Skip
+
+Use for test strategy, TDD planning, test coverage gaps, regression tests, and choosing unit/integration/E2E scope. Do not use for pure code review or docs-only work.
+
+## Done When
+
+The test plan names the behavior under test, the smallest useful test level, files to add/change, commands to run, and expected pass/fail evidence.
+
+## Output
+
+- Test scope
+- Test levels and rationale
+- Commands / expected results
+- Coverage gaps or skipped verification
 
 ## Iron Law
 

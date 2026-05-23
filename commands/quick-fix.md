@@ -1,6 +1,17 @@
 ---
 name: quick-fix
 description: Quick fix mode — skip research and design, directly analyze and implement. For bug fixes, config changes, and single-file edits.
+argument-hint: "<focused fix>"
+allowed-tools:
+  - Agent
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk python -m unittest*)
+  - Bash(rtk git diff*)
+  - Bash(rtk python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py*)
 ---
 
 # Quick Fix

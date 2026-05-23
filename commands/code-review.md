@@ -1,6 +1,14 @@
 ---
 name: code-review
 description: Standalone code review — review specific files, functions, or recent changes without the full pipeline.
+argument-hint: "<target|--diff> [--focus area] [--receive]"
+allowed-tools:
+  - Agent
+  - Read
+  - Grep
+  - Glob
+  - Bash(rtk git diff*)
+  - Bash(rtk git status*)
 ---
 
 # Code Review

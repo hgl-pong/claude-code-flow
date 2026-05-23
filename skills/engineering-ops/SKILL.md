@@ -2,13 +2,28 @@
 name: Engineering Ops
 version: "1.0.0"
 description: "Run engineering ops: architecture/ADR, deploy checklists, incidents, tech debt audits, standups, docs, runbooks."
-when_to_use: "Trigger on 'ADR', 'architecture decision', 'deploy checklist', 'incident', 'SEV1', 'postmortem', 'tech debt', 'standup', 'runbook'."
+when_to_use: "Trigger on 'ADR', 'architecture decision', 'deploy checklist', 'incident', 'postmortem', 'tech debt', 'standup', 'write docs', 'README', 'runbook'."
 argument-hint: "[architecture | deploy | incident | tech-debt | standup | docs] <context>"
 ---
 
 # Engineering Ops
 
 Dispatch skill for engineering operations. Identify the requested mode or auto-detect from context.
+
+## Use / Skip
+
+Use for architecture/ADR, deploy readiness, incidents, tech debt, standups, docs, README, API docs, and runbooks. Do not use for implementation or code review unless requested as an ops artifact.
+
+## Done When
+
+The mode is selected, the matching reference workflow is followed, output has the required checklist/template, and any verification or follow-up owner is explicit.
+
+## Output
+
+- Mode
+- Decision / checklist / report
+- Risks or blockers
+- Next action
 
 ## Modes
 

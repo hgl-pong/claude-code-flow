@@ -1,6 +1,17 @@
 ---
 name: ulw
 description: "Fully autonomous execution. Type 'ulw' or 'ultrawork' in prompt, or /ulw <task>. Intent Gate classifies goal, then routes to autonomous pipeline. No confirmations until done."
+argument-hint: "<task>"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - TaskCreate
+  - TaskUpdate
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk git status*)
 ---
 
 # ULW — Ultrawork Mode

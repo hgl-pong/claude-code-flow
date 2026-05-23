@@ -1,6 +1,14 @@
 ---
 name: workflow-review
 description: Start the review pipeline — sentinel reviews recent changes or plan/design documents, produces a structured review report, and handles fix iterations.
+argument-hint: "[plan|design|diff|files]"
+allowed-tools:
+  - Agent
+  - Read
+  - Grep
+  - Glob
+  - Bash(rtk git diff*)
+  - Bash(rtk git status*)
 ---
 
 # Workflow Review

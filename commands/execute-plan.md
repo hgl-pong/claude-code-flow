@@ -1,6 +1,19 @@
 ---
 name: execute-plan
 description: Execute an approved plan through TDD, review, and acceptance gates.
+argument-hint: "<plan path>"
+allowed-tools:
+  - Agent
+  - Read
+  - Grep
+  - Glob
+  - Edit
+  - Write
+  - TaskCreate
+  - TaskUpdate
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk git status*)
+  - Bash(rtk python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py*)
 ---
 
 # Execute Plan

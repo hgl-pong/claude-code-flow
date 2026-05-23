@@ -1,6 +1,10 @@
 ---
 name: workflow-status
 description: Show current workflow state: phase, task progress, mode, agent log, metrics, and git context. Read-only diagnostic command.
+allowed-tools:
+  - Read
+  - Bash(rtk python hooks/scripts/metrics.py collect*)
+  - Bash(rtk git status*)
 ---
 
 # Workflow Status

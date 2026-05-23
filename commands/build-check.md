@@ -1,6 +1,14 @@
 ---
 name: build-check
 description: Standalone build check — verify the project builds, check for dependency issues, and run CI locally.
+argument-hint: "[test|lint|build command or scope]"
+allowed-tools:
+  - Agent
+  - Read
+  - Bash(rtk python tests/run-tests.py*)
+  - Bash(rtk python -m unittest*)
+  - Bash(rtk bash tests/skill-triggering/run-all.sh*)
+  - Bash(rtk git status*)
 ---
 
 # Build Check

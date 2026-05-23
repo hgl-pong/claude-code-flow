@@ -1,6 +1,17 @@
 ---
 name: plan
 description: "Start the plugin planning pipeline: routed planning, optional brainstorming, structured plan state, optional architecture/UI design, and approval before implementation."
+argument-hint: "[--mode quick|standard|deep|autonomous] <task>"
+allowed-tools:
+  - Agent
+  - Read
+  - Grep
+  - Glob
+  - Write
+  - Edit
+  - TaskCreate
+  - TaskUpdate
+  - Bash(rtk python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py*)
 ---
 
 # Plan

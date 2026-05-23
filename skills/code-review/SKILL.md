@@ -2,13 +2,27 @@
 name: Code Review
 version: "1.0.0"
 description: "Review code for correctness bugs, quality issues, risky refactors, SOLID/design smells, and review feedback."
-when_to_use: "Trigger on 'review this code', 'code review', 'PR review', 'check my diff', 'code quality', 'review feedback'."
+when_to_use: "Trigger on 'review this code', 'code review', 'PR review', 'check my diff', 'review feedback'. Skip implementation/test-only requests."
 argument-hint: "<file, code area, or review feedback>"
 ---
 
 # Code Review
 
 Two sides of code review: **performing** reviews (quality evaluation) and **receiving** reviews (response discipline).
+
+## Use / Skip
+
+Use for review, diff checking, PR feedback, and quality evaluation. Do not use to implement requested changes, design test strategy, or run routine verification.
+
+## Done When
+
+Findings are high-confidence, include `file:line`, explain impact, and give a minimal fix direction. If no findings, say so directly.
+
+## Output
+
+- Findings by severity
+- Evidence inspected
+- Tested / not tested
 
 ## Part 1: Performing Reviews
 

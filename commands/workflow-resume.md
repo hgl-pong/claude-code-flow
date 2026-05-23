@@ -1,6 +1,11 @@
 ---
 name: workflow-resume
 description: Resume an interrupted workflow from the latest snapshot. Restores phase, task progress, and context.
+allowed-tools:
+  - Read
+  - Glob
+  - Bash(rtk git status*)
+  - Bash(rtk python hooks/scripts/flow-state.py*)
 ---
 
 # Workflow Resume
