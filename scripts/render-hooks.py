@@ -69,6 +69,11 @@ REGISTRY = [
     },
     {
         "event": "PreToolUse",
+        "matcher": "WebSearch|mcp__web-search-prime__web_search_prime|mcp__web-reader__webReader|mcp__web_reader__webReader",
+        "hooks": [("python", "hooks/scripts/9router-intercept.py", 30)],
+    },
+    {
+        "event": "PreToolUse",
         "matcher_key": "shell",
         "hooks": [
             ("bash", "hooks/scripts/pre-commit-guard.sh", 10, ["claude"]),

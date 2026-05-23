@@ -18,7 +18,7 @@ BLU=$'\033[34m'
 MAG=$'\033[35m'
 CYN=$'\033[36m'
 
-SEP="${DIM} │ ${R}"
+SEP="${DIM} | ${R}"
 
 # ── Read JSON from stdin (non-blocking if TTY) ────────────
 INPUT=""
@@ -90,8 +90,8 @@ BAR_WIDTH=10
 FILLED=$(( CTX_PCT * BAR_WIDTH / 100 ))
 EMPTY=$(( BAR_WIDTH - FILLED ))
 CTX_BAR=""
-for ((i=0; i<FILLED; i++)); do CTX_BAR="${CTX_BAR}▓"; done
-for ((i=0; i<EMPTY; i++)); do CTX_BAR="${CTX_BAR}░"; done
+for ((i=0; i<FILLED; i++)); do CTX_BAR="${CTX_BAR}#"; done
+for ((i=0; i<EMPTY; i++)); do CTX_BAR="${CTX_BAR}-"; done
 
 if [ "$CTX_PCT" -ge 90 ]; then
   CTX_COLOR="$RED"
@@ -156,7 +156,7 @@ case "$EFFORT" in
 esac
 
 THINK_PART=""
-[ "$THINKING" = "true" ] && THINK_PART=" Thinking"
+[ "$THINKING" = "true" ] && THINK_PART=" think"
 
 VIM_PART=""
 [ -n "$VIM_MODE" ] && VIM_PART="${SEP}${CYN}${VIM_MODE}${R}"
@@ -168,9 +168,12 @@ AGENT_PART=""
 VERIFY=""
 if [ -f "$LAST_VERIFICATION" ]; then
   VS=$(sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LAST_VERIFICATION" | head -1)
+  VK=$(sed -n 's/.*"kind"[[:space:]]*:[[:space:]]*\["\([^"]*\)".*/\1/p; s/.*"kind"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LAST_VERIFICATION" | head -1)
+  [ -z "$VK" ] && VK="check"
   case "$VS" in
-    pass) VERIFY=" ${GRN}✓${R}" ;;
-    fail) VERIFY=" ${RED}✗${R}" ;;
+    pass) VERIFY=" ${GRN}verify:${VK}:pass${R}" ;;
+    fail) VERIFY=" ${RED}verify:${VK}:fail${R}" ;;
+    unknown) VERIFY=" ${YEL}verify:${VK}:unknown${R}" ;;
   esac
 fi
 
@@ -188,7 +191,7 @@ build_line1() {
   printf "%s" "$out"
 }
 
-# ── ULW active → 2-line display ───────────────────────────
+# ── ULW active -> 2-line display ───────────────────────────
 if [ -f "$ULW_STATE_FILE" ]; then
   ULW_ACTIVE=$(sed -n 's/.*"active"[[:space:]]*:[[:space:]]*\([a-z]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
   if [ "$ULW_ACTIVE" = "true" ]; then
@@ -202,17 +205,22 @@ if [ -f "$ULW_STATE_FILE" ]; then
     LOOP=""; [ -n "$ULW_ITER" ] && [ "${ULW_ITER:-0}" -gt 0 ] && LOOP=" #${ULW_ITER}"
 
     printf "%s\n" "$(build_line1)"
-    printf "%s\n" "${YEL}⚡ulw${R}:${CYN}${INTENT:-?}${R}${PROG}${LOOP}${VERIFY}"
+    printf "%s\n" "flow:${YEL}ulw${R}:${CYN}${INTENT:-?}${R}${PROG}${LOOP}${VERIFY}"
     exit 0
   fi
 fi
 
 # ── Normal workflow phase ─────────────────────────────────
-PHASE_DISPLAY="idle"; PHASE_COLOR="$DIM"; PROGRESS=""
+PHASE_DISPLAY="idle"; PHASE_COLOR="$DIM"; PROGRESS=""; FLOW_META=""
 if [ -f "$STATE_FILE" ]; then
   PHASE=$(sed -n 's/.*"phase"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
   T_TOTAL=$(sed -n 's/.*"task_total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
   T_DONE=$(sed -n 's/.*"task_done"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
+  FLOW_MODE=$(sed -n 's/.*"mode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
+  PLAN_STATUS=$(sed -n 's/.*"plan_status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
+  CURRENT_AGENT=$(sed -n 's/.*"current_agent"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
+  RETRY_COUNT=$(sed -n 's/.*"retry_count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
+  VERIFICATION_COUNT=$(sed -n 's/.*"verification_count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
   case "$PHASE" in
     plan)   PHASE_COLOR="$CYN";  PHASE_DISPLAY="plan" ;;
     design) PHASE_COLOR="$MAG";  PHASE_DISPLAY="design" ;;
@@ -220,13 +228,18 @@ if [ -f "$STATE_FILE" ]; then
     review) PHASE_COLOR="$BLU";  PHASE_DISPLAY="review" ;;
     *)      PHASE_COLOR="$DIM";  PHASE_DISPLAY="idle" ;;
   esac
-  [ -n "$T_TOTAL" ] && [ "${T_TOTAL:-0}" -gt 0 ] && PROGRESS=" ${T_DONE}/${T_TOTAL}"
+  [ -n "$T_TOTAL" ] && [ "${T_TOTAL:-0}" -gt 0 ] && PROGRESS=" ${T_DONE:-0}/${T_TOTAL}"
+  [ -n "$FLOW_MODE" ] && FLOW_META="${FLOW_META} mode:${FLOW_MODE}"
+  [ -n "$PLAN_STATUS" ] && FLOW_META="${FLOW_META} plan:${PLAN_STATUS}"
+  [ -n "$CURRENT_AGENT" ] && FLOW_META="${FLOW_META} agent:${CURRENT_AGENT}"
+  [ -n "$RETRY_COUNT" ] && [ "${RETRY_COUNT:-0}" -gt 0 ] && FLOW_META="${FLOW_META} retry:${RETRY_COUNT}"
+  [ -n "$VERIFICATION_COUNT" ] && [ "${VERIFICATION_COUNT:-0}" -gt 0 ] && FLOW_META="${FLOW_META} checks:${VERIFICATION_COUNT}"
 fi
 
-# Active workflow → 2-line; idle → single line
+# Active workflow -> 2-line; idle -> single line
 if [ "$PHASE_DISPLAY" != "idle" ]; then
   printf "%s\n" "$(build_line1)"
-  printf "%s\n" "flow:${PHASE_COLOR}${PHASE_DISPLAY}${R}${PROGRESS}${VERIFY}"
+  printf "%s\n" "flow:${PHASE_COLOR}${PHASE_DISPLAY}${R}${PROGRESS}${FLOW_META}${VERIFY}"
 else
   printf "%s\n" "$(build_line1)${SEP}${PHASE_COLOR}flow${R}${VERIFY}"
 fi

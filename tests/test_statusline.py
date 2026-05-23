@@ -120,11 +120,11 @@ class StatuslineJsonParsingTest(unittest.TestCase):
 class StatuslineContextBarTest(unittest.TestCase):
     def test_bar_contains_filled_blocks(self):
         out, _ = run_statusline(make_json(ctx_pct=50))
-        self.assertIn("▓", out)
+        self.assertIn("#", out)
 
     def test_bar_contains_empty_blocks(self):
         out, _ = run_statusline(make_json(ctx_pct=50))
-        self.assertIn("░", out)
+        self.assertIn("-", out)
 
     def test_percentage_shown(self):
         out, _ = run_statusline(make_json(ctx_pct=47))
@@ -147,8 +147,8 @@ class StatuslineContextBarTest(unittest.TestCase):
     def test_bar_fill_at_92pct(self):
         out, _ = run_statusline(make_json(ctx_pct=92))
         clean = strip_ansi(out)
-        # 92% → 9 filled, 1 empty
-        self.assertIn("▓▓▓▓▓▓▓▓▓░", clean)
+        # 92% -> 9 filled, 1 empty
+        self.assertIn("#########-", clean)
 
 
 class StatuslineCostTest(unittest.TestCase):
@@ -208,13 +208,14 @@ class StatuslineExtrasTest(unittest.TestCase):
         out, _ = run_statusline(make_json(effort="medium"))
         self.assertNotIn("medium", strip_ansi(out))
 
-    def test_thinking_emoji_shown(self):
+    def test_thinking_label_shown(self):
         out, _ = run_statusline(make_json(thinking=True))
-        self.assertIn("💭", out)
+        self.assertIn("think", strip_ansi(out))
+        self.assertNotIn("💭", out)
 
     def test_thinking_hidden_when_false(self):
         out, _ = run_statusline(make_json(thinking=False))
-        self.assertNotIn("💭", out)
+        self.assertNotIn("think", strip_ansi(out))
 
     def test_vim_mode_shown(self):
         out, _ = run_statusline(make_json(vim="NORMAL"))
@@ -248,23 +249,35 @@ class StatuslineFlowStateTest(unittest.TestCase):
         self.assertIn("flow", lines[0])
 
     def test_active_phase_two_lines(self):
-        state = {"phase": "impl", "task_total": 5, "task_done": 3}
+        state = {
+            "phase": "impl",
+            "task_total": 5,
+            "task_done": 3,
+            "mode": "standard",
+            "plan_status": "approved",
+            "current_agent": "forge",
+            "verification_count": 4,
+        }
         (self.flow_dir / "workflow-state.json").write_text(json.dumps(state))
         out, _ = self._run(make_json())
         lines = [l for l in strip_ansi(out).splitlines() if l.strip()]
         self.assertEqual(len(lines), 2, f"active phase should be 2 lines, got: {lines}")
         self.assertIn("flow:impl", lines[1])
         self.assertIn("3/5", lines[1])
+        self.assertIn("mode:standard", lines[1])
+        self.assertIn("plan:approved", lines[1])
+        self.assertIn("agent:forge", lines[1])
+        self.assertIn("checks:4", lines[1])
 
-    def test_verification_pass_checkmark(self):
-        (self.flow_dir / "last-verification.json").write_text('{"status": "pass"}')
+    def test_verification_pass_status(self):
+        (self.flow_dir / "last-verification.json").write_text('{"kind": "test", "status": "pass"}')
         out, _ = self._run(make_json())
-        self.assertIn("✓", out)
+        self.assertIn("verify:test:pass", strip_ansi(out))
 
-    def test_verification_fail_cross(self):
-        (self.flow_dir / "last-verification.json").write_text('{"status": "fail"}')
+    def test_verification_fail_status(self):
+        (self.flow_dir / "last-verification.json").write_text('{"kind": "test", "status": "fail"}')
         out, _ = self._run(make_json())
-        self.assertIn("✗", out)
+        self.assertIn("verify:test:fail", strip_ansi(out))
 
     def test_ulw_active_two_lines(self):
         ulw = {"active": True, "intent": "implement", "task_done": 2, "task_total": 7, "iteration": 1}
@@ -272,7 +285,7 @@ class StatuslineFlowStateTest(unittest.TestCase):
         out, _ = self._run(make_json())
         lines = [l for l in strip_ansi(out).splitlines() if l.strip()]
         self.assertEqual(len(lines), 2, f"ULW active should be 2 lines, got: {lines}")
-        self.assertIn("⚡ulw:implement", lines[1])
+        self.assertIn("flow:ulw:implement", lines[1])
         self.assertIn("2/7", lines[1])
         self.assertIn("#1", lines[1])
 
@@ -291,7 +304,7 @@ class StatuslineFlowStateTest(unittest.TestCase):
         (self.flow_dir / "workflow-state.json").write_text(json.dumps(state))
         out, _ = self._run(make_json())
         clean = strip_ansi(out)
-        self.assertNotIn("⚡ulw", clean)
+        self.assertNotIn("flow:ulw", clean)
         self.assertIn("flow:review", clean)
 
 

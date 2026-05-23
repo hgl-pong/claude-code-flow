@@ -39,6 +39,16 @@
         ]
       },
       {
+        "matcher": "WebSearch|mcp__web-search-prime__web_search_prime|mcp__web-reader__webReader|mcp__web_reader__webReader",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/9router-intercept.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
