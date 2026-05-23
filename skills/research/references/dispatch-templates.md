@@ -17,30 +17,54 @@ Research [topic] and produce a structured report.
 - Cross-reference 2+ sources for claims affecting development decisions.
 - Single-source claims must be flagged as "unverified — single source".
 - NEVER write to source code files. Write research outputs only.
-- Confidence levels: High (2+ authoritative, agree, <1yr), Medium (1+ corroborating), Low (single/conflicting).
+- Confidence levels:
+  - High: 2+ authoritative sources agree, published <1yr, confirmed locally
+  - Medium: 1+ corroborating source, OR authoritative source >1yr old
+  - Low: single source, conflicting sources, OR unable to verify
+  - Local: verified by reading local code directly
 
-## Phase 1: Local Codebase Analysis
+## Phase 1: Clarify Scope
 
-1. Explore existing code in [relevant paths] for related patterns, utilities, and conventions
-2. Identify existing abstractions that should be reused
-3. Note any constraints or gotchas in the current architecture
+1. State the research question explicitly
+2. Define what outputs the consumer (oracle/forge/user) needs
+3. Identify constraints: versions, platforms, licensing, bundle size, compatibility
 
-## Phase 2: External Research
+## Phase 2: Local Codebase Analysis
+
+1. Inventory — scan [relevant paths] for existing patterns, utilities, abstractions
+2. Dependencies — check package manifest for current deps related to [topic]
+3. Conventions — identify coding patterns, naming, error handling in use
+4. Constraints — architectural boundaries, banned patterns, performance requirements
+5. Gaps — what's missing that the task requires but doesn't exist yet?
+6. Interfaces — what existing APIs/types must the new work conform to?
+
+## Phase 3: External Research
 
 1. [specific external question — APIs, libraries, best practices, etc.]
 2. [specific external question]
 3. [specific external question]
 
+For library comparisons: check GitHub stars, last commit date, open issues, breaking changes.
+For API evaluation: check rate limits, pricing, authentication, SDK maturity.
+
+## Phase 4: Synthesis
+
+1. Merge local + external findings — where they align, conflict, or complement
+2. Assign confidence per finding
+3. Produce ranked recommendations with trade-offs
+4. Flag open questions that research alone cannot resolve
+
 ## Output
 
 Save findings to: [output path, e.g. `.claude/flow/designs/research-[topic].md`]
 
-Format: concise, actionable, with sources. Structure as:
-- **Local findings**: patterns, existing code, constraints
-- **External findings**: tools, APIs, best practices, with source URLs
-- **Recommendations**: what to consider when planning
-
-Include confidence level per finding.
+Structure as:
+1. **Research Question** — what was investigated and why
+2. **Local Context** — existing code, patterns, dependencies, constraints, gaps
+3. **External Findings** — per-finding: topic, result, sources (URLs), confidence
+4. **Comparison** (if evaluating options) — side-by-side with decision criteria
+5. **Recommendations** — ranked, with trade-offs and confidence
+6. **Open Questions** — what couldn't be determined
 """
 })
 ```
@@ -63,6 +87,12 @@ Produce a UI research report for [product/domain].
 - NEVER write to source code files. Write research outputs only.
 - Gather SPECIFIC concrete values (hex codes, font names, px values) — not abstract descriptions.
 
+Confidence levels:
+- High: 2+ authoritative sources agree, published <1yr, confirmed locally
+- Medium: 1+ corroborating source, OR authoritative source >1yr old
+- Low: single source, conflicting sources, OR unable to verify
+- Local: verified by reading local code directly
+
 ## Phase 1: Local Codebase Analysis
 
 1. Explore existing UI components, styling patterns, design tokens, theme configuration
@@ -72,19 +102,33 @@ Produce a UI research report for [product/domain].
 5. Identify the CSS/styling approach: Tailwind, CSS Modules, styled-components, vanilla CSS, etc.
 6. Find the actual font imports/declarations and color CSS variables in use
 
-## Phase 2: Competitor Analysis
+## Phase 2: Current Aesthetic Trends (MANDATORY)
 
-Research 2-3 competing/similar products. For EACH product, gather:
-1. Color palette: hex values or palette temperature and hierarchy
-2. Typography: font families, size scale, heading/body pairing
-3. Layout patterns: dashboard structure, nav pattern, content density
-4. Component personality: button style, card treatment, form layout
-5. Distinguishing visual element
-6. Spacing rhythm: tight/medium/generous
+Research what the design world looks like RIGHT NOW:
+1. Current visual trends — use current year and next year in queries (e.g. "UI design trends {this year} {next year}"). Search "UI design trends", "web design trends"
+2. Typography trends — search "typography trends" + current year, "best web fonts" + current year
+3. Color direction — search "color trends UI" + current year, "design color palette trends"
+4. Layout evolution — search "app layout trends" + current year, "dashboard design trends"
+5. Interaction patterns — search "UI animation trends" + current year, "microinteraction design trends"
 
-Search for: "[competitor] design system", "[competitor] UI redesign"
+## Phase 3: Competitor Analysis
 
-## Phase 3: Design Intelligence
+Research 2-4 competing/similar products. For EACH product, gather:
+1. Visual first impression — what's the IMMEDIATE feeling?
+2. Color palette: hex values or temperature + hierarchy. What color FAMILY dominates and WHY?
+3. Typography: font families (identify them!), size scale, heading/body pairing
+4. Layout: main dashboard structure, navigation, content density, grid system
+5. Component personality: button/card/form/modal style
+6. Spacing rhythm: tight/medium/generous with px values if possible
+7. Distinguishing element: ONE visual element that makes it recognizable
+8. Strengths to borrow vs weaknesses to avoid
+9. Mobile experience: how does the design adapt?
+
+Search: "[competitor] design system", "[competitor] UI redesign", "[competitor] interface analysis"
+
+After all competitors: comparative summary — shared visual language (table stakes) vs differentiators (opportunity space).
+
+## Phase 4: Design Intelligence
 
 Gather concrete data (not abstract descriptions):
 - **Typography**: 2-3 font pairings, type scale ratios, base body font size
@@ -97,8 +141,10 @@ Gather concrete data (not abstract descriptions):
 Save findings to: [output path, e.g. `.claude/flow/designs/ui-research.md`]
 
 Structure as:
+- **Trend Context**: what aesthetics are current right now
 - **Local findings**: existing design system, tokens, component inventory
 - **Competitor analysis**: per-product breakdown with SPECIFIC visual values
+- **Comparative summary**: shared language vs differentiators
 - **Design intelligence**: concrete data for this domain
 - **Design direction recommendations**: 2-3 directions with fonts, colors, density, reference products
 """

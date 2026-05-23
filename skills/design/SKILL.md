@@ -54,10 +54,34 @@ Then tell the user: **Open http://localhost:8765 in your browser** to edit token
 
 The viewer parses DESIGN.md tables, renders live previews (buttons, cards, inputs, headings), and lets the user tweak values with color pickers, sliders, and text fields.
 
+Wait for the user to finish editing and confirm. Then re-read DESIGN.md to pick up any manual adjustments before proceeding.
+
 **When NOT to offer:**
 - Non-interactive session (CI, headless, piped)
 - User is in a hurry and explicitly skips review
 - DESIGN.md was not produced or updated
+
+## Design Review Gate (ui-design mode, mandatory)
+
+After DESIGN.md is produced (and optionally edited in Design Viewer), a two-phase review is MANDATORY before forge can be dispatched:
+
+### Phase 1: Self-Review
+
+Run the self-review checklist in `references/ui-design.md` (40+ items). Fix any issues found. Common failures:
+- AI-default colors or generic font choices
+- Missing component states (hover, focus, disabled, loading, error)
+- No microcopy — placeholder text still present
+- Missing WCAG contrast verification
+- Architecture content leaked into design document
+
+### Phase 2: User Review
+
+Present the completed DESIGN.md to the user for approval. Highlight:
+- Emotional signature and design direction chosen
+- Key color, typography, and spacing decisions
+- Any open questions or trade-offs the user should decide
+
+No implementation (forge dispatch) until the user explicitly approves the design. If the user requests changes, revise DESIGN.md and repeat both review phases.
 
 ## If Connectors Available
 

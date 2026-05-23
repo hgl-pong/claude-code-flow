@@ -32,6 +32,23 @@ GATE CHECKLIST (evaluate for this specific task):
     Oracle MUST receive research findings as input when Gate 2 was checked and
     intake decisions as input when Gate 2a was checked.
 
+[ ] Gate 3a: Plan Review — ALWAYS mandatory (all modes including quick).
+    Two-phase review before execution begins:
+
+    Phase 1 — Self Review (oracle/orchestrator):
+    a) Every requirement maps to at least one task.
+    b) No placeholders, TBDs, or "similar to previous task" shortcuts.
+    c) File paths are exact and consistent across tasks.
+    d) Test commands are concrete and runnable.
+    e) Dependency chain (blockedBy) is correct — no cycles, no false blocks.
+    f) No file conflicts between parallel tasks.
+    Fix any issues found before proceeding to Phase 2.
+
+    Phase 2 — Human Review:
+    Present the plan to the user for approval. No implementation dispatches
+    until the user explicitly approves. If the user requests changes, oracle
+    revises and both phases repeat.
+
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
 
@@ -51,8 +68,13 @@ GATE CHECKLIST (evaluate for this specific task):
     Design Methodology (emotional signature → color roles → type system → icon
     system → spacing rhythm → layout grid → elevation strategy → border radius
     scale → transition tokens → component states). DESIGN.md MUST
-    include layout composition plan for page-level designs. Forge CANNOT be
-    dispatched for UI work until DESIGN.md exists.
+    include layout composition plan for page-level designs.
+
+    Gate 6 has mandatory sub-gates:
+    6a) Self-Review — run 40+ item checklist, fix all issues.
+    6b) Design Viewer — offer user to preview/edit visually (recommended, not mandatory).
+    6c) User Review — present DESIGN.md to user, get explicit approval.
+    Forge CANNOT be dispatched for UI work until Gate 6c (user approval) passes.
 
 [ ] Gate 7: Review (sentinel) — see mode table. If mandatory: sentinel
     MUST approve before acceptance.

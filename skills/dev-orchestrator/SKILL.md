@@ -111,10 +111,11 @@ Classify domain (frontend-UI / backend / cross-domain), complexity, and mode. Fo
 See `references/pipeline-operations.md` for full gate checklist and execution details. Record in `<output_dir>/phase-context.md`.
 
 Key rules:
-- **Reference Intake Gate → Plan Gate**: outside repos or workflow packs are inspected selectively. Record accepted, adapted, rejected, and deferred ideas in `intake-decision.md`.
+- **Gate 2a: Reference Intake → Plan Gate**: mandatory when referencing external repos/plugins/workflows. Inspect selectively, record Adopt/Adapt/Reject/Defer in `intake-decision.md`.
 - **Research Gate → Plan Gate**: research subagent and oracle are STRICTLY SEQUENTIAL. Never dispatch in parallel.
 - **Plan Gate**: oracle creates plan-brief.md + TaskCreate with blockedBy
-- **UI Design Gate**: forge MAY NOT dispatch until `DESIGN.md` exists at project root
+- **Plan Review Gate**: ALWAYS mandatory — oracle self-reviews plan, then user reviews and approves before execution
+- **UI Design Gate**: self-review → design viewer (optional) → user approval before forge dispatch
 - **Review Gate**: two-stage (spec compliance → code quality). NEVER reverse order.
 
 ### 9. Implementation Loop

@@ -23,7 +23,20 @@ A plan is written for a fresh agent with zero project context and zero ability t
 2. Map files to responsibilities — design units with clear boundaries.
 3. Split work into small test-first tasks (each step is 2-5 minutes).
 4. Add exact commands and expected results. No "TBD", "TODO", "implement later".
-5. Run the self-review checklist before handoff.
+5. Run the self-review checklist below.
+6. **Plan Review Gate (mandatory, two phases)**:
+   - Phase 1: Self-review — run the checklist below, fix any issues.
+   - Phase 2: Present plan to user for approval. No implementation until approved.
+   - If user requests changes: revise, repeat both phases.
+
+Self-review checklist:
+
+1. Map each requirement to at least one task.
+2. Search for placeholders and vague instructions.
+3. Check type names, function names, command names, file paths for consistency.
+4. Confirm task order respects dependencies — no cycles, no false blocks.
+5. Verify no file conflicts between parallel tasks.
+6. Verify every task has a concrete test command and expected output.
 
 ### Plan Header
 
@@ -92,15 +105,6 @@ Each step is one action:
 - No placeholders.
 - No "similar to previous task"; repeat details.
 - Each task has one verification command that proves it done.
-
-### Self-Review
-
-Before execution:
-
-1. Map each requirement to at least one task.
-2. Search for placeholders and vague instructions.
-3. Check type names, function names, command names, file paths for consistency.
-4. Confirm task order respects dependencies.
 
 ## Phase 2: Execute Plan
 

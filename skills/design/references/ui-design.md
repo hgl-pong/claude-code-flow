@@ -399,11 +399,15 @@ See `references/design-md-spec.md` for full format, schema, and examples.
 - [ ] No banned elements (anti-ai-design.md) without justification
 - [ ] Disabled states include `cursor: not-allowed` and `aria-disabled` (not just visual dimming)
 
-## Phase 7: Design Viewer (Optional)
+## Phase 7: Self-Review (MANDATORY)
 
-After DESIGN.md is written or updated, ask the user:
+After producing DESIGN.md, run the self-review checklist below. Fix ALL issues before proceeding.
 
-> DESIGN.md has been produced. Would you like to open the **Design Viewer** to visually inspect and adjust tokens in a browser?
+## Phase 8: Design Viewer (Recommended)
+
+After self-review passes, offer the user:
+
+> DESIGN.md has been produced and self-reviewed. Would you like to open the **Design Viewer** to visually inspect and adjust tokens in a browser?
 
 If yes, start the viewer server:
 ```bash
@@ -418,5 +422,21 @@ Tell the user to open **http://localhost:8765**. The viewer:
 Wait for the user to finish editing (they'll confirm), then re-read DESIGN.md to pick up any manual adjustments before proceeding.
 
 Skip this phase if the session is non-interactive, the user declines, or DESIGN.md was not produced.
+
+## Phase 9: User Review (MANDATORY)
+
+After Design Viewer (or if skipped), present DESIGN.md to the user for final approval:
+
+> DESIGN.md is ready for review. Key decisions:
+> - Emotional signature: [1-sentence summary]
+> - Color direction: [primary family + rationale]
+> - Typography: [heading font + body font]
+> - Spacing: [base unit + rhythm pattern]
+>
+> Please review and approve, or request changes.
+
+No forge dispatch until the user explicitly approves. If changes requested: revise → re-run self-review → re-present.
+
+## Self-Review Checklist
 
 ## If Connectors Available
