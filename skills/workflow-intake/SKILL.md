@@ -1,7 +1,8 @@
 ---
 name: Workflow Intake
 version: "1.0.0"
-description: "Use when a task asks to reference, borrow from, port, import, or optimize this workflow using another repository, plugin, agent pack, or external workflow."
+description: "Intake external repos, plugins, agent packs, workflows, or prompt systems before adapting ideas into this workflow."
+when_to_use: "Trigger on 'reference this repo', 'borrow from', 'port', 'import', 'copy workflow', 'optimize workflow', external repo/plugin/path."
 argument-hint: "<source repo or workflow idea>"
 ---
 

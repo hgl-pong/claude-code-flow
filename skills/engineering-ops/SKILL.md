@@ -1,7 +1,8 @@
 ---
 name: Engineering Ops
 version: "1.0.0"
-description: "Consolidated engineering operations skill. Trigger with 'architecture decision', 'ADR for', 'evaluate this design', 'system design for', 'should we use X or Y', 'deploy checklist', 'pre-deploy', 'shipping checklist', 'release checklist', 'ready to deploy', 'we have an incident', 'production is down', 'SEV1/SEV2', 'postmortem', 'blameless review', 'tech debt', 'technical debt audit', 'what should we refactor', 'code health', 'refactoring priorities', 'standup', 'daily update', 'what did I do yesterday', 'status update', 'write docs for', 'document this', 'create a README', 'write a runbook', 'onboarding guide', 'API docs'."
+description: "Run engineering ops: architecture/ADR, deploy checklists, incidents, tech debt audits, standups, docs, runbooks."
+when_to_use: "Trigger on 'ADR', 'architecture decision', 'deploy checklist', 'incident', 'SEV1', 'postmortem', 'tech debt', 'standup', 'runbook'."
 argument-hint: "[architecture | deploy | incident | tech-debt | standup | docs] <context>"
 ---
 

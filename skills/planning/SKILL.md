@@ -1,7 +1,8 @@
 ---
 name: Planning
 version: "1.0.0"
-description: "Use for writing and executing implementation plans. Triggers on 'write a plan', 'plan this feature', 'create tasks for', 'execute the plan', 'run the plan', or when you have an approved spec or requirements for a multi-step task before touching code."
+description: "Write and execute implementation plans with task breakdowns, approval gates, and verification steps."
+when_to_use: "Trigger on 'write a plan', 'plan this feature', 'create tasks', 'execute the plan', 'run the plan', approved spec/requirements."
 argument-hint: "<feature to plan or plan to execute>"
 ---
 

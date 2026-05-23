@@ -1,7 +1,8 @@
 ---
 name: Dev Orchestrator
 version: "5.0.0"
-description: "Default entry skill for all development work. Use for: implementing, building, fixing, refactoring, shipping, testing, reviewing, finishing, parallel dispatch, verification, multi-step tasks, feature delivery, cross-file changes, agent orchestration, approved plans, or any task that needs pipeline coordination. Also routes to specialized skills when appropriate."
+description: "Orchestrate dev work: implement, build, fix, refactor, test, review, ship, verify, finish branches, coordinate agents."
+when_to_use: "Trigger on 'implement', 'build', 'fix', 'refactor', 'ship', 'execute plan', 'multi-step', 'cross-file change', 'finish branch'."
 argument-hint: "<task description, approved plan, feature, fix, refactor, or delivery goal>"
 ---
 

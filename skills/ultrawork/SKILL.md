@@ -1,7 +1,8 @@
 ---
 name: Ultrawork
 version: "1.3.0"
-description: "Triggers when user includes ulw/ultrawork in prompt or invokes /ulw."
+description: "Run ULW/ultrawork full-autonomous execution for a task; ULI loop routes product iteration mode."
+when_to_use: "Trigger on 'ulw', 'ultrawork', '/ulw', 'uli', 'Ultra Loop Iteration', autonomous execution, no approval gates."
 argument-hint: "<task to execute autonomously>"
 ---
 

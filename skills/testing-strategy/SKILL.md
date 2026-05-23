@@ -1,7 +1,8 @@
 ---
 name: Testing Strategy
 version: "3.0.0"
-description: "Design test strategies and test plans. Trigger with 'how should we test', 'test strategy for', 'write tests for', 'test plan', 'what tests do we need', 'testing approach', or before implementing any feature or bugfix."
+description: "Design test strategies, test plans, TDD coverage, regression tests, unit/integration/E2E checks before code."
+when_to_use: "Trigger on 'how should we test', 'test strategy', 'write tests', 'test plan', 'what tests', 'TDD', feature or bugfix before code."
 argument-hint: "<feature or component to test>"
 ---
 

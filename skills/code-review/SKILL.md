@@ -1,7 +1,8 @@
 ---
 name: Code Review
 version: "1.0.0"
-description: "Use for: code review, code quality, best practices, refactoring, design patterns, SOLID, code smells, receiving code review feedback, responding to review comments. Triggers on 'review this code', 'code quality', 'review feedback', 'code review'."
+description: "Review code for correctness bugs, quality issues, risky refactors, SOLID/design smells, and review feedback."
+when_to_use: "Trigger on 'review this code', 'code review', 'PR review', 'check my diff', 'code quality', 'review feedback'."
 argument-hint: "<file, code area, or review feedback>"
 ---
 

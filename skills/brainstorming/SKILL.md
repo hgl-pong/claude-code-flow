@@ -1,7 +1,8 @@
 ---
 name: Brainstorming
 version: "3.0.0"
-description: "Use for ambiguous or substantial product/design decisions before code: new features, major behavior changes, UI/architecture choices, broad refactors, idea exploration, solution generation, assumption testing, or PRD/spec writing. Skip for narrow fixes, approved requirements, routine maintenance, direct execution, or tasks already routed by a command."
+description: "Brainstorm ambiguous features, product ideas, UI/architecture choices, broad refactors, PRDs, specs, and assumptions before code."
+when_to_use: "Trigger on 'brainstorm', 'explore options', 'new feature', 'PRD', 'write a spec', 'architecture choice', 'broad refactor'."
 argument-hint: "<idea, feature, or problem to explore>"
 ---
 

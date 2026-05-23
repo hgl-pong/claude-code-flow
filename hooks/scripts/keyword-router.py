@@ -55,6 +55,14 @@ SKIP_PATTERNS = [
 ]
 
 
+_QUESTION_PATTERN = re.compile(
+    r'^(what|why|how|where|when|who|which|is|are|can|could|would|should|do|does|did|'
+    r'什么|为什么|怎么|哪里|谁|哪|是否|能不能|可以|'
+    r'show me|explain|describe|tell me|help me understand)',
+    re.IGNORECASE,
+)
+
+
 def route_keywords(prompt_text):
     """Match prompt against routing rules, return skill suggestions."""
     if not prompt_text or not prompt_text.strip():
@@ -75,13 +83,25 @@ def route_keywords(prompt_text):
         if re.search(pattern, prompt_text, re.IGNORECASE):
             matches.append((skill, reason))
 
-    if not matches:
+    if matches:
+        skill, reason = matches[0]
+        return (
+            f"[keyword-router] {reason}. Primary skill: {skill}. "
+            "Use this route unless the active command/skill explicitly asks for a companion skill; "
+            "do not re-check entry routing in dev-orchestrator."
+        )
+
+    # Default: route non-trivial non-question prompts to dev-orchestrator
+    text = prompt_text.strip()
+    if len(text) < 10:
+        return None
+    if text.endswith('?') or text.endswith('？'):
+        return None
+    if _QUESTION_PATTERN.match(text):
         return None
 
-    # Return first match (highest priority)
-    skill, reason = matches[0]
     return (
-        f"[keyword-router] {reason}. Primary skill: {skill}. "
+        "[keyword-router] Default entry. Primary skill: dev-orchestrator. "
         "Use this route unless the active command/skill explicitly asks for a companion skill; "
         "do not re-check entry routing in dev-orchestrator."
     )

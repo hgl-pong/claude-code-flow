@@ -1,7 +1,8 @@
 ---
 name: Research
 version: "2.0.0"
-description: "Dispatch research subagents for technical research, library evaluation, product analysis, competitor analysis, gap analysis, user research, research synthesis, or knowledge synthesis. Also handles planning/conducting user research studies and synthesizing findings into themes and insights."
+description: "Research libraries, APIs, competitors, products, user studies, findings, gaps, and multi-source knowledge synthesis."
+when_to_use: "Trigger on 'research', 'compare libraries', 'evaluate API', 'competitor analysis', 'user research', 'synthesize findings', 'gap analysis'."
 argument-hint: "<topic to research, or 'user-research'/'synthesis'/'knowledge-synthesis' for specialized modes>"
 ---
 

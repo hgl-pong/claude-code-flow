@@ -1,7 +1,8 @@
 ---
 name: Design
 version: "1.0.0"
-description: "Structured design feedback, handoff specs, system audits, accessibility reviews, UX copy, and design system document production. Trigger with 'review this design', 'critique this mockup', 'handoff spec', 'developer specs', 'design system audit', 'document this component', 'audit accessibility', 'check a11y', 'WCAG check', 'write copy for', 'what should this button say', 'design this UI', 'produce DESIGN.md', 'design tokens', 'color system', or when sharing screenshots, checking consistency, writing microcopy, or preparing designs for engineering."
+description: "Handle design critique, UI design, handoff specs, design systems, accessibility audits, UX copy, and screenshots."
+when_to_use: "Trigger on 'review this design', 'critique mockup', 'handoff spec', 'a11y', 'WCAG', 'UX copy', 'design this UI', screenshots."
 argument-hint: "[critique | handoff | system | a11y | copy | ui-design] <context>"
 ---
 

@@ -1,7 +1,8 @@
 ---
 name: Systematic Debugging
 version: "2.1.0"
-description: "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes"
+description: "Debug bugs, test failures, crashes, build failures, regressions, and unexpected behavior via root-cause analysis."
+when_to_use: "Trigger on 'bug', 'failing test', 'error', 'crash', 'broken', 'regression', 'unexpected behavior', 'build failed'."
 argument-hint: "<bug or error to debug>"
 ---
 
