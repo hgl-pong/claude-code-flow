@@ -1,7 +1,7 @@
 {
   "name": "claude-code-flow",
   "version": "1.7.0",
-  "description": "Development workflow plugin with model-tiered agents, built-in Figma skills, and skills for planning, implementation, testing, review, design, research, and engineering operations.",
+  "description": "Development workflow plugin with model-tiered agents and skills for planning, implementation, testing, review, design, research, and engineering operations.",
   "author": {
     "name": "hgl",
     "url": "https://github.com/hgl-pong"
@@ -13,9 +13,6 @@
     "workflow",
     "agents",
     "skills",
-    "figma",
-    "figma-mcp",
-    "design-to-code",
     "tdd",
     "debugging",
     "code-review",
@@ -38,7 +35,7 @@
   "interface": {
     "displayName": "Claude Code Flow",
     "shortDescription": "Agent-style development workflow skills for Codex.",
-    "longDescription": "Claude Code Flow provides Codex-compatible skills for planning, implementation orchestration, testing strategy, code quality, review handoff, design workflows, Figma work, research, debugging, and finishing branches. Claude-specific commands and hooks remain available through the Claude plugin manifest.",
+    "longDescription": "Claude Code Flow provides Codex-compatible skills for planning, implementation orchestration, testing strategy, code quality, review handoff, design workflows, research, debugging, and finishing branches. Claude-specific commands and hooks remain available through the Claude plugin manifest.",
     "developerName": "hgl",
     "category": "Productivity",
     "capabilities": [

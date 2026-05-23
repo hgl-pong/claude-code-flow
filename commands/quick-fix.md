@@ -9,7 +9,7 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
 
 ## Process
 
-1. Treat `/quick-fix` as the selected route and classify whether this is truly quick. Do not invoke `using-claude-code-flow` again unless no route context exists.
+1. Treat `/quick-fix` as the selected route and classify whether this is truly quick. The entry routing in `dev-orchestrator` has already classified this task.
 
 2. If this is a bug with unknown cause, use `systematic-debugging` first.
 
@@ -46,7 +46,7 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
    })
    ```
 
-9. **Verify and report**: Use `verification-before-completion`; summarize what changed, what passed, and any caveats.
+9. **Verify and report**: Use the verification gate from `dev-orchestrator` (`references/verification-gate.md`); summarize what changed, what passed, and any caveats.
 
 ## When to Use
 

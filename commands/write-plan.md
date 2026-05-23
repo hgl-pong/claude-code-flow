@@ -5,7 +5,7 @@ description: Create a concrete, test-first implementation plan from approved req
 
 # Write Plan
 
-Use the `writing-plans` skill to produce a task-by-task implementation plan.
+Use the `planning` skill (Phase 1: Write Plan) to produce a task-by-task implementation plan.
 
 ## Arguments
 
@@ -15,9 +15,9 @@ Use the `writing-plans` skill to produce a task-by-task implementation plan.
 
 ## Process
 
-1. Treat `/write-plan` as the selected route; do not invoke `using-claude-code-flow` again unless no route context exists.
+1. Treat `/write-plan` as the selected route; the entry routing in `dev-orchestrator` has already classified this task.
 2. Read the referenced spec or requirements.
-3. Use `writing-plans`.
+3. Use `planning` (Phase 1: Write Plan).
 4. Map files to responsibilities.
 5. Create small tasks with failing-test, implementation, verification, and review steps.
 6. Save the plan through `flow-state.py plan-init`, `plan-update`, `plan-add-task`, and `plan-approve`.

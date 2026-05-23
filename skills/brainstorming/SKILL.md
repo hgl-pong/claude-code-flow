@@ -186,4 +186,4 @@ Before user review:
 
 ## Handoff
 
-After approval, invoke **SUGGESTED: `writing-plans`** for multi-step work or the lightweight TDD path for narrow changes. Do not invoke `using-claude-code-flow` again after this handoff; the route is already selected.
+After approval, invoke **SUGGESTED: `planning`** for multi-step work or the lightweight TDD path for narrow changes. The route is already selected — continue with the handoff skill.

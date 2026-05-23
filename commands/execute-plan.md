@@ -15,9 +15,9 @@ Execute a saved implementation plan using the `dev-orchestrator` pipeline.
 
 ## Process
 
-1. Treat `/execute-plan` as the selected route; do not invoke `using-claude-code-flow` again unless no route context exists.
-2. Use `executing-plans` to load, sanity-check, and sequence the approved plan. It owns plan interpretation.
-3. Use `dev-orchestrator` for agent scheduling, context envelopes, verification, review, and acceptance. It owns pipeline execution.
+1. Treat `/execute-plan` as the selected route; the entry routing in `dev-orchestrator` has already classified this task.
+2. Use `planning` (Phase 2: Execute Plan) to load, sanity-check, and sequence the approved plan.
+3. Use `dev-orchestrator` for agent scheduling, context envelopes, verification, review, and acceptance.
 4. Set mode and phase before dispatch:
    ```bash
    python ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/flow-state.py set-mode standard
@@ -27,7 +27,7 @@ Execute a saved implementation plan using the `dev-orchestrator` pipeline.
 
 ## Source of Truth
 
-- Plan execution loop: `skills/executing-plans/SKILL.md`
+- Plan execution loop: `skills/planning/SKILL.md`
 - Pipeline scheduling and acceptance: `skills/dev-orchestrator/SKILL.md`
 - Gate checklist and completion handling: `skills/dev-orchestrator/references/pipeline-operations.md`
 

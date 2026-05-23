@@ -4,7 +4,6 @@ External tools available to skills via MCP servers. Skills reference these with 
 
 | Category | Placeholder | Tool |
 |----------|------------|------|
-| Figma | `~~figma` | Figma MCP server (`use_figma`, file/design context tools) |
 | Browser automation | `~~browser` | Playwright MCP (`@playwright/mcp`) — navigate, screenshot, click, type, assert |
 | Output processing | `~~context-mode` | context-mode (ctx_execute, ctx_batch_execute, ctx_search) |
 | WeChat dev | `~~weapp-dev` | WeChat DevTools (miniprogram-automator) |

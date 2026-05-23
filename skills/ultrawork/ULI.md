@@ -219,7 +219,7 @@ On ACCEPT:
 
 ## Step 6 — Signal Completion
 
-Apply `verification-before-completion` across all delivered features. Output:
+Apply verification gate (see `skills/dev-orchestrator/references/verification-gate.md`) across all delivered features. Output:
 
 ```
 ## ULI Complete

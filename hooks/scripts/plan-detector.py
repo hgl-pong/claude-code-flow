@@ -20,7 +20,7 @@ SYSTEM_APPEND = """
 PLUGIN PLAN ROUTING ACTIVE
 
 Primary route: `/plan`.
-Do not separately invoke `using-claude-code-flow`; this hook already performed the routing pass.
+Do not separately invoke `using-claude-code-flow` (now merged into dev-orchestrator); this hook already performed the routing pass.
 Inside `/plan`, use `brainstorming` only if unresolved product/design decisions remain. Skip brainstorming for approved requirements, direct execution, narrow fixes, routine maintenance, or saved specs.
 IMPORTANT: Do not enter built-in plan mode.
 Use /plan instead, and avoid invoking EnterPlanMode.

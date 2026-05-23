@@ -42,12 +42,9 @@ Fast tests (always run):
   test-workflow-skills.sh
   test-workflow-commands.sh
   test-local-regression-via-claude.sh
-  test-skill-using-claude-code-flow.sh
   test-skill-brainstorming.sh
-  test-skill-writing-plans.sh
   test-skill-testing-strategy.sh
   test-skill-systematic-debugging.sh
-  test-skill-verification-before-completion.sh
   test-skill-dev-orchestrator.sh
   test-skill-uli.sh
 
@@ -115,12 +112,9 @@ fast_tests=(
   "test-workflow-skills.sh"
   "test-workflow-commands.sh"
   "test-local-regression-via-claude.sh"
-  "test-skill-using-claude-code-flow.sh"
   "test-skill-brainstorming.sh"
-  "test-skill-writing-plans.sh"
   "test-skill-testing-strategy.sh"
   "test-skill-systematic-debugging.sh"
-  "test-skill-verification-before-completion.sh"
   "test-skill-dev-orchestrator.sh"
   "test-skill-uli.sh"
 )

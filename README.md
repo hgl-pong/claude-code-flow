@@ -55,7 +55,7 @@ Research uses the `research` skill methodology with general-purpose subagents. U
 
 Skills use progressive disclosure: concise `SKILL.md` files plus `references/` loaded only when needed. Curated workflow skills live under `skills/`; external skills must pass `workflow-intake` before becoming repo-native.
 
-Important entry skills include `dev-orchestrator`, `using-claude-code-flow`, `brainstorming`, `writing-plans`, `testing-strategy`, `code-quality`, `systematic-debugging`, `verification-before-completion`, `design`, and the Figma skill family.
+Entry skills: `dev-orchestrator` (default, includes routing), `brainstorming`, `planning`, `code-review`, `testing-strategy`, `systematic-debugging`, `design`, `research`, `engineering-ops`, `ultrawork`.
 
 ## Workflow References
 

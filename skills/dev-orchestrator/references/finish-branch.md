@@ -1,21 +1,10 @@
----
-name: Finishing Branch
-version: "1.0.0"
-description: "Use when implementation is complete and tests pass"
-argument-hint: "[merge | pr | keep | discard]"
----
-
-# Finishing Branch
-
-## Overview
+# Finish Branch
 
 Guide completion of development work: verify tests, detect environment, present options, execute choice, clean up.
 
 **Core principle:** Verify tests → Detect environment → Present options → Execute → Cleanup.
 
-## Process
-
-### Step 1: Verify Tests
+## Step 1: Verify Tests
 
 Before presenting options, verify tests pass:
 
@@ -27,10 +16,9 @@ npm test / pytest / cargo test / python tests/run-tests.py
 **If tests fail:** Stop. Report failures. Do not proceed to Step 2.
 **If tests pass:** Continue.
 
-### Step 2: Detect Environment
+## Step 2: Detect Environment
 
 ```bash
-# Check if in worktree
 GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
 GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
 ```
@@ -40,7 +28,7 @@ GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
 | `GIT_DIR == GIT_COMMON` | Normal repo, no worktree cleanup needed |
 | `GIT_DIR != GIT_COMMON` | In a linked worktree, cleanup may apply |
 
-### Step 3: Present Options
+## Step 3: Present Options
 
 **Normal repo and named-branch worktree — present exactly these 4 options:**
 
@@ -57,9 +45,9 @@ Which option?
 
 **Don't add explanation** — keep options concise.
 
-### Step 4: Execute Choice
+## Step 4: Execute Choice
 
-#### Option 1: Merge Locally
+### Option 1: Merge Locally
 
 ```bash
 git checkout <base-branch>
@@ -71,7 +59,7 @@ git merge <feature-branch>
 git branch -d <feature-branch>
 ```
 
-#### Option 2: Push and Create PR
+### Option 2: Push and Create PR
 
 ```bash
 git push -u origin <feature-branch>
@@ -87,11 +75,11 @@ EOF
 
 **Do NOT clean up worktree** — user may need it for PR iteration.
 
-#### Option 3: Keep As-Is
+### Option 3: Keep As-Is
 
 Report: "Keeping branch `<name>`. Worktree preserved at `<path>`."
 
-#### Option 4: Discard
+### Option 4: Discard
 
 **Confirm first:**
 ```
@@ -104,7 +92,7 @@ Type 'discard' to confirm.
 
 Wait for exact confirmation. If confirmed, delete branch and cleanup worktree.
 
-### Step 5: Cleanup Workspace
+## Step 5: Cleanup Workspace
 
 **Only for Options 1 and 4.** Options 2 and 3 preserve the workspace.
 

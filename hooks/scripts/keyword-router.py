@@ -2,7 +2,7 @@
 """Keyword-based skill router for UserPromptSubmit hook.
 
 Detects task patterns in user prompts and suggests matching skills
-via additionalContext. Complements (doesn't replace) using-claude-code-flow.
+via additionalContext. Complements (doesn't replace) dev-orchestrator entry routing.
 """
 import json
 import re
@@ -40,12 +40,12 @@ ROUTING_RULES = [
     (EXTERNAL_SOURCE_PATTERN, 'workflow-intake', 'External workflow intake detected'),
     (COORDINATED_DELIVERY_PATTERN, 'dev-orchestrator', 'Coordinated implementation detected'),
     (r'\b(debug|fix|broken|crash|error|failing|bug)\b', 'systematic-debugging', 'Debug pattern detected'),
-    (r'\b(review|code.?quality|refactor|clean.?up)\b', 'code-quality', 'Review pattern detected'),
+    (r'\b(review|code.?quality|refactor|clean.?up)\b', 'code-review', 'Review pattern detected'),
     (r'\b(test|spec|coverage|unit.?test|integration.?test)\b', 'testing-strategy', 'Testing pattern detected'),
     (r'\b(plan|architect|design|blueprint)\b', 'plan', 'Planning pattern detected'),
     (r'\b(brainstorm|idea|explore|spike)\b', 'brainstorming', 'Brainstorm pattern detected'),
-    (r'\b(verify|acceptance|done|complete|ship)\b', 'verification-before-completion', 'Verification pattern detected'),
-    (r'\b(write|create|implement|build|add)\b.*\b(plan|spec|design)\b', 'writing-plans', 'Plan writing detected'),
+    (r'\b(verify|acceptance|done|complete|ship)\b', 'dev-orchestrator', 'Verification pattern detected'),
+    (r'\b(write|create|implement|build|add)\b.*\b(plan|spec|design)\b', 'planning', 'Plan writing detected'),
 ]
 
 # Skip routing if these are present (already routed by other hooks)
@@ -83,7 +83,7 @@ def route_keywords(prompt_text):
     return (
         f"[keyword-router] {reason}. Primary skill: {skill}. "
         "Use this route unless the active command/skill explicitly asks for a companion skill; "
-        "do not invoke using-claude-code-flow just to re-check routing."
+        "do not re-check entry routing in dev-orchestrator."
     )
 
 

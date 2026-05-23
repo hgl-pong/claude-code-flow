@@ -16,7 +16,7 @@ Shared source of truth for review command boundaries, sentinel dispatch inputs, 
 - `/code-review` is the ad hoc entry point. Use it when the user wants a focused review outside the plan -> implementation -> review -> acceptance pipeline.
 - `/workflow-review` is the pipeline gate entry point. Use it when review is tied to an approved plan, workflow state, workflow-tracked changes, or plan/design documents.
 - Default review mode is read-only. Do not modify files while producing a review report.
-- `/code-review --receive` is feedback-response mode, not review-report mode. It uses `skills/receiving-code-review/SKILL.md` and may implement verified feedback items with tests.
+- `/code-review --receive` is feedback-response mode, not review-report mode. It uses `skills/code-review/SKILL.md` (Part 2: Receiving Reviews) and may implement verified feedback items with tests.
 - Do not copy sentinel's full review checklist into slash commands. Commands gather context and route; sentinel evaluates.
 
 ## Target Selection

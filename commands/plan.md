@@ -15,7 +15,7 @@ Start the plugin planning pipeline for a feature or task. This is the plugin-sid
 
 ## Process
 
-1. Treat `/plan` as the selected route. If no command or hook already routed the prompt, do one `using-claude-code-flow` pass; otherwise do not invoke it again.
+1. Treat `/plan` as the selected route. The entry routing in `dev-orchestrator` has already classified the task.
 2. Classify only what the planning entry needs: domain (frontend-UI / backend / cross-domain), rough complexity, external-reference presence, and whether the request is truly a quick fix.
 3. Select mode using `dev-orchestrator` Mode Selection. For narrow one-file fixes with a known root cause and no design change, redirect to `/quick-fix`.
 4. Set state:
@@ -26,7 +26,7 @@ Start the plugin planning pipeline for a feature or task. This is the plugin-sid
 5. Create or update structured plan state with `flow-state.py plan-init`, `plan-update`, and `plan-add-task`.
 6. Evaluate gates from `skills/dev-orchestrator/references/pipeline-operations.md`. That file is the source of truth for research, workflow-intake, oracle, UI design, document review, review, and acceptance ordering; do not duplicate the full checklist here.
 7. Record checked gates and planning handoff notes in `<output_dir>/phase-context.md` (normally `.claude/flow/plans/<slug>/`).
-8. Let `oracle` produce `<output_dir>/plan-brief.md` for standard/deep/autonomous planning. Use `writing-plans` when approved requirements need executable task breakdown.
+8. Let `oracle` produce `<output_dir>/plan-brief.md` for standard/deep/autonomous planning. Use `planning` skill when approved requirements need executable task breakdown.
 9. After approval, hand execution to `dev-orchestrator`; it owns DAG-aware scheduling, agent envelopes, review, and acceptance.
 10. Built-in plan guard: do not invoke `EnterPlanMode`. If Claude Code host plan mode is already active, tell the user to exit host plan mode and rerun `/plan <task>`.
 

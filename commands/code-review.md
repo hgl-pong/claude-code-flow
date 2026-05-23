@@ -15,13 +15,13 @@ Use `skills/dev-orchestrator/references/review.md` as the source of truth for re
 
 - **Target**: File path, directory, or `--diff` for uncommitted changes
 - **Focus** (optional): `security`, `performance`, `correctness`, `architecture`, or custom description
-- **--receive**: Switch to receiving mode — handle external code review feedback using `receiving-code-review` skill
+- **--receive**: Switch to receiving mode — handle external code review feedback using `code-review` skill
 
 ## Process
 
 1. If the request is tied to an approved plan, workflow state, workflow-tracked changes, or plan/design documents, route to `/workflow-review`.
 2. For default review mode, follow the standalone review rules in `skills/dev-orchestrator/references/review.md` and invoke sentinel with concrete targets, excerpts, focus, and any available requirements.
-3. For `--receive`, use `skills/receiving-code-review/SKILL.md`; verify each feedback item against the codebase before implementing, then test each implemented item.
+3. For `--receive`, use `skills/code-review/SKILL.md` (Part 2: Receiving Reviews); verify each feedback item against the codebase before implementing, then test each implemented item.
 4. Present the review report or feedback-response summary using the reference output contract.
 
 ## Usage
@@ -38,6 +38,6 @@ Use `skills/dev-orchestrator/references/review.md` as the source of truth for re
 
 - Review command boundaries and output contract: `skills/dev-orchestrator/references/review.md`
 - Review agent behavior: `agents/sentinel.md`
-- Review quality standards: `skills/code-quality/SKILL.md`
-- External feedback handling: `skills/receiving-code-review/SKILL.md`
+- Review quality standards: `skills/code-review/SKILL.md`
+- External feedback handling: `skills/code-review/SKILL.md`
 - Pipeline review gate: `/workflow-review` and `skills/dev-orchestrator/references/pipeline-operations.md`

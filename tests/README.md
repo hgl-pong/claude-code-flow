@@ -72,13 +72,11 @@ unavailable, it reports the E2E suite as skipped instead of burning time on ever
 | `test-workflow-skills.sh` | Claude explains all 6 workflow skills |
 | `test-workflow-commands.sh` | Claude explains all 6 slash commands + ordering |
 | `test-local-regression-via-claude.sh` | Claude runs `python tests/run-tests.py` via Bash |
-| `test-skill-using-claude-code-flow.sh` | Skill-selection-first gate, companion skills, workflow order |
 | `test-skill-brainstorming.sh` | Diverge/converge, approval gate, output artifact |
-| `test-skill-writing-plans.sh` | Test-first, atomic tasks, verification step per task |
+| `test-skill-planning.sh` | Test-first, atomic tasks, verification step per task |
 | `test-skill-testing-strategy.sh` | RED→GREEN→REFACTOR, test pyramid, mocking policy |
 | `test-skill-systematic-debugging.sh` | Reproduce first, hypothesis, root cause, bisect |
-| `test-skill-verification-before-completion.sh` | Fresh evidence, mandatory checklist, no claimed success |
-| `test-skill-dev-orchestrator.sh` | Agent roster, mode selection, review/acceptance gates |
+| `test-skill-dev-orchestrator.sh` | Entry routing, agent roster, mode selection, review/acceptance gates |
 
 ### Integration test coverage
 

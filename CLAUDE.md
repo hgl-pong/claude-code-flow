@@ -35,11 +35,16 @@ Keep workflow details in one place:
 | Topic | Authoritative file |
 |---|---|
 | Agent roles, models, and behavioral constraints | `agents/*.md` |
+| Entry routing, trigger bias, and mode selection | `skills/dev-orchestrator/SKILL.md` |
 | Gate checklist, ordering, scheduling, review, and acceptance | `skills/dev-orchestrator/references/pipeline-operations.md` |
 | Review command boundaries, sentinel inputs, and fix loops | `skills/dev-orchestrator/references/review.md` |
 | Diagnostic runtime files, metrics commands, and output rules | `skills/dev-orchestrator/references/diagnostics.md` |
-| Orchestration trigger bias and mode selection | `skills/dev-orchestrator/SKILL.md` |
+| Parallel dispatch, decomposition, inter-agent handoff | `skills/dev-orchestrator/references/parallel-dispatch.md` |
+| Verification gate and evidence standards | `skills/dev-orchestrator/references/verification-gate.md` |
+| Branch completion (merge, PR, keep, discard) | `skills/dev-orchestrator/references/finish-branch.md` |
 | Subagent prompt templates | `skills/dev-orchestrator/references/subagent-prompts.md` |
+| Plan writing and execution | `skills/planning/SKILL.md` |
+| Code review (performing + receiving) | `skills/code-review/SKILL.md` |
 | Slash command entry points | `commands/*.md` as thin routers |
 | Runtime workflow state | `.claude/flow/plan-state.json` and `.claude/flow/workflow-state.json` |
 | Hook registration and scripts | `scripts/render-hooks.py` renders `hooks/hooks.json` and `hooks/codex-hooks.json`; scripts live in `hooks/scripts/*` |
@@ -65,9 +70,12 @@ Defer decisions without importing a competing workflow surface.
 built-in plan mode redirects back to the plugin workflow. Host-level plan transitions
 such as Shift+Tab or SDK permission-mode changes cannot be fully intercepted by a plugin.
 
-`dev-orchestrator` is the default execution skill once the user asks to implement,
-execute an approved plan, coordinate agents, touch multiple files, or deliver an
-end-to-end change.
+`dev-orchestrator` is the **default entry skill** — it handles entry routing for
+unclassified tasks and owns the execution pipeline. It absorbs verification,
+branch finishing, and parallel dispatch as reference phases. Specialized skills
+(`brainstorming`, `planning`, `code-review`, `research`, `design`,
+`engineering-ops`, `testing-strategy`, `systematic-debugging`) handle concerns
+outside the main pipeline.
 
 ### Autonomous Modes
 

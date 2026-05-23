@@ -20,12 +20,12 @@ assert_order "$output" "brainstorm" "write-plan" "brainstorm before write-plan"
 assert_order "$output" "write-plan" "execute-plan" "write-plan before execute-plan"
 
 output="$(run_claude "I need to plan a multi-step feature that touches UI and backend files. What should I do first?" "$timeout_seconds")"
-assert_contains "$output" "plan|using-claude-code-flow|brainstorm" "routes planning requests through plugin planning"
+assert_contains "$output" "plan|dev-orchestrator|brainstorm" "routes planning requests through plugin planning"
 assert_contains "$output" "plan|orchestrate|multi-step" "mentions planning or orchestration"
 
 output="$(run_claude "/plan Add user authentication with OAuth and JWT" "$timeout_seconds")"
 assert_contains "$output" "plugin plan|use this as the plugin|/plan" "plugin plan command routes to plan"
-assert_contains "$output" "brainstorm|writing-plans|dev-orchestrator" "plan mode follows the workflow pipeline"
+assert_contains "$output" "brainstorm|planning|dev-orchestrator" "plan mode follows the workflow pipeline"
 
 output="$(run_claude "/plan" "$timeout_seconds")"
 assert_contains "$output" "plugin plan|planning pipeline|/plan" "bare /plan still routes to plugin workflow"

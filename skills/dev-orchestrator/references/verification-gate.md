@@ -1,21 +1,8 @@
----
-name: Verification Before Completion
-version: "2.0.0"
-description: "Use when about to claim work is complete, fixed, or passing"
-argument-hint: "<claim to verify>"
----
-
-# Verification Before Completion
-
-## Iron Law
+# Verification Gate
 
 **NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.**
 
 "Tests pass" requires actual test output. "Build succeeds" requires actual build output. "Bug fixed" requires a passing regression test. Intent is not evidence. Memory is not evidence.
-
-If you haven't run the verification command in this message, you cannot claim it passes.
-
-**Violating the letter of this rule is violating the spirit of this rule.**
 
 ## The Gate Function
 
@@ -29,7 +16,7 @@ BEFORE claiming any status:
 
 Skip any step = not verifying.
 
-## Common Failures
+## Evidence Standards
 
 | Claim | Requires | Not Sufficient |
 |-------|----------|----------------|
@@ -37,6 +24,8 @@ Skip any step = not verifying.
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Requirements met | Line-by-line checklist | Tests passing |
+| UI works | Screenshot/browser check | "Looks right" |
+| Review passed | Review result and files reviewed | N/A |
 
 ## Rationalization Prevention
 
@@ -50,7 +39,6 @@ Skip any step = not verifying.
 | "I just ran tests a minute ago" | A minute ago is not now. Re-run. |
 | "It's a trivial change" | Trivial changes break things constantly. |
 | "The code looks correct" | Looking correct and being correct are different. |
-| "I'll verify after this next change" | Verify now or don't claim done. |
 
 ## Red Flags — STOP
 
@@ -59,8 +47,6 @@ Skip any step = not verifying.
 - About to commit/push/PR without verification
 - Trusting agent success reports
 - "I'm pretty sure this works"
-- "The tests should pass"
-- "It worked in my head"
 
 ## Process
 
@@ -69,24 +55,13 @@ Before saying work is done:
 1. Confirm the requested behavior or deliverable exists.
 2. Run the narrowest relevant test or command.
 3. Run broader checks when the change has broader impact.
-4. Check `.claude/flow/verification-evidence.jsonl` for latest recorded evidence when hooks are enabled.
+4. Check `.claude/flow/verification-evidence.jsonl` for latest recorded evidence.
 5. Check `git status --short` and list files changed.
 6. Note any checks you could not run and why.
 
-## Evidence Standards
-
-| Claim | Evidence |
-|---|---|
-| Tests pass | Exact command run and pass/fail summary |
-| Build succeeds | Exact build command and result |
-| Bug fixed | Regression test or reproduction now passes |
-| UI works | Screenshot/browser check or explicit render verification |
-| Review passed | Review result and files reviewed |
-| External workflow adapted | Intake decision record showing Adopt / Adapt / Reject / Defer plus normal repo tests |
-
 ## Final Report
 
-Short. 3-5 bullets or 1-2 short paragraphs. Do not recap the whole workflow.
+Short. 3-5 bullets or 1-2 short paragraphs.
 
 - What changed
 - Files touched

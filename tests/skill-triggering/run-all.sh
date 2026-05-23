@@ -26,9 +26,8 @@ done
 # skill-name → prompt file
 declare -A TESTS=(
   ["brainstorming"]="prompts/brainstorming.txt"
-  ["writing-plans"]="prompts/writing-plans.txt"
+  ["planning"]="prompts/planning.txt"
   ["systematic-debugging"]="prompts/systematic-debugging.txt"
-  ["verification-before-completion"]="prompts/verification-before-completion.txt"
   ["testing-strategy"]="prompts/testing-strategy.txt"
 )
 

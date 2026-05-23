@@ -147,35 +147,6 @@ class PluginIntegrityTests(unittest.TestCase):
                 self.assertRegex(fm, r"(?m)^name:\s*.+")
                 self.assertRegex(fm, r"(?m)^description:\s*.+")
 
-    def test_figma_skills_are_built_in(self):
-        expected = {
-            "figma",
-            "figma-code-connect-components",
-            "figma-create-design-system-rules",
-            "figma-create-new-file",
-            "figma-generate-design",
-            "figma-generate-library",
-            "figma-implement-design",
-            "figma-use",
-        }
-
-        for skill in expected:
-            with self.subTest(skill=skill):
-                self.assertTrue((ROOT / "skills" / skill / "SKILL.md").exists())
-
-        # Figma skills are vendored plugin surfaces. Shared icons/assets/licenses
-        # are intentionally duplicated per skill directory so each skill remains
-        # self-contained when copied or packaged.
-        for shared in ["assets/icon.svg", "assets/figma.png"]:
-            hashes = {
-                (ROOT / "skills" / skill / shared).read_bytes()
-                for skill in expected
-                if (ROOT / "skills" / skill / shared).exists()
-            }
-            self.assertEqual(len(hashes), 1, f"expected shared Figma asset to match: {shared}")
-
-        self.assertFalse((ROOT / "temp").exists())
-
     def test_web_search_skill_removed(self):
         removed_skill = "web" + "-search"
         self.assertFalse((ROOT / "skills" / removed_skill).exists())
@@ -225,12 +196,11 @@ class PluginIntegrityTests(unittest.TestCase):
         code_review = read_text(ROOT / "commands/code-review.md")
         workflow_review = read_text(ROOT / "commands/workflow-review.md")
         write_plan = read_text(ROOT / "commands/write-plan.md")
-        using_flow = read_text(ROOT / "skills/using-claude-code-flow/SKILL.md")
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
         diagnostics = read_text(ROOT / "skills/dev-orchestrator/references/diagnostics.md")
         review_reference = read_text(ROOT / "skills/dev-orchestrator/references/review.md")
         pipeline_operations = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
-        writing_plans = read_text(ROOT / "skills/writing-plans/SKILL.md")
+        writing_plans = read_text(ROOT / "skills/planning/SKILL.md")
         readme = read_text(ROOT / "README.md")
         claude_md = read_text(ROOT / "CLAUDE.md")
         agents_md = read_text(ROOT / "AGENTS.md")
@@ -245,8 +215,8 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("plan-state.json", write_plan)
         self.assertIn("plan-init", write_plan)
         self.assertIn("Use /plan instead.", guard_text)
-        self.assertIn("avoid `EnterPlanMode`", using_flow)
-        self.assertIn("prefer `plan`", using_flow.lower())
+        self.assertIn("avoid `EnterPlanMode`", orchestrator)
+        self.assertIn("prefer `plan`", orchestrator.lower())
         self.assertIn("plan-state.json", orchestrator)
         self.assertIn("plan-brief.md", orchestrator)
         self.assertIn("workflow-state.json", orchestrator)
@@ -413,7 +383,7 @@ class PluginIntegrityTests(unittest.TestCase):
         output = json.loads(workflow_result.stdout)
         self.assertIn("system_prompt_append", output)
         self.assertIn("Primary route: `/plan`", output["system_prompt_append"])
-        self.assertIn("Do not separately invoke `using-claude-code-flow`", output["system_prompt_append"])
+        self.assertIn("Do not separately invoke `using-claude-code-flow`", output["system_prompt_append"])  # plan-detector still mentions old name for context
 
     def test_plan_detector_does_not_steal_other_slash_commands(self):
         script = ROOT / "hooks/scripts/plan-detector.py"
