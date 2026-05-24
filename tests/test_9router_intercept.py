@@ -218,6 +218,13 @@ class InterceptReachable(unittest.TestCase):
         self.assertIn("Test Result", context)
         self.assertIn("https://example.com", context)
 
+    def test_websearch_preserves_utf8_query(self):
+        r = self._run_with_base("WebSearch", {"query": "小红书 高质量 封面"})
+        resp = json.loads(r.stdout)
+        context = resp["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("小红书 高质量 封面", context)
+        self.assertIn(("/v1/search", {"query": "小红书 高质量 封面", "max_results": 5, "provider": "tavily"}), _Fake9Router.REQUESTS)
+
     def test_websearch_ignores_llm_provider_override(self):
         env = os.environ.copy()
         env["NINEROUTER_URL"] = f"http://localhost:{self.port}"

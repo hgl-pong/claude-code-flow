@@ -132,10 +132,10 @@ def _fetch(base_url, url):
 
 def main():
     try:
-        raw = sys.stdin.read().strip()
-        if not raw:
+        raw = sys.stdin.buffer.read()
+        if not raw.strip():
             sys.exit(0)
-        data = json.loads(raw)
+        data = json.loads(raw.decode("utf-8"))
     except (json.JSONDecodeError, ValueError):
         sys.exit(0)
 
@@ -165,7 +165,7 @@ def main():
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": f"Original {tool_name} skipped; replacement context provided by 9router.\n\n{msg}",
+                "permissionDecisionReason": f"Original {tool_name} skipped; replacement context provided by 9router.",
                 "additionalContext": msg,
             },
             "suppressOutput": False,
