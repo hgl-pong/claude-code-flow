@@ -1159,5 +1159,11 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn('Adopt strengthens existing surfaces', text)
         self.assertIn('Reject creates a documented non-goal', text)
 
+    def test_planning_requires_dependency_and_acceptance_matrix(self):
+        text = read_text(ROOT / "skills/planning/SKILL.md")
+        for term in ["Dependency and Acceptance Matrix", "blockedBy", "acceptance evidence"]:
+            self.assertIn(term, text)
+        self.assertIn("no task may depend on a vague predecessor", text.lower())
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

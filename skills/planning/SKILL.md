@@ -41,3 +41,7 @@ Create executable plans; execute only after approval unless the user already app
 ## Executable Task Mapping
 
 Every approved plan must show each requirement maps to at least one task with exact file scope, dependency edges, runnable verification command, and acceptance criterion. A plan cannot unblock implementation until its document self-review says Self Review Result: PASS.
+
+## Dependency and Acceptance Matrix
+
+Plans for non-lightweight work must include a dependency and acceptance matrix: task id, exact file scope, blockedBy edges, verification command, expected acceptance evidence, and owner role. No task may depend on a vague predecessor; split or rewrite any predecessor that does not produce a concrete artifact.
