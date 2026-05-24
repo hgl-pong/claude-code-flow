@@ -14,12 +14,14 @@ GATE CHECKLIST (evaluate for this specific task):
 [ ] Gate 0: Requirement Clarification — mandatory before classification when any
     request is vague or underspecified: missing concrete scope, constraints,
     success criteria, acceptance criteria, target files/areas, or expected behavior.
-    Do not answer "I'll do the minimal version" for vague outcome requests. Ask
-    what to build/change, what files/areas or pages/sections are involved, target
-    users when relevant, style references when relevant, constraints, and acceptance
-    criteria; then proceed through the normal gates. Product/UI/site/design-system
-    outcomes require extra care: if scope, pages, audience, visual direction,
-    content, or success criteria are unclear, clarify before classification.
+    Do not answer "I'll do the minimal version" for vague outcome requests. Minimum
+    implementation is allowed only inside an approved, decomposed task slice; it is
+    not an entry response for broad work. Ask what to build/change, what files/areas
+    or pages/sections are involved, target users when relevant, style references when
+    relevant, constraints, and acceptance criteria; then proceed through the normal
+    gates. Product/UI/site/design-system outcomes require extra care: if scope,
+    pages, audience, visual direction, content, or success criteria are unclear,
+    clarify before classification.
 
 [ ] Gate 1: Brainstorm — mandatory for: new features, behavior changes, UI work,
     architecture changes, broad refactors. Skip only for: narrow bug fixes with
@@ -31,9 +33,9 @@ GATE CHECKLIST (evaluate for this specific task):
     or adding 1-2 small files with obvious scope. Heavy tasks MUST use the full
     flow: more than 5 touched files, more than 3 newly created files, broad
     behavior/workflow/prompt/hook/test changes, architecture/UI changes, unfamiliar
-    code, quality-sensitive outcomes, or any website/official site/landing page/
-    docs site/design system website/multi-page UI request. When unsure, classify
-    as heavy enough to research and plan.
+    code, quality-sensitive outcomes, or outcome-oriented requests without exact
+    implementation scope. UI/site work is one example, not the whole rule. When
+    unsure, classify as heavy enough to research and plan.
     Research MUST include local file inspection. Include external research only
     when external facts, library/API behavior, competitive/product comparison, or
     current ecosystem knowledge materially affect the solution, unless the user

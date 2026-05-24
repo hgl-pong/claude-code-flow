@@ -73,7 +73,7 @@ Do not add dependencies speculatively. Every new dependency needs: concrete need
 1. Read existing build config
 2. Identify what needs changing
 3. If troubleshooting: reproduce failure first, capture exact error
-4. Make minimal, targeted changes
+4. Make targeted changes only within the assigned verification/build task slice
 5. Verify build succeeds
 
 ### Acceptance Verification

@@ -52,7 +52,7 @@ You receive context from the orchestrator's dispatch (task goal, acceptance crit
 1. Read the plan task and acceptance criteria
 2. Read existing code for conventions and patterns
 3. Write failing test first (for behavior changes)
-4. Implement the minimum to pass
+4. Implement only the assigned task slice after orchestration has decomposed the work
 5. Run tests, verify GREEN
 6. Self-review before reporting done
 

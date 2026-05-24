@@ -5,7 +5,7 @@ description: "Design test strategies, test plans, TDD coverage, regression tests
 
 # Testing Strategy
 
-Choose the smallest test set that proves the behavior and catches likely regressions.
+For broad work, define test strategy after requirements are decomposed. For each approved task slice, choose the targeted test set that proves the behavior and catches likely regressions.
 
 ## Rules
 

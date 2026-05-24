@@ -14,11 +14,11 @@ No fix without a reproduced symptom and a root-cause hypothesis supported by evi
 ## Workflow
 
 1. Capture the exact symptom, expected behavior, and recent changes.
-2. Reproduce with the smallest command/test/action.
+2. Reproduce with the narrowest command/test/action that still exercises the symptom.
 3. Localize the failing boundary using logs, tests, traces, or code paths.
 4. Form and test a root-cause hypothesis.
 5. Add or update a regression test when possible.
-6. Apply the smallest fix.
+6. Apply a scoped fix only after the failing boundary is isolated.
 7. Re-run the failing check and nearby regression checks.
 
 ## Output

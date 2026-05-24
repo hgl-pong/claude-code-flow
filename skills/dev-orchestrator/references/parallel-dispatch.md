@@ -25,7 +25,7 @@ Subagent dispatch is the default for non-trivial work, not an optimization to re
 
 ## When NOT to Dispatch Subagents
 
-Keep work in the main conversation for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Use the full flow when the task likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, feels unfamiliar/quality-sensitive, or asks for a website, official site, landing page, docs site, design system website, or multi-page UI.
+Keep work in the main conversation for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Use the full flow when the task likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, feels unfamiliar/quality-sensitive, or is an outcome-oriented request without exact implementation scope. UI/site work is one example, not the whole rule.
 
 ## Decision Trace
 
@@ -33,7 +33,7 @@ Before any multi-agent batch, record: decomposition reason, file-conflict map, c
 
 ## Harness Coordination Modes
 
-Choose the smallest harness surface that preserves durable coordination:
+Choose the harness surface that preserves durable coordination without collapsing broad work into a single direct implementation:
 
 | Work shape | Harness mode | Contract |
 |------------|--------------|----------|
@@ -50,12 +50,13 @@ Long-running orchestration MUST prefer a team once the task graph has 3+ nodes o
 Before starting implementation work on standard/deep/autonomous modes, run this explicit dispatch decision:
 
 ```
-1. VERY LIGHTWEIGHT: Is this only a few lines, 1-2 touched files, or 1-2 small new files with obvious scope? If yes → main conversation may implement directly.
-2. HEAVY THRESHOLD: Will this touch >5 files, create >3 files, or build a website/official site/landing page/docs site/design system website/multi-page UI? If yes → full flow with research/plan/decomposition.
-3. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
-4. SCAN: Does work span 2+ domains or file clusters? If yes → dispatch subagents.
-5. GATES: Does the pipeline need impl + tests + review? → dispatch subagents.
-6. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → dispatch subagents.
+1. BROAD REQUEST: Is the user asking for an outcome, system, feature set, redesign, workflow, or other task that must be decomposed? If yes → full flow with clarification/research/plan/decomposition before any implementation.
+2. VERY LIGHTWEIGHT: Is this only a few lines, 1-2 touched files, or 1-2 small new files with obvious scope? If yes → main conversation may implement directly.
+3. HEAVY THRESHOLD: Will this touch >5 files, create >3 files, span broad behavior/workflow/prompt/hook/test changes, change architecture/UI, or feel unfamiliar/quality-sensitive? If yes → full flow with research/plan/decomposition.
+4. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
+5. SCAN: Does work span 2+ domains or file clusters? If yes → dispatch subagents.
+6. GATES: Does the pipeline need impl + tests + review? → dispatch subagents.
+7. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → dispatch subagents.
 
 If VERY LIGHTWEIGHT is yes and every other check is no:
   - Do work directly in main conversation

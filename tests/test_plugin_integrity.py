@@ -695,6 +695,31 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Self Review Result", planning)
         self.assertIn("research artifact", research.lower())
 
+    def test_minimum_implementation_only_applies_after_decomposition(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
+        forge = read_text(ROOT / "agents/forge.md")
+        prism = read_text(ROOT / "agents/prism.md")
+        brainstorm = read_text(ROOT / "commands/brainstorm.md")
+        testing = read_text(ROOT / "skills/testing-strategy/SKILL.md")
+        debugging = read_text(ROOT / "skills/systematic-debugging/SKILL.md")
+
+        self.assertIn("Minimum", pipeline)
+        self.assertIn("approved, decomposed task slice", pipeline)
+        self.assertIn("Broad outcome requests are never satisfied by announcing a direct small build", prompts)
+        self.assertIn("first decomposes work into approved task slices", prompts)
+        self.assertIn("BROAD REQUEST", dispatch)
+        self.assertIn("full flow with clarification/research/plan/decomposition", dispatch)
+        self.assertIn("assigned task slice", forge)
+        self.assertIn("assigned verification/build task slice", prism)
+        self.assertIn("bounded task slice after decomposition", brainstorm)
+        self.assertIn("after requirements are decomposed", testing)
+        self.assertIn("after the failing boundary is isolated", debugging)
+        self.assertNotIn("Implement the minimum to pass", forge)
+        self.assertNotIn("Make minimal, targeted changes", prism)
+        self.assertNotIn("lightweight TDD implementation", brainstorm)
+
     def test_workflow_defines_lightweight_and_heavy_size_thresholds(self):
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
@@ -714,14 +739,15 @@ class PluginIntegrityTests(unittest.TestCase):
             "more than 3 newly created files",
             "broad\n    behavior/workflow/prompt/hook/test changes",
             "architecture/UI changes",
-            "design system website/multi-page UI request",
+            "outcome-oriented requests without exact\n    implementation scope",
         ]:
             self.assertIn(trigger, pipeline)
+        self.assertIn("UI/site work is one example, not the whole rule", pipeline)
         self.assertIn("touches more than 5 files", dispatch)
         self.assertIn("creates more than 3 files", dispatch)
         self.assertIn("1-2 small new files", dispatch)
-        self.assertIn("design system website", dispatch)
-        self.assertIn("multi-page UI", dispatch)
+        self.assertIn("outcome-oriented request without exact implementation scope", dispatch)
+        self.assertIn("UI/site work is one example, not the whole rule", dispatch)
         self.assertIn("broad, high-impact, multi-step, cross-domain", orchestrator)
         self.assertIn("quality-sensitive", orchestrator)
         self.assertIn("outcome-oriented without exact implementation scope", orchestrator)
@@ -731,7 +757,7 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Frontend/UI/site work is one example", orchestrator)
         self.assertIn("touches more than 5 files", prompts)
         self.assertIn("creates more than 3 files", prompts)
-        self.assertIn("design system website", prompts)
+        self.assertIn("Broad outcome requests", prompts)
         self.assertIn("2+ subtasks or acceptance checks", dispatch)
         self.assertNotIn("3+ subtasks or acceptance checks", dispatch)
 
@@ -784,8 +810,8 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("expected behavior", pipeline)
         self.assertIn("Do not answer \"I'll do the minimal version\"", pipeline)
         self.assertIn("what to build/change", pipeline)
-        self.assertIn("acceptance\n    criteria", pipeline)
-        self.assertIn("Product/UI/site/design-system\n    outcomes require extra care", pipeline)
+        self.assertIn("acceptance criteria", pipeline)
+        self.assertIn("Product/UI/site/design-system outcomes require extra care", pipeline)
 
     def test_quick_fix_cannot_claim_vague_or_broad_work(self):
         quick_fix = read_text(ROOT / "commands/quick-fix.md")

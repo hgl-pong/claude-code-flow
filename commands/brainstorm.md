@@ -34,4 +34,4 @@ Use the `brainstorming` skill to turn the request into a clear design.
 
 - Approved design or next clarification question.
 - Spec path when one is written.
-- Recommended next step: `/write-plan` or lightweight TDD implementation.
+- Recommended next step: `/write-plan`; direct TDD implementation only for a clearly bounded task slice after decomposition.
