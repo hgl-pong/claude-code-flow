@@ -165,7 +165,7 @@ def main():
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": f"Original {tool_name} skipped; replacement context provided by 9router.",
+                "permissionDecisionReason": f"Original {tool_name} skipped; replacement context provided by 9router.\n\n{msg}",
                 "additionalContext": msg,
             },
             "suppressOutput": False,
