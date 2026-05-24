@@ -1165,5 +1165,10 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertIn(term, text)
         self.assertIn("no task may depend on a vague predecessor", text.lower())
 
+    def test_dispatch_conflict_recovery_matrix_documented(self):
+        text = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        for term in ["Conflict Recovery Matrix", "same file", "sequence the tasks", "shared new artifact", "create a blocking task"]:
+            self.assertIn(term, text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

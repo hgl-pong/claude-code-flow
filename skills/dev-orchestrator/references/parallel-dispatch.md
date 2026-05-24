@@ -266,3 +266,14 @@ If an agent returns NEEDS_CONTEXT, add the missing context and re-dispatch. If a
 Each agent envelope must include the allowed write set, exact read scope, task id, acceptance criterion, verification command, and file-conflict map. If the file-conflict map is missing, stop and refine tasks before dispatch.
 
 Team mode requires named owners for ready work, explicit blockedBy edges, and immediate scheduling of newly unblocked tasks after each valid handoff. Idle is not completion; only a checked handoff artifact plus evidence can complete a task.
+
+## Conflict Recovery Matrix
+
+| Conflict | Action |
+|---|---|
+| same file writes | sequence the tasks or isolate with a supported worktree |
+| shared new artifact | create a blocking task for the artifact before dependent work continues |
+| broad unknown write set | stop dispatch and refine file scope |
+| verification uses global state | run one prism/build lane at a time |
+
+Never resolve conflicts by letting agents coordinate ad hoc. The orchestrator owns conflict recovery.
