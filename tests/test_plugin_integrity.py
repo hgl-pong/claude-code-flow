@@ -844,7 +844,29 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertIn("DESIGN.md", text)
         self.assertIn("local research", plan_command.lower())
         self.assertIn("material external/domain research", plan_command)
-        self.assertIn("do not hand off to implementation", plan_command.lower())
+        self.assertIn("hand off to implementation", plan_command.lower())
+        self.assertIn("chat-only", plan_command)
+        self.assertIn("confirm and I will start", plan_command)
+        self.assertIn("not a gate artifact", plan_command)
+        self.assertIn("before any implementation task creation", read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md"))
+
+    def test_plan_detector_routes_broad_outcome_requests(self):
+        script = ROOT / "hooks/scripts/plan-detector.py"
+        for prompt in [
+            "使用前端框架帮我做一个saas设计系统官网",
+            "Build a SaaS design system website with Next.js",
+        ]:
+            with self.subTest(prompt=prompt):
+                result = subprocess.run(
+                    [sys.executable, str(script)],
+                    input=json.dumps({"prompt": prompt}),
+                    text=True,
+                    capture_output=True,
+                    timeout=10,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("PLUGIN PLAN ROUTING ACTIVE", result.stdout)
+                self.assertIn("Primary route: `/plan`", result.stdout)
 
     def test_metrics_collects_verification_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

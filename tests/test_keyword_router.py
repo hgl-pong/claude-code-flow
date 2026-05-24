@@ -41,6 +41,14 @@ class SpecificRouting(unittest.TestCase):
         ctx = _route("/plan implement auth")
         self.assertIsNone(ctx)
 
+    def test_broad_chinese_outcome_skipped_for_plan_detector(self):
+        ctx = _route("使用前端框架帮我做一个saas设计系统官网")
+        self.assertIsNone(ctx)
+
+    def test_broad_english_outcome_skipped_for_plan_detector(self):
+        ctx = _route("Build a SaaS design system website with Next.js")
+        self.assertIsNone(ctx)
+
 
 class DefaultRouting(unittest.TestCase):
     """Non-trivial non-question prompts → dev-orchestrator."""

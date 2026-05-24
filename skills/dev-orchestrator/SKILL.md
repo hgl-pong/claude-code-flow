@@ -15,7 +15,8 @@ If dispatched as a subagent for a specific implementation task, skip routing and
 
 Run one routing pass unless a command, hook, or active skill already selected the path.
 
-- Ambiguous product/architecture/UI direction - `brainstorming`.
+- Broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope - `/plan`.
+- Ambiguous product/architecture/UI direction that is not broad outcome work - `brainstorming`.
 - Explicit plan/spec/task breakdown - `planning`.
 - Bug, crash, regression, failing test/build - `systematic-debugging`.
 - Test strategy or requested tests-first design - `testing-strategy`.

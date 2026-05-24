@@ -59,10 +59,12 @@ GATE CHECKLIST (evaluate for this specific task):
 [ ] Gate 3: Plan (oracle) — default-on before implementation. Skip only for
     very lightweight tasks using the size criteria from Gate 2. Oracle/orchestrator MUST
     produce a plan document at `<output_dir>/plan-brief.md` with TaskCreate tasks
-    before any forge or direct code edit starts. The plan document MUST include
-    Local Research, External Research, Success Criteria, Verification, and Self
-    Review Result sections. Oracle MUST receive research findings as input when
-    Gate 2 was checked and intake decisions as input when Gate 2a was checked.
+    before any implementation task creation, forge dispatch, or direct code edit starts.
+    A chat-only proposal, option list, or "confirm and I will start" response is not a
+    plan artifact. The plan document MUST include Local Research, External Research,
+    Success Criteria, Verification, and Self Review Result sections. Oracle MUST
+    receive research findings as input when Gate 2 was checked and intake decisions
+    as input when Gate 2a was checked.
 
 [ ] Gate 3a: Plan Review — ALWAYS mandatory (all modes including quick).
     Two-phase review before execution begins:

@@ -29,8 +29,9 @@ Start the plugin planning pipeline for a feature or task. This is the plugin-sid
 - If the request is vague or underspecified, ask blocking clarification questions before writing any plan or code.
 - Broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope are never quick mode.
 - For those requests, do not stop at a chat proposal. Produce the required artifacts in order: clarification notes, local research, material external/domain research, `<output_dir>/plan-brief.md`, applicable domain design artifacts, document self-review `PASS`, then explicit user approval.
+- A chat-only "design方案", option list, or task list is not a gate artifact and cannot replace `plan-brief.md`, `ui-research.md`, or `DESIGN.md`.
 - Frontend/UI/site requests are examples, not the whole rule: include external/UI research and UI `DESIGN.md` when Gate 6 is checked.
-- Do not hand off to implementation, dispatch forge, or edit product files until plan approval and any applicable design approval gates have passed.
+- Do not create implementation tasks, ask "confirm and I will start", hand off to implementation, dispatch forge, or edit product files until plan approval and any applicable design approval gates have passed.
 
 ## Process
 

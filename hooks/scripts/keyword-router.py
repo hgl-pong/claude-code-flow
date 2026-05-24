@@ -32,7 +32,9 @@ DEDICATED_PLAN_PATTERN = re.compile(
     r"\bneed\s+a\s+plan\b|\bhelp\s+me\s+plan\b|\bplan\s+first\b|"
     r"\bplanning\b|\bplan\s+(?:a|an|the|this)\b|\boutline\b|\bnext\s+steps\b|"
     r"\bmulti[- ]step\s+plan\b|\bcross[- ]?domain\s+plan\b|"
-    r"\barchitecture\s+plan\b|\broadmap\b|\borchestrat(?:e|ion)\s+plan\b)",
+    r"\barchitecture\s+plan\b|\broadmap\b|\borchestrat(?:e|ion)\s+plan\b|"
+    r"\b(?:build|create|make)\b.{0,80}\b(?:site|app|platform|system|dashboard|design system|multi[- ]page)\b|"
+    r"(?:做一个|帮我做|使用.{0,20}框架).{0,80}(官网|网站|应用|系统|平台|后台|仪表盘|设计系统|多页))",
     re.IGNORECASE,
 )
 
