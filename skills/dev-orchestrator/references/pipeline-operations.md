@@ -30,19 +30,20 @@ GATE CHECKLIST (evaluate for this specific task):
 [ ] Gate 2: Research (general-purpose subagent + research skill) — default-on
     before plan. First classify the request by estimated size. Very lightweight
     tasks may skip research/plan: changing only a few lines, touching 1-2 files,
-    or adding 1-2 small files with obvious scope. Heavy tasks MUST use the full
-    flow: more than 5 touched files, more than 3 newly created files, broad
+    or adding 1-2 small files with obvious scope. Every task that is not very
+    lightweight MUST use the full flow with planning-stage subagents. Heavy triggers
+    include: more than 5 touched files, more than 3 newly created files, broad
     behavior/workflow/prompt/hook/test changes, architecture/UI changes, unfamiliar
     code, quality-sensitive outcomes, or outcome-oriented requests without exact
     implementation scope. UI/site work is one example, not the whole rule. When
-    unsure, classify as heavy enough to research and plan.
+    unsure, classify as not very lightweight and dispatch planning-stage subagents.
     Research MUST include local file inspection. Include external research only
     when external facts, library/API behavior, competitive/product comparison, or
     current ecosystem knowledge materially affect the solution, unless the user
     forbids network access or the environment cannot access the network. Produce
-    a written research artifact before plan when research is required; chat-only
-    synthesis is not enough. Strong research is a quality gate: it determines
-    whether the final solution is merely functional or competitive.
+    a subagent-authored written research artifact before plan when research is required;
+    chat-only synthesis is not enough. Strong research is a quality gate:
+    it determines whether the final solution is merely functional or competitive.
     **Dispatch with `subagent_type: "general-purpose"` — research is a skill, not
     an agent.** Multiple independent research/product/design streams MAY run in
     parallel. Oracle remains SEQUENTIAL after research — never dispatch oracle
@@ -57,9 +58,11 @@ GATE CHECKLIST (evaluate for this specific task):
     system, hook runtime, or external control plane.
 
 [ ] Gate 3: Plan (oracle) — default-on before implementation. Skip only for
-    very lightweight tasks using the size criteria from Gate 2. Oracle/orchestrator MUST
-    produce a plan document at `<output_dir>/plan-brief.md` with TaskCreate tasks
-    before any implementation task creation, forge dispatch, or direct code edit starts.
+    very lightweight tasks using the size criteria from Gate 2. For every task that is
+    not very lightweight, dispatch oracle; main-conversation planning is not enough.
+    Oracle/orchestrator MUST produce a plan document at `<output_dir>/plan-brief.md`
+    with TaskCreate tasks before any implementation task creation, forge dispatch, or
+    direct code edit starts.
     A chat-only proposal, option list, or "confirm and I will start" response is not a
     plan artifact. The plan document MUST include Local Research, External Research,
     Success Criteria, Verification, and Self Review Result sections. Oracle MUST
@@ -96,7 +99,7 @@ GATE CHECKLIST (evaluate for this specific task):
     MUST produce design document before implementation.
 
 [ ] Gate 5: UI Research (general-purpose subagent + research skill) — mandatory
-    when task domain is frontend-UI AND mode is standard+. Research subagent
+    when task domain is frontend-UI AND the task is not very lightweight. Research subagent
     MUST produce ui-research.md with CONCRETE data:
     a) Local codebase: existing components, styling approach (Tailwind/CSS Modules/etc),
        actual CSS variables and font imports in use.
@@ -107,7 +110,7 @@ GATE CHECKLIST (evaluate for this specific task):
     Research MUST complete before Gate 6 (UI Design) starts.
 
 [ ] Gate 6: UI Design (ui-design skill) — mandatory when task domain is frontend-UI
-    AND mode is standard+. UI design skill MUST produce DESIGN.md following the
+    AND the task is not very lightweight. UI design skill MUST produce DESIGN.md following the
     Design Methodology (emotional signature → color roles → type system → icon
     system → spacing rhythm → layout grid → elevation strategy → border radius
     scale → transition tokens → component states). DESIGN.md MUST

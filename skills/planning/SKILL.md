@@ -7,7 +7,7 @@ description: "Write and execute implementation plans with task breakdowns, appro
 
 Plans are executable documents, not chat summaries. Before approval or implementation, every plan document MUST include `Local Research`, `External Research`, `Success Criteria`, `Verification`, and `Self Review Result` sections. If self-review finds missing requirements, vague tasks, missing file paths, unrunnable commands, or unresolved contradictions, revise the plan document and repeat self-review before dispatch.
 
-For broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope, never stop at a chat proposal and never execute directly. Clarify missing requirements, inspect local files, run material external/domain research, write `plan-brief.md`, produce applicable design artifacts, self-review generated documents to `PASS`, then request explicit approval before implementation. Frontend/UI/site work is one example: include external/UI research and UI `DESIGN.md` when Gate 6 is checked.
+For every task that is not very lightweight, never stop at a chat proposal and never execute directly. This includes broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope. Dispatch bounded subagents for local/external research, oracle planning, and applicable design; write `plan-brief.md`, produce applicable design artifacts, self-review generated documents to `PASS`, then request explicit approval before implementation. Frontend/UI/site work is one example: include external/UI research and UI `DESIGN.md` when Gate 6 is checked.
 
 Create executable plans; execute only after approval unless the user already approved the plan.
 
@@ -22,8 +22,8 @@ Create executable plans; execute only after approval unless the user already app
 ## Workflow
 
 1. Clarify goal, constraints, non-goals, and success criteria.
-2. Inspect relevant local files and run external research before drafting tasks.
-3. Write the plan document with Local Research, External Research, tasks, dependencies, and verification.
+2. For every task that is not very lightweight, dispatch research before drafting tasks.
+3. Dispatch oracle to write the plan document with Local Research, External Research, tasks, dependencies, and verification.
 4. Run the plan document self-review loop; revise until `Self Review Result: PASS`.
 5. Request approval.
 6. On approval, hand execution to dev-orchestrator or execute the tasks with verification.

@@ -695,6 +695,30 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Self Review Result", planning)
         self.assertIn("research artifact", research.lower())
 
+    def test_non_very_lightweight_tasks_require_planning_subagents(self):
+        plan_command = read_text(ROOT / "commands/plan.md")
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        planning = read_text(ROOT / "skills/planning/SKILL.md")
+        orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+
+        for text in [plan_command, pipeline, planning, orchestrator]:
+            self.assertIn("not very lightweight", text)
+            self.assertIn("subagents", text.lower())
+        self.assertIn("Dispatch bounded subagents for research, oracle planning, and applicable design", plan_command)
+        self.assertIn("main-conversation planning is not enough", pipeline)
+        self.assertIn("subagent-authored written research artifact", pipeline)
+        self.assertIn("dispatch oracle", planning.lower())
+        self.assertIn("self-review generated documents to `PASS`", planning)
+        self.assertIn("main conversation controls the pipeline", orchestrator)
+        self.assertIn("research, oracle planning, and applicable design", orchestrator)
+        self.assertIn("detailed self-review PASS", orchestrator)
+
+    def test_commands_and_skills_do_not_contain_chinese_text(self):
+        for folder in [ROOT / "commands", ROOT / "skills"]:
+            for path in folder.rglob("*.md"):
+                text = read_text(path)
+                self.assertNotRegex(text, r"[一-鿿]", str(path.relative_to(ROOT)))
+
     def test_minimum_implementation_only_applies_after_decomposition(self):
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
         dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
