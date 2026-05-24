@@ -83,3 +83,7 @@ For pipeline review, the spec compliance reviewer must approve before code quali
 ## One Feedback Item at a Time
 
 When implementing review feedback, handle one feedback item at a time unless items are inseparable. For each item: verify it against codebase reality, decide accept/reject, implement accepted changes, run focused verification, then continue. Use technical pushback for incorrect, unused, or scope-expanding suggestions.
+
+## Review Loop State Machine
+
+Each review stage tracks a round counter, focus, target, findings, fix task ids, and fresh evidence. APPROVE advances to the next stage. REQUEST CHANGES creates scoped fix tasks and repeats the same stage after verification. NEEDS DISCUSSION stops execution and asks the user. Reaching the round limit escalates with remaining findings and evidence.

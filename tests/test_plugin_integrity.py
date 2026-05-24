@@ -1175,5 +1175,10 @@ class PluginIntegrityTests(unittest.TestCase):
         for term in ["Team Shutdown Gate", "shutdown_request", "TeamDelete", "owner handoff", "unassigned completed tasks are invalid"]:
             self.assertIn(term, text)
 
+    def test_review_loop_state_machine_documented(self):
+        text = read_text(ROOT / "skills/dev-orchestrator/references/review.md")
+        for term in ["Review Loop State Machine", "REQUEST CHANGES", "NEEDS DISCUSSION", "round counter", "fresh evidence"]:
+            self.assertIn(term, text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
