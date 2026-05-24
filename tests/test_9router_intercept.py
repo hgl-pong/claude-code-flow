@@ -218,6 +218,19 @@ class InterceptReachable(unittest.TestCase):
         self.assertIn("Test Result", context)
         self.assertIn("https://example.com", context)
 
+    def test_websearch_ignores_llm_provider_override(self):
+        env = os.environ.copy()
+        env["NINEROUTER_URL"] = f"http://localhost:{self.port}"
+        env["NINEROUTER_CACHE_FILE"] = CACHE_FILE
+        env["NINEROUTER_SEARCH_PROVIDERS"] = "gpt-4o,tavily"
+        payload = json.dumps({"tool_name": "WebSearch", "tool_input": {"query": "test query"}})
+        subprocess.run(
+            [sys.executable, str(SCRIPT)], input=payload,
+            capture_output=True, text=True, timeout=30, env=env,
+        )
+        self.assertNotIn(("/v1/search", {"query": "test query", "max_results": 5, "provider": "gpt-4o"}), _Fake9Router.REQUESTS)
+        self.assertIn(("/v1/search", {"query": "test query", "max_results": 5, "provider": "tavily"}), _Fake9Router.REQUESTS)
+
     def test_websearch_uses_documented_default_provider(self):
         self._run_with_base("WebSearch", {"query": "test query"})
         self.assertIn(("/v1/search", {"query": "test query", "max_results": 5, "provider": "tavily"}), _Fake9Router.REQUESTS)

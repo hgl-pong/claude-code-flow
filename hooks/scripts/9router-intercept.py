@@ -19,6 +19,7 @@ BASE_URL = os.environ.get("NINEROUTER_URL", "").rstrip("/") or "http://localhost
 _TV = "tav" + "ily"
 SEARCH_PROVIDERS = [_TV, "exa"]
 FETCH_PROVIDERS = ["firecrawl", "exa", _TV]
+SEARCH_PROVIDER_ALLOWLIST = set(SEARCH_PROVIDERS)
 
 _WS = "Web" + "Search"
 
@@ -76,9 +77,11 @@ def _api(base_url, path, payload):
         return json.loads(resp.read())
 
 
-def _providers(env_name, defaults):
+def _providers(env_name, defaults, allowlist=None):
     value = os.environ.get(env_name, "")
     providers = [p.strip() for p in value.split(",") if p.strip()]
+    if allowlist is not None:
+        providers = [p for p in providers if p in allowlist]
     return providers or defaults
 
 
@@ -96,7 +99,7 @@ def _search(base_url, query):
     data = _api_with_providers(base_url, "/v1/search", {
         "query": query,
         "max_results": 5,
-    }, _providers("NINEROUTER_SEARCH_PROVIDERS", SEARCH_PROVIDERS))
+    }, _providers("NINEROUTER_SEARCH_PROVIDERS", SEARCH_PROVIDERS, SEARCH_PROVIDER_ALLOWLIST))
     results = data.get("results", [])
     items = "\n\n".join(
         f"- [{r.get('title', '')}]({r.get('url', '')})\n  {r.get('snippet', '')}"
@@ -162,10 +165,10 @@ def main():
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": f"Redirected to 9router ({tool_name})",
+                "permissionDecisionReason": f"Original {tool_name} skipped; replacement context provided by 9router.",
                 "additionalContext": msg,
             },
-            "suppressOutput": True,
+            "suppressOutput": False,
         }))
         sys.exit(0)
     except Exception:
