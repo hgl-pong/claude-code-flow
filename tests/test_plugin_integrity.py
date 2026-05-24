@@ -250,6 +250,41 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertNotIn(duplicated_gate_detail, plan_cmd)
 
         self.assertIn("Workflow Diagnostics Reference", diagnostics)
+        self.assertIn("headless transcript assertions", claude_md.lower())
+        self.assertIn("skill invocation, agent dispatch, task tracking, review order, and verification evidence", claude_md)
+        e2e_runner = read_text(ROOT / "tests/claude-code/run-e2e-tests.sh")
+        self.assertIn("headless transcript assertions", e2e_runner.lower())
+        for term in ["skill invocation", "agent dispatch", "task tracking", "review order", "verification evidence"]:
+            self.assertIn(term, e2e_runner)
+        e2e_helpers = read_text(ROOT / "tests/claude-code/test-helpers.sh")
+        self.assertIn("assert_session_contains()", e2e_helpers)
+        self.assertIn("assert_session_order()", e2e_helpers)
+        self.assertIn("find_session_file_containing()", e2e_helpers)
+        self.assertIn("session JSONL", e2e_helpers)
+        for rel in [
+            "tests/claude-code/test-integration-dev-orchestrator.sh",
+            "tests/claude-code/test-integration-uli.sh",
+        ]:
+            e2e_test = read_text(ROOT / rel)
+            with self.subTest(file=rel):
+                self.assertIn("assert_session_skill", e2e_test)
+                self.assertIn("assert_session_contains", e2e_test)
+                self.assertIn("assert_session_order", e2e_test)
+        uli_e2e = read_text(ROOT / "tests/claude-code/test-integration-uli.sh")
+        self.assertIn("ERROR: Could not find session JSONL file.", uli_e2e)
+        self.assertIn("FAILED=$((FAILED+1))", uli_e2e)
+        self.assertIn("No uli/* branch found and no implementation commit exists", uli_e2e)
+        self.assertIn("grep -Fq \"$marker\"", e2e_helpers)
+        dev_orchestrator_e2e = read_text(ROOT / "tests/claude-code/test-integration-dev-orchestrator.sh")
+        self.assertIn("SESSION_MARKER=\"DEV_ORCHESTRATOR_E2E_PROJECT=$TEST_PROJECT PID=$$\"", dev_orchestrator_e2e)
+        self.assertIn("Marker: $SESSION_MARKER", dev_orchestrator_e2e)
+        self.assertIn("find_session_file_containing \"$ROOT_DIR\" \"$SESSION_MARKER\"", dev_orchestrator_e2e)
+        self.assertIn("SESSION_MARKER=\"ULI_E2E_PROJECT=$TEST_PROJECT PID=$$\"", uli_e2e)
+        self.assertIn("Marker: $SESSION_MARKER", uli_e2e)
+        self.assertIn("find_session_file_containing \"$ROOT_DIR\" \"$SESSION_MARKER\"", uli_e2e)
+        self.assertNotIn("transcript-based tests will be skipped", uli_e2e)
+        self.assertNotIn("[SKIP] no session file", uli_e2e)
+        self.assertNotIn("No uli/* branch found. Branches:", uli_e2e)
         self.assertIn("metrics.py collect", diagnostics)
         for diagnostic_cmd in [workflow_status, workflow_metrics, workflow_timeline]:
             self.assertIn("skills/dev-orchestrator/references/diagnostics.md", diagnostic_cmd)
@@ -453,6 +488,7 @@ class PluginIntegrityTests(unittest.TestCase):
     def test_shell_scripts_are_lf_only(self):
         scripts = list((ROOT / "hooks/scripts").glob("*.sh"))
         scripts.extend((ROOT / "scripts").glob("*.sh"))
+        scripts.extend((ROOT / "tests/claude-code").glob("*.sh"))
         self.assertGreater(len(scripts), 0, "expected shell scripts")
 
         for path in scripts:
@@ -695,29 +731,38 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Self Review Result", planning)
         self.assertIn("research artifact", research.lower())
 
-    def test_non_very_lightweight_tasks_require_planning_subagents(self):
+    def test_non_very_lightweight_policy_has_single_source(self):
         plan_command = read_text(ROOT / "commands/plan.md")
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
         planning = read_text(ROOT / "skills/planning/SKILL.md")
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
 
-        for text in [plan_command, pipeline, planning, orchestrator]:
-            self.assertIn("not very lightweight", text)
-            self.assertIn("subagents", text.lower())
-        self.assertIn("Dispatch bounded subagents for research, oracle planning, and applicable design", plan_command)
-        self.assertIn("main-conversation planning is not enough", pipeline)
+        self.assertIn("not very lightweight", pipeline)
         self.assertIn("subagent-authored written research artifact", pipeline)
-        self.assertIn("dispatch oracle", planning.lower())
-        self.assertIn("self-review generated documents to `PASS`", planning)
-        self.assertIn("main conversation controls the pipeline", orchestrator)
-        self.assertIn("research, oracle planning, and applicable design", orchestrator)
-        self.assertIn("detailed self-review PASS", orchestrator)
+        self.assertIn("main-conversation planning is not enough", pipeline)
+        for text in [plan_command, planning, orchestrator]:
+            self.assertIn("pipeline-operations.md", text)
+            self.assertNotIn("Dispatch bounded subagents for research, oracle planning, and applicable design", text)
+            self.assertNotIn("subagent-authored written research artifact", text)
+        self.assertIn("parallel-dispatch.md", orchestrator)
+        self.assertIn("plan artifact contract", planning)
 
     def test_commands_and_skills_do_not_contain_chinese_text(self):
         for folder in [ROOT / "commands", ROOT / "skills"]:
             for path in folder.rglob("*.md"):
                 text = read_text(path)
                 self.assertNotRegex(text, r"[一-鿿]", str(path.relative_to(ROOT)))
+
+    def test_worktree_isolation_is_optional_without_support(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        combined = pipeline + dispatch
+
+        self.assertIn("git worktrees or WorktreeCreate/WorktreeRemove hooks are available", dispatch)
+        self.assertIn("WorktreeCreate/WorktreeRemove hooks are available", dispatch)
+        self.assertIn("Never require git", dispatch)
+        self.assertIn("otherwise sequence", combined)
+        self.assertIn("otherwise omit isolation", dispatch)
 
     def test_minimum_implementation_only_applies_after_decomposition(self):
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
@@ -733,8 +778,8 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("approved, decomposed task slice", pipeline)
         self.assertIn("Broad outcome requests are never satisfied by announcing a direct small build", prompts)
         self.assertIn("first decomposes work into approved task slices", prompts)
-        self.assertIn("BROAD REQUEST", dispatch)
-        self.assertIn("full flow with clarification/research/plan/decomposition", dispatch)
+        self.assertIn("approved pipeline classification", dispatch)
+        self.assertIn("pipeline-operations.md", dispatch)
         self.assertIn("assigned task slice", forge)
         self.assertIn("assigned verification/build task slice", prism)
         self.assertIn("bounded task slice after decomposition", brainstorm)
@@ -744,13 +789,12 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertNotIn("Make minimal, targeted changes", prism)
         self.assertNotIn("lightweight TDD implementation", brainstorm)
 
-    def test_workflow_defines_lightweight_and_heavy_size_thresholds(self):
+    def test_workflow_defines_lightweight_and_heavy_size_thresholds_once(self):
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
         dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
         prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
 
-        self.assertIn("default to non-trivial", orchestrator)
         for allowed in [
             "changing only a few lines",
             "touching 1-2 files",
@@ -761,29 +805,72 @@ class PluginIntegrityTests(unittest.TestCase):
         for trigger in [
             "more than 5 touched files",
             "more than 3 newly created files",
-            "broad\n    behavior/workflow/prompt/hook/test changes",
+            "behavior/workflow/prompt/hook/test changes",
             "architecture/UI changes",
-            "outcome-oriented requests without exact\n    implementation scope",
+            "outcome-oriented requests without exact",
+            "implementation scope",
         ]:
             self.assertIn(trigger, pipeline)
         self.assertIn("UI/site work is one example, not the whole rule", pipeline)
-        self.assertIn("touches more than 5 files", dispatch)
-        self.assertIn("creates more than 3 files", dispatch)
-        self.assertIn("1-2 small new files", dispatch)
-        self.assertIn("outcome-oriented request without exact implementation scope", dispatch)
-        self.assertIn("UI/site work is one example, not the whole rule", dispatch)
-        self.assertIn("broad, high-impact, multi-step, cross-domain", orchestrator)
-        self.assertIn("quality-sensitive", orchestrator)
-        self.assertIn("outcome-oriented without exact implementation scope", orchestrator)
-        self.assertIn("never quick/lightweight", orchestrator)
-        self.assertIn("clarification", orchestrator)
-        self.assertIn("applicable domain design", orchestrator)
-        self.assertIn("Frontend/UI/site work is one example", orchestrator)
-        self.assertIn("touches more than 5 files", prompts)
-        self.assertIn("creates more than 3 files", prompts)
         self.assertIn("Broad outcome requests", prompts)
         self.assertIn("2+ subtasks or acceptance checks", dispatch)
+        self.assertIn("classification made in `pipeline-operations.md`", dispatch)
+        for text in [orchestrator, dispatch]:
+            self.assertNotIn("touches more than 5 files", text)
+            self.assertNotIn("creates more than 3 files", text)
+            self.assertNotIn("outcome-oriented request without exact implementation scope", text)
         self.assertNotIn("3+ subtasks or acceptance checks", dispatch)
+
+    def test_pipeline_owns_gate_order_not_dispatch_mechanics(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+
+        self.assertIn("Mandatory Gate Checklist", pipeline)
+        self.assertIn("Dispatch Mechanics Boundary", pipeline)
+        self.assertIn("Dispatch Call", dispatch)
+        self.assertIn("Agent({", dispatch)
+        self.assertIn("File Conflict Analysis", dispatch)
+        self.assertNotIn("Agent({", pipeline)
+        self.assertNotIn("## Context Envelope Template", pipeline)
+        self.assertNotIn("## File Conflict Analysis", pipeline)
+
+    def test_review_details_owned_by_review_reference(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        review = read_text(ROOT / "skills/dev-orchestrator/references/review.md")
+
+        self.assertIn("review.md`'s fix-loop outcome", pipeline)
+        self.assertIn("multi-round fix loop", review.lower())
+        self.assertIn("sentinel", review.lower())
+        self.assertNotIn("review_focus: spec_compliance", pipeline)
+        self.assertNotIn("fresh spec sentinel", pipeline)
+
+    def test_plan_command_is_thin_router(self):
+        plan_command = read_text(ROOT / "commands/plan.md")
+
+        self.assertIn("Treat `/plan` as the selected route", plan_command)
+        self.assertIn("flow-state.py set-phase plan", plan_command)
+        self.assertIn("pipeline-operations.md", plan_command)
+        self.assertIn("Do not invoke `EnterPlanMode`", plan_command)
+        self.assertNotIn("Gate 0", plan_command)
+        self.assertNotIn("Gate 6", plan_command)
+        self.assertNotIn("Do not collapse these into main-conversation prose", plan_command)
+
+    def test_superpowers_intake_decisions_are_encoded_as_invariants(self):
+        orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+        plan_command = read_text(ROOT / "commands/plan.md")
+        planning = read_text(ROOT / "skills/planning/SKILL.md")
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+
+        self.assertIn("description:", orchestrator)
+        self.assertIn("pipeline-operations.md", orchestrator)
+        self.assertIn("parallel-dispatch.md", orchestrator)
+        self.assertIn("Source of Truth", plan_command)
+        self.assertIn("plan artifact contract", planning)
+        self.assertIn("Dispatch Mechanics Boundary", pipeline)
+        self.assertIn("Dispatch Call", dispatch)
+        self.assertTrue((ROOT / "commands").exists())
+        self.assertTrue((ROOT / "skills/dev-orchestrator/references").exists())
 
     def test_long_task_harness_coordination_is_documented(self):
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
@@ -797,6 +884,16 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Team Mode Ritual", dispatch)
         self.assertIn("request the TaskList update", prompts)
         self.assertIn("orchestrator validates scope/evidence and performs `TaskUpdate`", prompts)
+
+    def test_agentic_execution_uses_fresh_agents_and_ordered_reviews(self):
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+
+        self.assertIn("fresh bounded agent per task", dispatch)
+        self.assertIn("complete context envelope", dispatch)
+        self.assertIn("spec compliance first, code quality second", dispatch)
+        self.assertIn("STATUS: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED", dispatch)
+        self.assertIn("SELF_REVIEW:", dispatch)
+        self.assertIn("Never ignore an escalation", dispatch)
 
     def test_subagent_templates_use_handoff_artifacts_without_commits(self):
         prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
@@ -826,8 +923,8 @@ class PluginIntegrityTests(unittest.TestCase):
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
 
-        self.assertIn("requirements are vague or underspecified", orchestrator)
-        self.assertIn("ask clarifying questions before classification or implementation", orchestrator)
+        self.assertIn("pipeline-operations.md", orchestrator)
+        self.assertIn("Evaluate the gate checklist", orchestrator)
         self.assertIn("Gate 0: Requirement Clarification", pipeline)
         self.assertIn("any\n    request is vague or underspecified", pipeline)
         self.assertIn("missing concrete scope, constraints", pipeline)
@@ -847,32 +944,24 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Vague or underspecified requests", quick_fix)
         self.assertIn("normal gates", quick_fix)
 
-    def test_plan_route_enforces_full_workflow_for_broad_work(self):
+    def test_plan_route_uses_pipeline_as_source_of_truth(self):
         plan_command = read_text(ROOT / "commands/plan.md")
         planning = read_text(ROOT / "skills/planning/SKILL.md")
         plan_detector = read_text(ROOT / "hooks/scripts/plan-detector.py")
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
 
-        for text in [plan_command, planning, plan_detector]:
-            lowered = text.lower()
-            self.assertIn("broad, high-impact, multi-step, cross-domain", lowered)
-            self.assertIn("quality-sensitive", text)
-            self.assertIn("outcome-oriented requests", text)
-            self.assertIn("exact implementation scope", text)
-            self.assertIn("chat proposal", text)
-            self.assertIn("plan-brief.md", text)
-            self.assertIn("applicable design", text)
-            self.assertIn("explicit", text)
-            self.assertIn("approval", text)
-            self.assertIn("Frontend/UI/site", text)
-            self.assertIn("example", text)
-            self.assertIn("DESIGN.md", text)
-        self.assertIn("local research", plan_command.lower())
-        self.assertIn("material external/domain research", plan_command)
-        self.assertIn("hand off to implementation", plan_command.lower())
-        self.assertIn("chat-only", plan_command)
-        self.assertIn("confirm and I will start", plan_command)
-        self.assertIn("not a gate artifact", plan_command)
-        self.assertIn("before any implementation task creation", read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md"))
+        self.assertIn("broad, high-impact, multi-step, cross-domain", plan_detector.lower())
+        self.assertIn("quality-sensitive", plan_detector)
+        self.assertIn("outcome-oriented requests", plan_detector)
+        self.assertIn("exact implementation scope", plan_detector)
+        self.assertIn("before any implementation task creation", pipeline)
+        for text in [plan_command, planning]:
+            self.assertIn("pipeline-operations.md", text)
+            self.assertNotIn("broad, high-impact, multi-step, cross-domain", text.lower())
+            self.assertNotIn("material external/domain research", text)
+            self.assertNotIn("confirm and I will start", text)
+        self.assertIn("plan-brief.md", plan_command)
+        self.assertIn("plan artifact contract", planning)
 
     def test_plan_detector_routes_broad_outcome_requests(self):
         script = ROOT / "hooks/scripts/plan-detector.py"

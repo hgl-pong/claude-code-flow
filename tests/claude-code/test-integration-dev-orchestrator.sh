@@ -76,10 +76,11 @@ echo ""
 # ------------------------------------------------------------------
 OUTPUT_FILE="$TEST_PROJECT/claude-output.txt"
 
+SESSION_MARKER="DEV_ORCHESTRATOR_E2E_PROJECT=$TEST_PROJECT PID=$$"
 PROMPT="Change to directory $TEST_PROJECT and execute the implementation plan at \
 docs/plans/implementation-plan.md using the dev-orchestrator skill (quick mode). \
 Follow the skill exactly: write a failing test first for each task, then implement, \
-then run npm test to verify. Commit after each task."
+then run npm test to verify. Commit after each task. Marker: $SESSION_MARKER"
 
 cd "$ROOT_DIR"
 echo "Running Claude (output → $OUTPUT_FILE)..."
@@ -102,7 +103,7 @@ echo ""
 # ------------------------------------------------------------------
 # Find the session transcript
 # ------------------------------------------------------------------
-SESSION_FILE="$(find_session_file "$ROOT_DIR" 60)"
+SESSION_FILE="$(find_session_file_containing "$ROOT_DIR" "$SESSION_MARKER" 60)"
 if [ -z "$SESSION_FILE" ]; then
   echo "ERROR: Could not find session JSONL file."
   echo "Looked for recent files in ~/.claude/projects/ corresponding to $ROOT_DIR"
@@ -120,32 +121,19 @@ echo "=== Verification Tests ==="
 echo ""
 
 echo "Test 1: Skill invoked..."
-if grep -Eq '"skill":"([^"]*:)?dev-orchestrator"' "$SESSION_FILE" 2>/dev/null; then
-  echo "  [PASS] dev-orchestrator skill was invoked"
-else
-  echo "  [FAIL] dev-orchestrator skill was NOT invoked"
-  FAILED=$((FAILED+1))
-fi
+assert_session_skill "$SESSION_FILE" "dev-orchestrator" "dev-orchestrator skill was invoked" || FAILED=$((FAILED+1))
 echo ""
 
 echo "Test 2: Subagents dispatched (Task tool)..."
-task_count="$(grep -c '"name":"Task"' "$SESSION_FILE" 2>/dev/null || echo 0)"
-if [ "$task_count" -ge 2 ]; then
-  echo "  [PASS] $task_count Task invocations found"
-else
-  echo "  [FAIL] Only $task_count Task invocations (expected ≥ 2)"
-  FAILED=$((FAILED+1))
-fi
+assert_session_contains "$SESSION_FILE" '"name":"Task"' "Task tool was invoked" || FAILED=$((FAILED+1))
 echo ""
 
 echo "Test 3: TodoWrite used for tracking..."
-todo_count="$(grep -c '"name":"TodoWrite"' "$SESSION_FILE" 2>/dev/null || echo 0)"
-if [ "$todo_count" -ge 1 ]; then
-  echo "  [PASS] TodoWrite used $todo_count time(s)"
-else
-  echo "  [FAIL] TodoWrite never used"
-  FAILED=$((FAILED+1))
-fi
+assert_session_contains "$SESSION_FILE" '"name":"TodoWrite"' "TodoWrite used for tracking" || FAILED=$((FAILED+1))
+echo ""
+
+echo "Test 3b: Transcript ordering..."
+assert_session_order "$SESSION_FILE" '"skill":"([^"]*:)?dev-orchestrator"' '"name":"Task"' "skill invocation before Task dispatch" || FAILED=$((FAILED+1))
 echo ""
 
 echo "Test 4: Implementation files created..."

@@ -83,10 +83,11 @@ echo ""
 # ------------------------------------------------------------------
 OUTPUT_FILE="$TEST_PROJECT/claude-output.txt"
 
+SESSION_MARKER="ULI_E2E_PROJECT=$TEST_PROJECT PID=$$"
 PROMPT="uli implement the string utility library described in the README. \
 Use the ULI mode: have the PD agent read the product-state.md, propose requirements for the first iteration, \
 then implement them with TDD. Run to completion of one full iteration (PD proposal + implementation + acceptance). \
-Project directory: $TEST_PROJECT"
+Project directory: $TEST_PROJECT. Marker: $SESSION_MARKER"
 
 cd "$ROOT_DIR"
 echo "Running Claude (output → $OUTPUT_FILE)..."
@@ -110,12 +111,13 @@ echo ""
 # ------------------------------------------------------------------
 # Find session transcript
 # ------------------------------------------------------------------
-SESSION_FILE="$(find_session_file "$ROOT_DIR" 120)"
+SESSION_FILE="$(find_session_file_containing "$ROOT_DIR" "$SESSION_MARKER" 120)"
 if [ -z "$SESSION_FILE" ]; then
-  echo "WARNING: Could not find session JSONL file — transcript-based tests will be skipped."
-else
-  echo "Session transcript: $(basename "$SESSION_FILE")"
+  echo "ERROR: Could not find session JSONL file."
+  echo "Looked for recent files in ~/.claude/projects/ corresponding to $ROOT_DIR"
+  exit 1
 fi
+echo "Session transcript: $(basename "$SESSION_FILE")"
 echo ""
 
 # ------------------------------------------------------------------
@@ -128,34 +130,21 @@ echo ""
 
 # Test 1: ULI mode was activated (ultrawork skill invoked)
 echo "Test 1: ultrawork skill (ULI branch) invoked..."
-if [ -n "$SESSION_FILE" ]; then
-  if grep -Eq '"skill":"([^"]*:)?ultrawork"' "$SESSION_FILE" 2>/dev/null; then
-    echo "  [PASS] ultrawork skill was invoked"
-  else
-    echo "  [FAIL] ultrawork skill was NOT invoked in session"
-    FAILED=$((FAILED+1))
-  fi
-else
-  echo "  [SKIP] no session file"
-fi
+assert_session_skill "$SESSION_FILE" "ultrawork" "ultrawork skill was invoked" || FAILED=$((FAILED+1))
 echo ""
 
 # Test 2: PD agent was spawned
 echo "Test 2: PD agent spawned..."
-if [ -n "$SESSION_FILE" ]; then
-  if grep -Eiq '"pd"|"claude-code-flow:pd"|subagent.*pd|pd.*agent' "$SESSION_FILE" 2>/dev/null; then
-    echo "  [PASS] PD agent invocation found in session"
-  else
-    # Fall back: check if uli/<slug>/proposal.md was created (which PD writes)
-    if find "$TEST_PROJECT/.claude/flow/uli" -name "proposal.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q .; then
-      echo "  [PASS] uli/<slug>/proposal.md exists (PD output confirmed)"
-    else
-      echo "  [FAIL] PD agent not spawned and uli/<slug>/proposal.md not found"
-      FAILED=$((FAILED+1))
-    fi
-  fi
+if assert_session_contains "$SESSION_FILE" '"pd"|"claude-code-flow:pd"|subagent.*pd|pd.*agent' "PD agent invocation found in session"; then
+  assert_session_order "$SESSION_FILE" '"skill":"([^"]*:)?ultrawork"' '"pd"|"claude-code-flow:pd"|subagent.*pd|pd.*agent' "ultrawork skill before PD dispatch" || FAILED=$((FAILED+1))
 else
-  echo "  [SKIP] no session file"
+  # Fall back: check if uli/<slug>/proposal.md was created (which PD writes)
+  if find "$TEST_PROJECT/.claude/flow/uli" -name "proposal.md" -mindepth 2 -maxdepth 2 2>/dev/null | grep -q .; then
+    echo "  [PASS] uli/<slug>/proposal.md exists (PD output confirmed)"
+  else
+    echo "  [FAIL] PD agent not spawned and uli/<slug>/proposal.md not found"
+    FAILED=$((FAILED+1))
+  fi
 fi
 echo ""
 
@@ -259,7 +248,8 @@ else
   if [ "$commit_count" -gt 1 ]; then
     echo "  [PASS] $commit_count commits exist (implementation was committed)"
   else
-    echo "  [WARN] No uli/* branch found. Branches: $all_branches"
+    echo "  [FAIL] No uli/* branch found and no implementation commit exists. Branches: $all_branches"
+    FAILED=$((FAILED+1))
   fi
 fi
 echo ""
@@ -288,15 +278,12 @@ echo ""
 
 # Test 10: No infinite retry loops (sentinel should have resolved within 2 loops)
 echo "Test 10: No excessive review loops..."
-if [ -n "$SESSION_FILE" ]; then
-  sentinel_calls="$(grep -c '"name":"Agent".*sentinel\|subagent.*sentinel' "$SESSION_FILE" 2>/dev/null || echo 0)"
-  if [ "$sentinel_calls" -le 3 ]; then
-    echo "  [PASS] sentinel called $sentinel_calls time(s) (within retry limit)"
-  else
-    echo "  [WARN] sentinel called $sentinel_calls time(s) — may indicate review loop issues"
-  fi
+assert_session_contains "$SESSION_FILE" '"name":"Agent".*sentinel|subagent.*sentinel' "sentinel review appeared in session" || true
+sentinel_calls="$(grep -c '"name":"Agent".*sentinel\|subagent.*sentinel' "$SESSION_FILE" 2>/dev/null || echo 0)"
+if [ "$sentinel_calls" -le 3 ]; then
+  echo "  [PASS] sentinel called $sentinel_calls time(s) (within retry limit)"
 else
-  echo "  [SKIP] no session file"
+  echo "  [WARN] sentinel called $sentinel_calls time(s) — may indicate review loop issues"
 fi
 echo ""
 

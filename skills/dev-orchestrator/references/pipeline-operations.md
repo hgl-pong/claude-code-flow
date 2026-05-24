@@ -1,6 +1,6 @@
 # Pipeline Operations Reference
 
-Detailed gate specifications, context envelope templates, and scheduling rules for the development pipeline. This reference is the harness control-plane contract: explicit gates, durable state, structured handoffs, hook-enforced policy, and evidence-based completion.
+Detailed gate specifications and scheduling rules for the development pipeline. This reference is the harness control-plane contract for explicit gates, durable state, hook-enforced policy, and evidence-based completion; dispatch mechanics live in `parallel-dispatch.md`.
 
 ## Policy Trace
 
@@ -145,87 +145,11 @@ Every workflow-generated Markdown document that controls downstream work (`plan-
 2. If any issue is found, revise the document and run the self-review loop again.
 3. Only documents with `Self Review Result: PASS` may unblock planning, implementation, review, or acceptance.
 
-## Context Envelope Template
+## Dispatch Mechanics Boundary
 
-Every agent prompt MUST be self-contained. Omitting fields = incomplete dispatch. If a field does not apply, write `N/A - <reason>`.
+Use `parallel-dispatch.md` for context envelopes, Agent call shape, file-conflict analysis, parallel limits, team mode, completion handling, handoff protocol, and dispatch error recovery.
 
-```markdown
-## Envelope
-- **Goal:** <one-line project goal>
-- **Your Task:** <exact task subject from TaskGet>
-- **Working Directory:** `<absolute or project-relative cwd>`
-- **Completed Dependencies:** <specific outputs now present in git/filesystem>
-- **File Scope:** <exact files to create/modify>
-- **Test Command:** `<exact command to run for verification>`
-- **Acceptance Criteria:** <from task description>
-- **Relevant Excerpts:** <requirements/design/code snippets needed to act without reading a separate plan>
-- **Intake Decisions:** <adopt/adapt/reject/defer table when external sources were referenced>
-- **Constraints:** <project conventions, banned patterns, dependency limits>
-- **Out of Scope:** <nearby work the agent must not touch>
-
-## FILES_MODIFIED (required on completion)
-List ALL files you created or modified: <path1>, <path2>, ...
-```
-
-For implementation agents, append:
-
-```markdown
-## Completion Schema
-- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
-- Files modified: <same list as FILES_MODIFIED>
-- Verification: `<command>` -> <pass/fail + key output>
-- RED/GREEN evidence: <required for behavior changes>
-- Concerns: <specific risks, or "none">
-```
-
-## Agent Dispatch Call
-
-```
-Agent({
-  name: "<stable-agent-name>",
-  description: "<task_subject>",
-  subagent_type: "claude-code-flow:<agent>",
-  model: "<agent_model>",
-  prompt: "<full context envelope + task details>",
-  team_name: "<team-name for long tasks, else omit>",
-  isolation: "<worktree if conflict detected, else omit>",
-  run_in_background: true
-})
-```
-
-**Dispatch all non-conflicting agents in a single message** (multiple Agent calls). Stable names are required for long tasks so the orchestrator can use `SendMessage` to correct, resume, or shut down idle teammates.
-
-## Parallel Limits
-
-| Agent Type | Max Parallel | Isolation |
-|---|---|---|
-| forge (code) | 3 | worktree if file conflict |
-| prism (tests) | 2 | worktree if file conflict |
-| prism (build) | 1 | never parallel |
-
-## File Conflict Analysis
-
-Before dispatching multiple agents simultaneously:
-1. Use `TaskGet` on each candidate task to read its description
-2. Extract file paths mentioned in "Files:" section or description text
-3. If two tasks share any file path → **conflict detected**
-4. Conflicting tasks: dispatch with `isolation: "worktree"` (each gets its own branch)
-5. Non-conflicting tasks: dispatch without isolation (share worktree)
-6. Prefer one agent per file cluster unless the tasks are clearly disjoint.
-
-## Completion Handling
-
-When an agent completes:
-1. Read its output — verify status is `DONE` or `DONE_WITH_CONCERNS`
-2. Check `FILES_MODIFIED` declaration against task scope
-3. Check verification evidence includes command, status, and key output
-4. If behavior changed, confirm RED/GREEN evidence or dispatch correction
-5. If worktree was used: review changes, merge if clean
-6. `TaskUpdate` status=completed only after scope and evidence checks pass
-7. Record evidence in `verification-evidence.jsonl`
-8. Check if new tasks are now unblocked → dispatch next batch
-
-After every 3 tasks: write key decisions to `<output_dir>/phase-context.md`.
+This reference only decides which gates are checked and in what order. After Gate 3a approval, pass the approved task graph and gate decisions to `parallel-dispatch.md` for execution scheduling.
 
 ## Error Recovery
 
@@ -241,12 +165,6 @@ unknown          → investigate (max 2 retries), escalate
 
 Use `references/review.md` for review command boundaries, sentinel dispatch inputs, output contract, and fix-loop outcome handling. This section owns only pipeline review scheduling.
 
-For deep and autonomous modes, dispatch each review stage as a **separate sentinel subagent** for zero context contamination:
-
-1. Dispatch sentinel with `review_focus: spec_compliance` in the context envelope → spec-only review.
-2. If REQUEST CHANGES: run the multi-round fix loop for spec findings, then re-dispatch a fresh spec sentinel (max 3 rounds).
-3. If APPROVE: dispatch a **fresh** sentinel with `review_focus: code_quality` → quality-only review.
-4. If REQUEST CHANGES: run the multi-round fix loop for quality findings, then re-dispatch a fresh quality sentinel (max 3 rounds).
-5. Only after both stages APPROVE may the pipeline enter acceptance.
-
-For quick/standard: single sentinel run with both stages (no `review_focus` parameter), but REQUEST CHANGES still triggers the same multi-round fix loop.
+- Deep/autonomous modes require separate spec-compliance and code-quality sentinel stages before acceptance.
+- Quick/standard modes may use one sentinel run when review is checked.
+- Any REQUEST CHANGES result stays in Gate 7 until `review.md`'s fix-loop outcome permits acceptance or escalation.

@@ -28,25 +28,13 @@ Run one routing pass unless a command, hook, or active skill already selected th
 
 Use plugin planning/routing; prefer `plan` and avoid `EnterPlanMode` for this workflow. Runtime plan state lives in `.claude/flow/plan-state.json`; workflow state lives in `.claude/flow/workflow-state.json`; plan handoff brief is `plan-brief.md`.
 
-## Hard Stops Before Implementation
+## Pipeline Contract
 
-- If the request is vague or underspecified, ask clarifying questions before classification, planning, or implementation.
-- If the request is not very lightweight, the main conversation must not produce a chat-only proposal or task list as a substitute for the workflow.
-- For every task that is not very lightweight, the main conversation controls the pipeline and MUST dispatch planning-stage subagents: general-purpose research first, oracle planning second, then applicable domain/UI design. Each subagent must produce its artifact and self-review it before the next gate consumes it.
-- If the request is broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented without exact implementation scope, it is never quick/lightweight: run clarification → research subagent → oracle plan → applicable domain design before any code edits.
-- Frontend/UI/site work is one example of that rule: use UI research/design gates when applicable, and do not dispatch forge or write code until UI Design Gate 6c has explicit user approval.
+Evaluate the gate checklist in `references/pipeline-operations.md` before implementation. That file owns clarification, lightweight/non-trivial classification, research, oracle planning, design gates, review scheduling, and acceptance ordering.
 
-1. Define goal, assumptions, success criteria, and verification; if requirements are vague or underspecified, ask clarifying questions before classification or implementation.
-2. Inspect current state; protect unrelated user changes.
-3. Classify very lightweight vs non-trivial; default to non-trivial unless the request matches the lightweight whitelist in `references/pipeline-operations.md`.
-4. For non-trivial work, create planning-stage tasks and dispatch bounded subagents for research, oracle planning, and applicable design; do not collapse those gates into main-conversation prose.
-5. Verify each research/plan/design artifact has detailed self-review PASS before the next gate consumes it.
-6. Prefer test-first for behavior changes after plan/design approval.
-7. Classify direct vs agentic; implement directly only for very lightweight tasks.
-8. For non-trivial implementation, dispatch bounded subagents and keep orchestration/final verification in the main conversation.
-9. Run focused verification.
-10. Run multi-round review for non-trivial work: sentinel findings become fix tasks, fixes are verified, then review repeats until approval or escalation.
-11. Report changed files and fresh evidence only.
+Use `references/parallel-dispatch.md` after gate classification to decide direct execution, Agent batches, team mode, file-conflict isolation, and completion handling.
+
+Do not replace required gate artifacts with chat-only summaries. Report completion only with fresh evidence from `.claude/flow/verification-evidence.jsonl`.
 
 ## Required References
 

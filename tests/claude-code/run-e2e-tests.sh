@@ -3,6 +3,7 @@
 #
 # Fast tests (default): ask Claude to explain skills/commands; verify answers.
 # Integration tests (--integration): execute a real plan end-to-end (10-30 min).
+# Headless transcript assertions must inspect session behavior: skill invocation, agent dispatch, task tracking, review order, verification evidence.
 #
 # Usage:
 #   ./run-e2e-tests.sh                          # fast tests only

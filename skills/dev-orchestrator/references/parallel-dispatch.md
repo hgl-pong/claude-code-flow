@@ -6,9 +6,26 @@ Maximize throughput by running non-conflicting agents simultaneously. Every disp
 
 **Context contamination kills parallel work. Each agent gets a self-contained envelope. No agent reads another agent's output mid-flight — all sharing goes through files and the task system.**
 
+## Per-Task Agent Contract
+
+Agentic implementation uses a fresh bounded agent per task, not a reused broad worker. The orchestrator builds the complete context envelope once, including exact task text, file scope, constraints, verification command, and expected handoff artifact. Agents must not read plan files themselves unless the envelope explicitly grants that scope.
+
+After each implementation task, review runs in order: spec compliance first, code quality second. A quality review cannot start until spec compliance passes or returns a bounded fix task. Any reviewer request for changes creates a narrow follow-up task, then the same review stage repeats before advancing.
+
+Implementer status values are handled explicitly:
+
+| Status | Orchestrator action |
+|--------|---------------------|
+| `DONE` | Check handoff artifact, then run spec compliance review |
+| `DONE_WITH_CONCERNS` | Read concerns; resolve correctness/scope concerns before review, otherwise proceed |
+| `NEEDS_CONTEXT` | Add missing context and re-dispatch; do not retry unchanged |
+| `BLOCKED` | Change one variable: add context, raise model/agent capability, split task, or escalate to oracle/user |
+
+Never ignore an escalation or force the same prompt to retry unchanged.
+
 ## When to Parallelize
 
-Subagent dispatch is the default for non-trivial work, not an optimization to remember later. Research and planning are also default-on for non-trivial work; skip them only for very lightweight tasks. Keep implementation in the main conversation only for very lightweight tasks. If a task can be split into independent research, planning, implementation, or verification workstreams, split it before implementation and dispatch the first non-conflicting batch.
+Subagent dispatch follows the classification made in `pipeline-operations.md`. Once the pipeline marks work as non-trivial or agentic, split independent research, planning, implementation, verification, and review workstreams before implementation and dispatch the first non-conflicting batch.
 
 | Condition | Decision |
 |-----------|----------|
@@ -25,7 +42,7 @@ Subagent dispatch is the default for non-trivial work, not an optimization to re
 
 ## When NOT to Dispatch Subagents
 
-Keep work in the main conversation for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Use the full flow when the task likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, feels unfamiliar/quality-sensitive, or is an outcome-oriented request without exact implementation scope. UI/site work is one example, not the whole rule.
+Keep work in the main conversation only when `pipeline-operations.md` classifies it as very lightweight. Otherwise use this reference to choose Agent batches, team mode, sequential execution, or worktree isolation.
 
 ## Decision Trace
 
@@ -40,7 +57,7 @@ Choose the harness surface that preserves durable coordination without collapsin
 | 1 bounded task, 1 agent role | `Agent` only | Main conversation owns prompt, scope check, verification, final report |
 | 2-3 independent bounded tasks | Multiple `Agent` calls in one message | Use `run_in_background: true`, exact `name`, exact `File Scope`, TaskUpdate after artifact checks |
 | Long task with 3+ tasks, staged dependencies, or rolling unblocks | `TeamCreate` + shared `TaskList` + named agents | Team task list is the coordination surface; main conversation is team lead; agents claim/update tasks; lead dispatches newly unblocked work |
-| Conflicting writes or risky broad edits | `Agent` with `isolation: "worktree"` | Use only when conflict is known; merge/review worktree output before marking task complete |
+| Conflicting writes or risky broad edits | Sequential dispatch, or `Agent` with `isolation: "worktree"` only when supported | Never require git; if git worktrees or WorktreeCreate/WorktreeRemove hooks are unavailable, sequence tasks or use one agent per file cluster without isolation |
 | External wait (CI/deploy/remote queue) | `Monitor`/`ScheduleWakeup`, not idle polling agents | Agents do work; harness wait primitive observes terminal state |
 
 Long-running orchestration MUST prefer a team once the task graph has 3+ nodes or requires more than one dispatch wave. Do not simulate teams through chat summaries; use the harness task list, named owners, `blockedBy` edges, and automatic agent completion/idle notifications.
@@ -50,24 +67,15 @@ Long-running orchestration MUST prefer a team once the task graph has 3+ nodes o
 Before starting implementation work on standard/deep/autonomous modes, run this explicit dispatch decision:
 
 ```
-1. BROAD REQUEST: Is the user asking for an outcome, system, feature set, redesign, workflow, or other task that must be decomposed? If yes → full flow with clarification/research/plan/decomposition before any implementation.
-2. VERY LIGHTWEIGHT: Is this only a few lines, 1-2 touched files, or 1-2 small new files with obvious scope? If yes → main conversation may implement directly.
-3. HEAVY THRESHOLD: Will this touch >5 files, create >3 files, span broad behavior/workflow/prompt/hook/test changes, change architecture/UI, or feel unfamiliar/quality-sensitive? If yes → full flow with research/plan/decomposition.
-4. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
-5. SCAN: Does work span 2+ domains or file clusters? If yes → dispatch subagents.
-6. GATES: Does the pipeline need impl + tests + review? → dispatch subagents.
-7. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → dispatch subagents.
-
-If VERY LIGHTWEIGHT is yes and every other check is no:
-  - Do work directly in main conversation
-  - Still run verification gate after completion
-
-Otherwise:
-  - Create TaskCreate tasks with blockedBy
-  - If task graph has 3+ nodes or multiple waves, create a team before dispatch
-  - Include separate research/product/design tasks when they can run independently
-  - Build file conflict map (see below)
-  - Dispatch first non-conflicting batch in one message (multiple Agent calls)
+1. INPUT: Read the approved pipeline classification, checked gates, and TaskCreate graph.
+2. DIRECT CHECK: If the pipeline classified the task as direct/very lightweight, keep it in the main conversation and still run verification.
+3. DECOMPOSE: If one task hides separable research/design/impl/test/review workstreams, create or refine tasks before dispatch.
+4. SCAN: Does work span 2+ domains or file clusters? If yes → dispatch subagents.
+5. GATES: Does the pipeline need impl + tests + review? → dispatch subagents.
+6. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → dispatch subagents.
+7. COORDINATION: If task graph has 3+ nodes or multiple waves, create a team before dispatch.
+8. CONFLICTS: Build file conflict map (see below).
+9. DISPATCH: Send first non-conflicting batch in one message (multiple Agent calls).
 ```
 
 ## File Conflict Analysis
@@ -82,7 +90,7 @@ Before dispatching a batch:
    conflicts  = {(a, b) for a in tasks for b in tasks if a != b
                          and task_files[a] & task_files[b]}
 4. Non-conflicting subset → dispatch in one message (multiple Agent calls)
-5. Conflicting pairs → worktree isolation OR sequence
+5. Conflicting pairs → worktree isolation only when supported; otherwise sequence or split into one agent per file cluster
 ```
 
 If a task description omits exact file paths, ask oracle to refine before dispatching.
@@ -96,7 +104,7 @@ Agent({ name: "forge-api", subagent_type: "claude-code-flow:forge", run_in_backg
 Agent({ name: "forge-ui", subagent_type: "claude-code-flow:forge", run_in_background: true, prompt: "<envelope B>" })
 ```
 
-Use stable `name` values so `SendMessage` can resume idle teammates. Use `team_name` for team-backed long tasks. Use `isolation: "worktree"` only when file conflict is confirmed.
+Use stable `name` values so `SendMessage` can resume idle teammates. Use `team_name` for team-backed long tasks. Use `isolation: "worktree"` only when file conflict is confirmed and git worktrees or WorktreeCreate/WorktreeRemove hooks are available; otherwise omit isolation and dispatch sequentially.
 
 ## Team Mode Ritual
 
@@ -193,10 +201,12 @@ Communication between agents goes through **files and the task system only**.
 
 Forge's completion must include:
 ```
-- Files modified: <exact list>
-- Test command: <command prism should run>
-- Build command: <if applicable>
-- Known concerns: <edge cases not covered, or "none">
+STATUS: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
+FILES_MODIFIED: <exact list>
+TEST_COMMAND: <command prism should run>
+BUILD_COMMAND: <if applicable>
+SELF_REVIEW: <scope drift, missing requirements, risky assumptions, or "PASS">
+KNOWN_CONCERNS: <edge cases not covered, or "none">
 ```
 
 ### prism → sentinel

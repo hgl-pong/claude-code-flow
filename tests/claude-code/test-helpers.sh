@@ -161,6 +161,22 @@ find_session_file() {
     | sort -r | head -1
 }
 
+# Find the most-recent Claude session JSONL whose transcript contains a marker.
+# Usage: find_session_file_containing "/abs/path/to/working/dir" "marker" [max_age_minutes]
+find_session_file_containing() {
+  local working_dir="$1"
+  local marker="$2"
+  local max_age="${3:-60}"
+  local encoded
+  encoded="$(printf '%s' "$working_dir" | sed 's|/|-|g' | sed 's|^-||')"
+  local session_dir="$HOME/.claude/projects/$encoded"
+  find "$session_dir" -name "*.jsonl" -type f -mmin "-$max_age" 2>/dev/null \
+    | while IFS= read -r session; do
+        grep -Fq "$marker" "$session" 2>/dev/null && printf '%s\n' "$session"
+      done \
+    | sort -r | head -1
+}
+
 # ---------------------------------------------------------------------------
 # Assertion helpers
 # ---------------------------------------------------------------------------
@@ -272,6 +288,41 @@ assert_file_contains() {
   fi
   echo "  [FAIL] $name"
   echo "  Pattern not found in $path: $pattern"
+  return 1
+}
+
+# Assert that a session JSONL file contains a grep pattern.
+# Usage: assert_session_contains "session.jsonl" "pattern" "test name"
+assert_session_contains() {
+  local session_file="$1"
+  local pattern="$2"
+  local name="${3:-session contains: $pattern}"
+  if grep -Eiq "$pattern" "$session_file" 2>/dev/null; then
+    echo "  [PASS] $name"
+    return 0
+  fi
+  echo "  [FAIL] $name (pattern not found in session JSONL: $pattern)"
+  return 1
+}
+
+# Assert that one session JSONL pattern appears before another.
+# Usage: assert_session_order "session.jsonl" "first" "second" "test name"
+assert_session_order() {
+  local session_file="$1"
+  local first="$2"
+  local second="$3"
+  local name="${4:-session order}"
+
+  local first_line second_line
+  first_line="$(grep -Ein "$first" "$session_file" 2>/dev/null | head -1 | cut -d: -f1 || true)"
+  second_line="$(grep -Ein "$second" "$session_file" 2>/dev/null | head -1 | cut -d: -f1 || true)"
+
+  if [ -n "$first_line" ] && [ -n "$second_line" ] && [ "$first_line" -lt "$second_line" ]; then
+    echo "  [PASS] $name"
+    return 0
+  fi
+
+  echo "  [FAIL] $name (session JSONL order not found: $first before $second)"
   return 1
 }
 

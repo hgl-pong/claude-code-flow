@@ -21,6 +21,7 @@ bash tests/claude-code/run-e2e-tests.sh --test test-skill-brainstorming.sh
 
 # Integration tests (10-30 min, real token cost)
 bash tests/claude-code/run-e2e-tests.sh --integration
+# Headless transcript assertions should verify skill invocation, agent dispatch, task tracking, review order, and verification evidence.
 
 # Skill auto-loading verification
 bash tests/skill-triggering/run-all.sh
