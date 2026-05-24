@@ -51,7 +51,7 @@ ROUTING_RULES = [
 # Skip routing if these are present (already routed by other hooks)
 SKIP_PATTERNS = [
     r'^\s*/',  # slash commands already routed
-    r'\b(ulw|ultrawork|uli)\b',  # autonomous modes handled by dedicated hooks
+    r'\b(ulw|ultrawork|uli)\b',  # autonomous mode handled by uli-detector
 ]
 
 

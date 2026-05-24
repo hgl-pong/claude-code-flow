@@ -5,7 +5,7 @@
 #   - What ULI mode is and how to activate it
 #   - The PD agent's role and output format
 #   - The hard acceptance gate requirement
-#   - How ULI differs from ULW
+#   - Legacy ULW prompts route into ULI
 #   - The iteration loop structure
 #
 # Fast test — no real implementation, ~2-5 min.
@@ -56,16 +56,16 @@ assert_contains "$output" "all.*pass|pass.*all|hard|strict" "Strictness of the g
 echo ""
 
 # ------------------------------------------------------------------
-# Test 4: ULI vs ULW distinction
+# Test 4: Legacy ULW alias
 # ------------------------------------------------------------------
-echo "Test 4: ULI vs ULW distinction..."
+echo "Test 4: Legacy ULW alias routes to ULI..."
 output="$(run_claude \
-  "What is the difference between ULI and ULW in claude-code-flow?" \
+  "What happens if a user types ulw in claude-code-flow now?" \
   "$timeout_seconds")"
-assert_contains "$output" "ulw|ultrawork" "ULW mentioned"
-assert_contains "$output" "uli" "ULI mentioned"
-assert_contains "$output" "single.*task|one.*task|task.*once|loop|multiple.*iter" \
-  "Explains single-task vs loop distinction"
+assert_contains "$output" "ulw|ultrawork" "Legacy ULW alias mentioned"
+assert_contains "$output" "uli" "ULI target mentioned"
+assert_contains "$output" "alias|route|same.*mode|merged" \
+  "Explains ULW routes into ULI"
 echo ""
 
 # ------------------------------------------------------------------

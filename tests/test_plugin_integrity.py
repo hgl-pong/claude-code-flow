@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 import sys
@@ -567,6 +568,8 @@ class PluginIntegrityTests(unittest.TestCase):
             state_path = Path(tmp) / ".claude" / "flow" / "workflow-state.json"
             plan_path = Path(tmp) / ".claude" / "flow" / "plan-state.json"
             brief_path = Path(tmp) / ".claude" / "flow" / "plan-brief.md"
+            namespaced_brief_path = Path(tmp) / ".claude" / "flow" / "plans" / "ship-structured-plans" / "plan-brief.md"
+            phase_context_path = Path(tmp) / ".claude" / "flow" / "plans" / "ship-structured-plans" / "phase-context.md"
 
             state = json.loads(state_path.read_text(encoding="utf-8"))
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
@@ -591,6 +594,10 @@ class PluginIntegrityTests(unittest.TestCase):
             state = json.loads(state_path.read_text(encoding="utf-8"))
             plan = json.loads(plan_path.read_text(encoding="utf-8"))
             brief = brief_path.read_text(encoding="utf-8")
+            namespaced_brief = namespaced_brief_path.read_text(encoding="utf-8")
+            self.assertTrue(phase_context_path.exists())
+            self.assertEqual(brief, namespaced_brief)
+            self.assertEqual(plan["output_dir"], os.path.join(".claude", "flow", "plans", "ship-structured-plans"))
             self.assertEqual(plan["status"], "approved")
             self.assertTrue(plan["approved"])
             self.assertEqual(state["plan_status"], "approved")

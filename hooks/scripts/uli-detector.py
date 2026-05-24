@@ -1,27 +1,9 @@
 #!/usr/bin/env python
-"""UserPromptSubmit hook: detect uli keyword and inject ULI mode signal.
+"""UserPromptSubmit hook: detect autonomous ULI keywords and inject ULI mode signal.
 
-When the user includes "uli" (case-insensitive, whole word) anywhere in their
-prompt, this hook appends a system-level notice to Claude's context so the
-ultrawork skill (ULI branch) is loaded immediately — before any other action.
-
-ULI = Ultra Loop Iteration: autonomous product iteration loop where a PD agent
-proposes requirements each cycle and the dev pipeline executes and validates them.
-
-Claude Code hook input format (stdin, JSON):
-{
-  "session_id": "...",
-  "transcript_path": "...",
-  "hook_event_name": "UserPromptSubmit",
-  "prompt": "<the user's full message text>"
-}
-
-Output (stdout, JSON) to append a system prompt section:
-{
-  "system_prompt_append": "...",
-  "continue": true
-}
-If no uli keyword is found, exit silently (no output) with code 0.
+When the user includes "uli", "ulw", or "ultrawork" anywhere in their prompt,
+this hook appends a system-level notice so the ultrawork skill is loaded
+immediately before any other action.
 """
 
 import json
@@ -29,21 +11,17 @@ import re
 import sys
 
 
-# Match "uli" as a whole word only (case-insensitive).
-# \buli\b prevents matching "Julian", "utility", "uli-something" still matches.
-# Does NOT match "ulw" or "ultrawork" — those are handled by ulw-detector.py.
-ULI_PATTERN = re.compile(r'\buli\b', re.IGNORECASE)
+ULI_PATTERN = re.compile(r'\b(?:uli|ulw)\b|ultrawork', re.IGNORECASE)
 
 SYSTEM_APPEND = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ULI MODE ACTIVE — ULTRA LOOP ITERATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The user activated ULI (Ultra Loop Iteration) mode. You MUST:
+The user activated ULI (Ultra Loop Iteration) mode. Legacy ULW/ultrawork prompts now use this same mode. You MUST:
 
-1. Invoke the `ultrawork` skill IMMEDIATELY and follow the ULI branch.
+1. Invoke the `ultrawork` skill IMMEDIATELY.
    Use: Skill({ skill: "claude-code-flow:ultrawork" })
-   The skill will detect ULI mode from the keyword and follow the ULI pipeline.
 
 2. Do NOT ask for clarification, approval, or confirmation at any point.
 
@@ -71,7 +49,6 @@ def main():
             sys.exit(0)
         data = json.loads(raw)
     except (json.JSONDecodeError, ValueError):
-        # Malformed input — don't interfere
         sys.exit(0)
 
     prompt = data.get("prompt", "")
@@ -79,13 +56,11 @@ def main():
         sys.exit(0)
 
     if not ULI_PATTERN.search(prompt):
-        # No ULI keyword found — pass through silently
         sys.exit(0)
 
-    # ULI keyword detected — inject the system prompt append
     output = {
         "system_prompt_append": SYSTEM_APPEND.strip(),
-        "continue": True
+        "continue": True,
     }
     print(json.dumps(output))
     sys.exit(0)

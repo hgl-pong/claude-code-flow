@@ -16,6 +16,8 @@ PLAN_BRIEF_FILE = os.path.join(FLOW_DIR, "plan-brief.md")  # legacy default; pas
 SNAPSHOT_DIR = os.path.join(FLOW_DIR, "snapshots")
 ARCHIVE_DIR = os.path.join(FLOW_DIR, "archive")
 SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
+EXEC_LOG_FILE = os.path.join(FLOW_DIR, "exec-log.jsonl")
+EVIDENCE_FILE = os.path.join(FLOW_DIR, "verification-evidence.jsonl")
 
 
 def now():
@@ -42,12 +44,36 @@ def default_plan():
         "source": "",
         "approved": False,
         "summary": "",
+        "output_dir": "",
         "tasks": [],
         "created_at": "",
         "updated_at": "",
         "plan_hash": None,
     }
 
+
+def slugify(text):
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in text).strip("-")
+    parts = [part for part in slug.split("-") if part]
+    return "-".join(parts)[:80] or "plan"
+
+def default_output_dir(plan):
+    title = plan.get("title") or plan.get("goal") or plan.get("source") or "plan"
+    return os.path.join(FLOW_DIR, "plans", slugify(title))
+
+def ensure_plan_output_dir(plan):
+    output_dir = plan.get("output_dir") or default_output_dir(plan)
+    plan["output_dir"] = output_dir
+    os.makedirs(output_dir, exist_ok=True)
+    phase_context = os.path.join(output_dir, "phase-context.md")
+    if not os.path.exists(phase_context):
+        title = plan.get("title") or "Plan"
+        with open(phase_context, "w", encoding="utf-8") as f:
+            f.write(f"# {title} Phase Context\n\n")
+    return output_dir
+
+def plan_brief_path(plan):
+    return os.path.join(ensure_plan_output_dir(plan), "plan-brief.md")
 
 def plan_hash(plan):
     payload = {
@@ -57,6 +83,19 @@ def plan_hash(plan):
     }
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()[:16]
+
+
+def default_resume_cursor():
+    return {
+        "current_gate": None,
+        "active_batch": [],
+        "ready_task_ids": [],
+        "blocked_task_ids": [],
+        "agent_dispatches": [],
+        "worktrees": [],
+        "last_checkpoint": None,
+        "next_action": None,
+    }
 
 
 def default_state():
@@ -78,6 +117,7 @@ def default_state():
         "retry_count": 0,
         "verification_count": 0,
         "last_verification": None,
+        "resume_cursor": default_resume_cursor(),
     }
 
 
@@ -91,7 +131,33 @@ def load_state():
                     base.update(state)
             except json.JSONDecodeError:
                 pass
+    cursor = default_resume_cursor()
+    if isinstance(base.get("resume_cursor"), dict):
+        cursor.update(base["resume_cursor"])
+    base["resume_cursor"] = cursor
     return base
+
+
+def append_event(event_type, **payload):
+    os.makedirs(FLOW_DIR, exist_ok=True)
+    entry = {
+        "ts": now(),
+        "session_id": get_session_id(),
+        "type": event_type,
+    }
+    entry.update({k: v for k, v in payload.items() if v is not None})
+    with open(EXEC_LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, separators=(",", ":")) + "\n")
+    return entry
+
+
+def update_resume_cursor(state, **updates):
+    cursor = default_resume_cursor()
+    if isinstance(state.get("resume_cursor"), dict):
+        cursor.update(state["resume_cursor"])
+    cursor.update({k: v for k, v in updates.items() if k in cursor})
+    state["resume_cursor"] = cursor
+    return state
 
 
 def save_state(state):
@@ -136,6 +202,7 @@ def load_plan():
 
 def save_plan(plan):
     os.makedirs(FLOW_DIR, exist_ok=True)
+    ensure_plan_output_dir(plan)
     if not plan.get("created_at"):
         plan["created_at"] = now()
     plan["updated_at"] = now()
@@ -270,14 +337,50 @@ def export_plan(plan, path=PLAN_BRIEF_FILE):
     return path
 
 
+def read_tail(path, max_lines=40):
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    return [line.rstrip("\n") for line in lines[-max_lines:]]
+
+
+def read_text_if_exists(path, max_chars=20000):
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        data = f.read(max_chars + 1)
+    return data[:max_chars]
+
+
 def snapshot():
     state = load_state()
     os.makedirs(SNAPSHOT_DIR, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     snap_path = os.path.join(SNAPSHOT_DIR, f"{ts}.json")
+    bundle = {
+        "format": "workflow-snapshot-v2",
+        "created_at": now(),
+        "workflow_state": state,
+        "plan_state": load_plan(),
+        "exec_log_tail": read_tail(EXEC_LOG_FILE),
+        "verification_evidence_tail": read_tail(EVIDENCE_FILE),
+        "phase_context": read_text_if_exists(os.path.join(FLOW_DIR, "phase-context.md")),
+        "plan_brief": read_text_if_exists(PLAN_BRIEF_FILE),
+    }
     with open(snap_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
+        json.dump(bundle, f, indent=2)
+    state = update_resume_cursor(state, last_checkpoint=snap_path)
+    save_state(state)
+    append_event("checkpoint", checkpoint=snap_path, phase=state.get("phase"))
     return snap_path
+
+
+def state_from_snapshot(data):
+    if isinstance(data, dict) and data.get("format") == "workflow-snapshot-v2":
+        state = data.get("workflow_state", {})
+        return state if isinstance(state, dict) else {}
+    return data if isinstance(data, dict) else {}
 
 
 def resume():
@@ -290,10 +393,12 @@ def resume():
         sys.exit(1)
     latest = snapshots[-1]
     with open(latest, "r", encoding="utf-8") as f:
-        state = json.load(f)
+        state = state_from_snapshot(json.load(f))
     state["session_id"] = get_session_id()
     state["updated_at"] = now()
+    state = update_resume_cursor(state, last_checkpoint=latest)
     save_state(state)
+    append_event("resume", checkpoint=latest, phase=state.get("phase"), next_action=state.get("resume_cursor", {}).get("next_action"))
     return latest
 
 
@@ -307,7 +412,7 @@ def archive():
     for snap in snapshots:
         basename = os.path.basename(snap)
         with open(snap, "r", encoding="utf-8") as f:
-            snap_state = json.load(f)
+            snap_state = state_from_snapshot(json.load(f))
         if snap_state.get("session_id") != state.get("session_id"):
             shutil.move(snap, os.path.join(ARCHIVE_DIR, basename))
             moved += 1
@@ -322,17 +427,19 @@ def list_snapshots():
     for snap in snapshots:
         with open(snap, "r", encoding="utf-8") as f:
             data = json.load(f)
+        state = state_from_snapshot(data)
         result.append(
             {
                 "file": snap,
-                "phase": data.get("phase", "unknown"),
-                "task_done": data.get("task_done", 0),
-                "task_total": data.get("task_total", 0),
-                "mode": data.get("mode", "standard"),
-                "session_id": data.get("session_id", ""),
-                "updated_at": data.get("updated_at", ""),
-                "plan_hash": data.get("plan_hash"),
-                "plan_status": data.get("plan_status"),
+                "phase": state.get("phase", "unknown"),
+                "task_done": state.get("task_done", 0),
+                "task_total": state.get("task_total", 0),
+                "mode": state.get("mode", "standard"),
+                "session_id": state.get("session_id", ""),
+                "updated_at": state.get("updated_at", data.get("created_at", "")),
+                "plan_hash": state.get("plan_hash"),
+                "plan_status": state.get("plan_status"),
+                "next_action": state.get("resume_cursor", {}).get("next_action"),
             }
         )
     return result
@@ -346,8 +453,11 @@ def main():
         state = load_state()
         old_phase = state["phase"]
         if old_phase != phase:
-            state["phase_history"].append({"from": old_phase, "to": phase, "at": now()})
+            event = {"from": old_phase, "to": phase, "at": now()}
+            state["phase_history"].append(event)
+            append_event("phase_transition", **event)
         state["phase"] = phase
+        state = update_resume_cursor(state, current_gate=phase, next_action=f"continue {phase} phase")
         save_state(state)
 
     elif action == "set-tasks":
@@ -356,6 +466,7 @@ def main():
         state = load_state()
         state["task_done"] = done
         state["task_total"] = total
+        append_event("task_progress", done=done, total=total, phase=state.get("phase"))
         save_state(state)
 
     elif action == "set-agent":
@@ -422,7 +533,8 @@ def main():
                 mode = s["mode"]
                 ts = s["updated_at"]
                 plan = f" plan={s['plan_status'] or 'none'}:{s['plan_hash'] or 'none'}"
-                print(f"  [{phase}] tasks={tasks} mode={mode} updated={ts}{plan}")
+                next_action = f" next={s['next_action']}" if s.get("next_action") else ""
+                print(f"  [{phase}] tasks={tasks} mode={mode} updated={ts}{plan}{next_action}")
 
     elif action == "clear":
         snapshot()
@@ -495,7 +607,7 @@ def main():
 
     elif action == "plan-approve":
         args = sys.argv[2:]
-        path = PLAN_BRIEF_FILE
+        path = None
         if "--output" in args:
             idx = args.index("--output")
             if idx + 1 >= len(args):
@@ -510,14 +622,19 @@ def main():
         if summary:
             plan["summary"] = summary
         plan = save_plan_and_state(plan)
-        export_plan(plan, path)
+        output = export_plan(plan, path or plan_brief_path(plan))
+        if output != PLAN_BRIEF_FILE:
+            export_plan(plan, PLAN_BRIEF_FILE)
         print(json.dumps(plan, indent=2))
 
     elif action == "plan-export":
-        path = PLAN_BRIEF_FILE if len(sys.argv) <= 2 else sys.argv[2]
+        explicit_path = len(sys.argv) > 2
         plan = load_plan()
         plan = save_plan_and_state(plan)
+        path = sys.argv[2] if explicit_path else plan_brief_path(plan)
         output = export_plan(plan, path)
+        if not explicit_path and output != PLAN_BRIEF_FILE:
+            export_plan(plan, PLAN_BRIEF_FILE)
         print(f"PLAN_EXPORTED: {output}")
 
     elif action == "plan-get":
@@ -532,48 +649,6 @@ def main():
         if os.path.exists(PLAN_BRIEF_FILE):
             os.remove(PLAN_BRIEF_FILE)
         print("PLAN_CLEARED")
-
-    elif action == "ulw-init":
-        prompt = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else ""
-        state = load_state()
-        state["ulw"] = {
-            "active": True,
-            "prompt": prompt,
-            "intent": None,
-            "task_done": 0,
-            "task_total": 0,
-        }
-        state["mode"] = "autonomous"
-        state["phase"] = "plan"
-        save_state(state)
-        print("ULW_INIT: mode=autonomous phase=plan")
-
-    elif action == "ulw-set-intent":
-        intent = sys.argv[2] if len(sys.argv) > 2 else "implement"
-        state = load_state()
-        if "ulw" in state:
-            state["ulw"]["intent"] = intent
-        save_state(state)
-        print(f"ULW_INTENT: {intent}")
-
-    elif action == "ulw-set-total":
-        total = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-        state = load_state()
-        if "ulw" in state:
-            state["ulw"]["task_total"] = total
-        state["task_done"] = state.get("task_done", 0)
-        state["task_total"] = total
-        save_state(state)
-        print(f"ULW_TOTAL: {total}")
-
-    elif action == "ulw-inc-done":
-        state = load_state()
-        if "ulw" in state:
-            state["ulw"]["task_done"] = state["ulw"].get("task_done", 0) + 1
-        done = state.get("task_done", 0)
-        state["task_done"] = done + 1
-        save_state(state)
-        print(done + 1)
 
     elif action == "uli-init":
         goal = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else ""
@@ -614,17 +689,26 @@ def main():
         os.makedirs(task_dir, exist_ok=True)
         print(f"ULI_SET_TASK: slug={slug} dir={task_dir}")
 
-    elif action == "ulw-set-task":
-        slug = sys.argv[2] if len(sys.argv) > 2 else "task"
+    elif action == "uli-set-total":
+        total = int(sys.argv[2]) if len(sys.argv) > 2 else 0
         state = load_state()
-        if "ulw" not in state:
-            print("WARNING: ulw-set-task called before ulw-init — slug stored but other fields may be missing", file=sys.stderr)
-            state["ulw"] = {}
-        state["ulw"]["current_task_slug"] = slug
+        state["task_done"] = state.get("task_done", 0)
+        state["task_total"] = total
+        if "uli" in state:
+            state["uli"]["task_total"] = total
+            sync_uli_state_file(state["uli"])
         save_state(state)
-        task_dir = os.path.join(FLOW_DIR, "ulw", slug)
-        os.makedirs(task_dir, exist_ok=True)
-        print(f"ULW_SET_TASK: slug={slug} dir={task_dir}")
+        print(f"ULI_TOTAL: {total}")
+
+    elif action == "uli-inc-done":
+        state = load_state()
+        done = state.get("task_done", 0) + 1
+        state["task_done"] = done
+        if "uli" in state:
+            state["uli"]["task_done"] = state["uli"].get("task_done", 0) + 1
+            sync_uli_state_file(state["uli"])
+        save_state(state)
+        print(done)
 
     elif action == "uli-set-phase":
         phase = sys.argv[2] if len(sys.argv) > 2 else "plan"

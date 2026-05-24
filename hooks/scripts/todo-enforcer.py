@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-"""Stop: enforce task completion before allowing exit in ULW/ULI modes."""
+"""Stop: enforce task completion before allowing exit in ULI mode."""
 import json, os, sys
 from datetime import datetime, timezone
 
 FLOW_DIR = os.path.join(".claude", "flow")
-ULW_STATE = os.path.join(FLOW_DIR, "ulw-state.json")
 ULI_STATE = os.path.join(FLOW_DIR, "uli-state.json")
 
 def now():
@@ -33,19 +32,7 @@ def get_remaining_tasks():
 def main():
     os.makedirs(FLOW_DIR, exist_ok=True)
 
-    # Check if ULW or ULI is active
     active_mode = None
-    state_file = None
-
-    if os.path.exists(ULW_STATE):
-        try:
-            with open(ULW_STATE, "r") as f:
-                ulw = json.load(f)
-            if ulw.get("active"):
-                active_mode = "ulw"
-                state_file = ULW_STATE
-        except (json.JSONDecodeError, Exception):
-            pass
 
     if os.path.exists(ULI_STATE):
         try:
@@ -53,7 +40,6 @@ def main():
                 uli = json.load(f)
             if uli.get("active"):
                 active_mode = "uli"
-                state_file = ULI_STATE
         except (json.JSONDecodeError, Exception):
             pass
 
@@ -67,7 +53,7 @@ def main():
         return
 
     transcript = data.get("transcript_path", "")
-    done_tag = "<ulw-done>" if active_mode == "ulw" else "<uli-done>"
+    done_tag = "<uli-done>"
 
     if transcript and os.path.exists(transcript):
         try:

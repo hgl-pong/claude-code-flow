@@ -279,34 +279,6 @@ class StatuslineFlowStateTest(unittest.TestCase):
         out, _ = self._run(make_json())
         self.assertIn("verify:test:fail", strip_ansi(out))
 
-    def test_ulw_active_two_lines(self):
-        ulw = {"active": True, "intent": "implement", "task_done": 2, "task_total": 7, "iteration": 1}
-        (self.flow_dir / "ulw-state.json").write_text(json.dumps(ulw))
-        out, _ = self._run(make_json())
-        lines = [l for l in strip_ansi(out).splitlines() if l.strip()]
-        self.assertEqual(len(lines), 2, f"ULW active should be 2 lines, got: {lines}")
-        self.assertIn("flow:ulw:implement", lines[1])
-        self.assertIn("2/7", lines[1])
-        self.assertIn("#1", lines[1])
-
-    def test_ulw_missing_task_done_defaults_to_zero(self):
-        ulw = {"active": True, "intent": "fix", "task_total": 3, "iteration": 0}
-        (self.flow_dir / "ulw-state.json").write_text(json.dumps(ulw))
-        out, _ = self._run(make_json())
-        lines = [l for l in strip_ansi(out).splitlines() if l.strip()]
-        line2 = lines[1] if len(lines) > 1 else ""
-        self.assertIn("0/3", line2, f"missing task_done should default to 0, got: {line2!r}")
-        self.assertNotIn(" /3", line2)
-
-    def test_ulw_inactive_falls_through_to_flow(self):
-        (self.flow_dir / "ulw-state.json").write_text('{"active": false}')
-        state = {"phase": "review", "task_total": 2, "task_done": 2}
-        (self.flow_dir / "workflow-state.json").write_text(json.dumps(state))
-        out, _ = self._run(make_json())
-        clean = strip_ansi(out)
-        self.assertNotIn("flow:ulw", clean)
-        self.assertIn("flow:review", clean)
-
 
 class StatuslineFileIntegrityTest(unittest.TestCase):
     def test_lf_line_endings(self):

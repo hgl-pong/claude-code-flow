@@ -56,7 +56,7 @@ Each iteration stores artifacts in a folder named by a short English slug derive
 
 ## ULI Stop Hook
 
-`uli-stop-hook.sh` blocks exit until `<uli-done>` is emitted. Same "Ralph Wiggum technique" as ULW — the hook enforces completion.
+`uli-stop-hook.sh` blocks exit until `<uli-done>` is emitted. The hook enforces completion.
 
 ## Step 0 — Initialize
 
@@ -159,7 +159,7 @@ Oracle reads `.claude/flow/uli/<slug>/proposal.md` and decomposes it into ALL ta
 1. Oracle creates tasks via `TaskCreate` with `blockedBy` dependencies
 2. Writes implementation plan to `.claude/flow/uli/<slug>/plan.md`
 3. Writes agent brief to `.claude/flow/uli/<slug>/plan-brief.md`
-4. Sets total tasks: `flow-state.py ulw-set-total <N>`
+4. Sets total tasks: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-set-total <N>`
 
 **VERIFY:** `.claude/flow/uli/<slug>/plan-brief.md` exists and TaskList shows all tasks for this iteration. Every CORE requirement from the proposal maps to at least one task.
 
@@ -175,7 +175,7 @@ Test-first RED→GREEN→refactor→record evidence. All code→forge; tests/bui
 
 **IMPORTANT:** The Ralph Loop processes ALL tasks for this iteration. Do NOT advance to Step 4 until ALL tasks are done or escalated. The loop runs tasks, not iterations.
 
-After every task completes: `flow-state.py ulw-inc-done`
+After every task completes: `python ${PLUGIN_ROOT}/hooks/scripts/flow-state.py uli-inc-done`
 
 **VERIFY:** TaskList shows all tasks completed. All tasks have verification evidence.
 

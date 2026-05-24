@@ -1,103 +1,33 @@
 ---
-name: Workflow Intake
-version: "1.0.0"
-description: "Intake external repos, plugins, agent packs, workflows, or prompt systems before adapting ideas into this workflow."
-when_to_use: "Trigger on 'reference this repo', 'borrow from', 'port', 'import', 'copy workflow', 'optimize workflow', external repo/plugin/path."
-argument-hint: "<source repo or workflow idea>"
+name: workflow-intake
+description: "Intake external repos, plugins, agent packs, workflows, prompt systems, or optimization ideas before adapting them into this workflow. Use when referencing, borrowing, porting, importing, copying, comparing, or optimizing from an external workflow source."
 ---
 
 # Workflow Intake
 
-Selectively adapt outside workflow ideas into Claude Code Flow without importing a second workflow system.
-
-## Trigger
-
-Use this skill before planning when the task includes any of:
-
-- "reference this repo", "inspired by", "borrow from", "compare with"
-- "port", "import", "copy", "bring in", "migrate"
-- "optimize the workflow", "improve agents/skills/hooks/commands"
-- A URL or local path that points to another agent/workflow collection
+Adapt useful external ideas without importing a competing workflow surface.
 
 ## Iron Law
 
-**Do not wholesale-import external workflow surfaces.** Every candidate must either strengthen an existing Claude Code Flow lane, become a small native addition, or be rejected with a reason.
+Do not wholesale-import external workflows. Each candidate must be Adopt, Adapt, Reject, or Defer with a reason.
 
-## Intake Decision Record
+## Workflow
 
-Create or update `<output_dir>/intake-decision.md` when the intake affects planning. The record must include:
+1. Identify source, scope, and intended benefit.
+2. Inspect only the relevant external artifacts.
+3. Map ideas to existing Claude Code Flow lanes: agents, skills, commands, hooks, references, tests.
+4. Decide Adopt / Adapt / Reject / Defer.
+5. Record decisions when they affect planning.
+6. Hand approved changes to planning/dev-orchestrator.
 
-`<output_dir>` resolves to the active plugin plan output directory, normally `.claude/flow/plans/<slug>/`.
+## Decision Record
 
-```markdown
-# Intake Decision
+When intake affects implementation, create/update `intake-decision.md` with:
 
-## Source
-- Repository/path:
-- Date inspected:
-- Scope inspected:
+- Source
+- Candidate idea
+- Decision
+- Rationale
+- Native destination
+- Risks / verification
 
-## Fit Criteria
-- Strengthens an existing gate/skill/command:
-- No duplicate agent taxonomy:
-- No external runtime dependency:
-- Fits plugin install/runtime constraints:
-- Testable in this repo:
-
-## Candidates
-| Candidate | Source idea | Adopt / Adapt / Reject / Defer | Target surface | Reason |
-|---|---|---|---|---|
-
-## Rejections
-List rejected ideas explicitly, especially large agent catalogs, external control planes, duplicated command systems, or project-specific content.
-
-## Handoff
-Concrete files/skills/commands/hooks to change in this repo.
-```
-
-## Selection Rubric
-
-| Decision | Use When | Required Action |
-|---|---|---|
-| Adopt | The idea already matches this repo's architecture and needs minimal wording changes | Add to the existing native surface |
-| Adapt | The idea is useful but assumes different agents, paths, tools, or runtime | Rewrite into Claude Code Flow terms |
-| Reject | The idea duplicates current lanes, adds external runtime assumptions, or conflicts with gates | Record the rejection and do not port it |
-| Defer | The idea may be useful but needs a separate design or dependency decision | Record follow-up criteria |
-
-## What Usually Fits
-
-- Better gate checklists, handoff templates, review standards, and verification loops
-- Skill placement policy: curated repo skills vs local/generated skills
-- Context budget and compacting guidance that works with existing hooks
-- Thin command shims that route to maintained skills
-- Security or quality reminders that use existing sentinel/prism gates
-
-## What Usually Does Not Fit
-
-- A second agent taxonomy that competes with `oracle`, `forge`, `prism`, and `sentinel`
-- Runtime control planes, daemons, or installers not already required by this plugin
-- Large language/framework catalogs unless the current repo has an explicit gap
-- Project-specific business, ops, or personal workflow content
-- Hooks that require new external CLIs without a clear local fallback
-
-## Process
-
-1. Identify the source and limit the inspection scope.
-2. Inventory ideas by category: agents, skills, commands, hooks, rules, docs, runtime.
-3. Map each useful idea to an existing Claude Code Flow lane first.
-4. Reject or defer anything that creates a parallel system.
-5. For accepted ideas, choose the smallest repo-native surface:
-   - existing skill/reference doc before a new skill
-   - thin command before full command body
-   - hook only when passive guidance is insufficient
-6. Include intake findings in oracle's planning context.
-7. Verify with the normal plugin integrity tests.
-
-## Output
-
-- `intake-decision.md` for standard/deep/autonomous tasks
-- A concise user-facing summary:
-  - ideas adopted
-  - ideas adapted
-  - ideas rejected
-  - files to change

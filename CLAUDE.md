@@ -77,10 +77,9 @@ branch finishing, and parallel dispatch as reference phases. Specialized skills
 `engineering-ops`, `testing-strategy`, `systematic-debugging`) handle concerns
 outside the main pipeline.
 
-### Autonomous Modes
+### Autonomous Mode
 
-- **ULW (Ultrawork)**: Single-task full-autonomous execution. A stop hook (`ulw-stop-hook.sh`) blocks exit until `<ulw-done>` is emitted in the transcript.
-- **ULI (Ultra Loop Iteration)**: Product iteration loop with PD agent proposing requirements each cycle. Stop hook blocks until `<uli-done>`.
+- **ULI (Ultra Loop Iteration)**: Product iteration loop with PD agent proposing requirements each cycle. Legacy `ulw`/`ultrawork` prompts route into ULI. Stop hook blocks until `<uli-done>`.
 
 ### Hook System
 

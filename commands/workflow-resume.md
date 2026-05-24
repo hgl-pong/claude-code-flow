@@ -14,23 +14,30 @@ Resume an interrupted workflow from the most recent state snapshot.
 
 ## Process
 
-1. Run `python hooks/scripts/flow-state.py list-snapshots` to check available snapshots
+1. Run `rtk python hooks/scripts/flow-state.py list-snapshots` to check available snapshots
 2. If no snapshots exist, report "No interrupted workflows found." and stop
 3. If snapshots exist, display the most recent snapshot's details:
    - Phase the workflow was in
    - Task progress (x/y completed)
    - Mode (quick/standard/deep/autonomous)
    - Last updated timestamp
+   - `resume_cursor.current_gate`
+   - `resume_cursor.next_action`
+   - ready/blocked task IDs
+   - active batch and agent dispatch IDs if present
 4. Ask the user to confirm: "Resume this workflow? (The state will be restored)"
-5. If confirmed, run `python hooks/scripts/flow-state.py resume`
-6. Read `.claude/flow/plans/<task-slug>/phase-context.md` or `.claude/flow/ulw/<task-slug>/phase-context.md` if they exist to recover the plan/architecture context (task-slug from `plan-state.json` or `workflow-state.json`)
-7. Read `.claude/flow/plan-state.json` and the matching `<output_dir>/plan-brief.md` if they exist to recover structured plan state and task details
-8. Display a summary of what was restored and suggest next steps based on the phase:
-   - `plan` → "Plan was in progress. Re-run /plan to continue."
-   - `design` → "Architecture design was in progress. Re-run the design step."
-   - `impl` → "Implementation was in progress. Review modified files and continue with forge."
-   - `review` → "Review was in progress. Check review-result.txt and continue."
-   - `idle` → "Workflow was completed. No action needed."
+5. If confirmed, run `rtk python hooks/scripts/flow-state.py resume`
+6. Read `.claude/flow/workflow-state.json` first; treat `resume_cursor.next_action` as the recommended next machine step
+7. Read `.claude/flow/plan-state.json`; use `output_dir` when present, otherwise check the latest `.claude/flow/plans/*` directory
+8. Read the matching `phase-context.md` and `plan-brief.md` when present; for autonomous work, also check `.claude/flow/uli/<task-slug>/phase-context.md` if the state names a task slug
+9. Display a restored summary:
+   - current gate/phase
+   - next action
+   - ready tasks to dispatch
+   - blocked tasks and blockers
+   - latest checkpoint path
+   - verification evidence status
+10. Continue from `next_action`; do not rerun completed side-effect steps unless the event log shows no successful entry.
 
 ## Usage
 

@@ -9,7 +9,7 @@ MODIFIED_FILES_JSONL = os.path.join(FLOW_DIR, "modified-files.jsonl")
 VERIFICATION_EVIDENCE = os.path.join(FLOW_DIR, "verification-evidence.jsonl")
 PRE_COMPACT = os.path.join(FLOW_DIR, "pre-compact-context.md")
 
-# Base list — slug-namespaced files (plans/*/…, ulw/*/…, uli/*/…) are added dynamically in main()
+# Base list — slug-namespaced files (plans/*/…, uli/*/…) are added dynamically in main()
 CRITICAL_FILES_BASE = [
     "workflow-state.json",
     "modified-files.jsonl", "verification-evidence.jsonl",
@@ -25,8 +25,7 @@ def slug_namespaced_files() -> list[str]:
     found = []
     for pattern in [
         "plans/*/plan-brief.md", "plans/*/phase-context.md",
-        "ulw/*/phase-context.md",
-        "uli/*/plan-brief.md",
+            "uli/*/plan-brief.md",
     ]:
         for path in sorted(glob.glob(os.path.join(FLOW_DIR, pattern))):
             found.append(os.path.relpath(path, FLOW_DIR).replace("\\", "/"))
@@ -98,7 +97,7 @@ def main():
     # 4. Key decisions from phase-context (last 30 lines; check slug-namespaced paths first)
     phase_context_candidates = (
         sorted(glob.glob(os.path.join(FLOW_DIR, "plans/*/phase-context.md"))) +
-        sorted(glob.glob(os.path.join(FLOW_DIR, "ulw/*/phase-context.md")))
+        sorted(glob.glob(os.path.join(FLOW_DIR, "uli/*/phase-context.md")))
     )
     for pc_path in phase_context_candidates:
         if os.path.exists(pc_path):

@@ -21,7 +21,6 @@ SCRIPTS = ROOT / "hooks" / "scripts"
 DETECTOR = str(SCRIPTS / "uli-detector.py")
 STOP_HOOK = str(SCRIPTS / "uli-stop-hook.sh")
 PORTABLE_STOP_HOOK = str(SCRIPTS / "uli-stop-hook.py")
-PORTABLE_ULW_STOP_HOOK = str(SCRIPTS / "ulw-stop-hook.py")
 
 # Shell tests require bash + jq (unavailable on bare Windows)
 BASH_AVAILABLE = shutil.which("bash") is not None and shutil.which("jq") is not None
@@ -96,11 +95,6 @@ def run_hook(script_cmd: list[str], state_filename: str, state: dict, transcript
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def run_portable_ulw_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> tuple:
-    """Run portable Python ulw-stop-hook.py with given state and transcript."""
-    return run_hook([sys.executable, PORTABLE_ULW_STOP_HOOK], "ulw-state.json", state, transcript_lines, tmp_dir)
-
-
 def run_stop_hook(state: dict, transcript_lines: list, tmp_dir: str = None) -> tuple:
     """Run uli-stop-hook.sh with given state and transcript, return (returncode, stdout)."""
     return run_hook(["bash", STOP_HOOK], "uli-state.json", state, transcript_lines, tmp_dir)
@@ -123,21 +117,6 @@ def make_uli_state(**overrides) -> dict:
         "pd_proposal_ready": True,
         "acceptance_status": None,
         "started_at": "2026-04-30T00:00:00Z",
-    }
-    base.update(overrides)
-    return base
-
-
-def make_ulw_state(**overrides) -> dict:
-    base = {
-        "active": True,
-        "session_id": "test-123",
-        "intent": "implement",
-        "prompt": "build a calculator app",
-        "task_done": 0,
-        "task_total": 2,
-        "iteration": 0,
-        "max_iterations": 25,
     }
     base.update(overrides)
     return base
@@ -176,11 +155,13 @@ class UliDetectorTests(unittest.TestCase):
                 self.assertEqual(code, 0)
                 self.assertEqual(out, "", f"Should NOT trigger for: {prompt}")
 
-    def test_ulw_keyword_does_not_trigger_uli(self):
-        """'ulw' should not activate uli-detector (handled by ulw-detector.py)."""
+    def test_legacy_ulw_keyword_triggers_uli(self):
+        """Legacy 'ulw' should activate ULI."""
         code, out = run_detector("ulw fix the bug")
         self.assertEqual(code, 0)
-        self.assertEqual(out, "", "ulw keyword must not trigger uli-detector")
+        self.assertTrue(out, "ulw keyword must trigger ULI")
+        data = json.loads(out)
+        self.assertIn("ULI", data["system_prompt_append"])
 
     def test_no_prompt_exits_silently(self):
         code, out = run_detector("")
@@ -264,54 +245,6 @@ class PortableUliStopHookTests(unittest.TestCase):
             state = json.loads(state_file.read_text(encoding="utf-8"))
             self.assertFalse(state["active"])
 
-
-class PortableUlwStopHookTests(unittest.TestCase):
-    """Tests for the Python ULW stop hook used by Codex and other non-bash hosts."""
-
-    def _active_state(self, **overrides) -> dict:
-        return make_ulw_state(**overrides)
-
-    def test_no_ulw_done_tag_blocks_exit(self):
-        code, out = run_portable_ulw_stop_hook(
-            self._active_state(),
-            [make_assistant_line("Still working on implementation...")],
-        )
-        self.assertEqual(code, 0)
-        data = json.loads(out)
-        self.assertEqual(data.get("decision"), "block")
-        self.assertIn("systemMessage", data)
-
-    def test_ulw_done_tag_allows_exit_and_marks_inactive(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            code, out = run_portable_ulw_stop_hook(
-                self._active_state(),
-                [make_assistant_line("Done. <ulw-done>Built calculator</ulw-done>")],
-                tmp_dir=tmp,
-            )
-            self.assertEqual(code, 0)
-            self.assertIn("complete", out.lower())
-            state = json.loads(
-                (Path(tmp) / ".claude" / "flow" / "ulw-state.json").read_text(encoding="utf-8")
-            )
-            self.assertFalse(state["active"])
-
-    def test_missing_transcript_stops_instead_of_looping_forever(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            flow_dir = Path(tmp) / ".claude" / "flow"
-            flow_dir.mkdir(parents=True, exist_ok=True)
-            state_file = flow_dir / "ulw-state.json"
-            state_file.write_text(json.dumps(self._active_state()), encoding="utf-8")
-
-            result = subprocess.run(
-                [sys.executable, PORTABLE_ULW_STOP_HOOK],
-                input=json.dumps({"session_id": "test-123", "transcript_path": "missing.jsonl"}),
-                text=True,
-                capture_output=True,
-                cwd=tmp,
-            )
-            self.assertEqual(result.returncode, 0)
-            state = json.loads(state_file.read_text(encoding="utf-8"))
-            self.assertFalse(state["active"])
 
 @SKIP_BASH
 class UliStopHookTests(unittest.TestCase):
@@ -460,15 +393,10 @@ class UliHooksJsonRegistrationTests(unittest.TestCase):
             f"uli-stop-hook.sh not in Stop hooks. Found: {cmds}"
         )
 
-    def test_both_ulw_and_uli_detectors_registered(self):
-        cmds = self._commands_for_event("UserPromptSubmit")
-        self.assertTrue(any("ulw-detector" in c for c in cmds), "ulw-detector must still be registered")
-        self.assertTrue(any("uli-detector" in c for c in cmds), "uli-detector must be registered")
-
-    def test_both_ulw_and_uli_stop_hooks_registered(self):
-        cmds = self._commands_for_event("Stop")
-        self.assertTrue(any("ulw-stop-hook" in c for c in cmds), "ulw-stop-hook must still be registered")
-        self.assertTrue(any("uli-stop-hook" in c for c in cmds), "uli-stop-hook must be registered")
+    def test_legacy_ulw_hooks_not_registered(self):
+        cmds = self._commands_for_event("UserPromptSubmit") + self._commands_for_event("Stop")
+        self.assertFalse(any("ulw-detector" in c for c in cmds), "ulw-detector must not be registered")
+        self.assertFalse(any("ulw-stop-hook" in c for c in cmds), "ulw-stop-hook must not be registered")
 
 
 # ---------------------------------------------------------------------------
@@ -525,8 +453,8 @@ class UliSkillBranchTests(unittest.TestCase):
     def test_product_state_md_referenced(self):
         self.assertIn("product-state.md", self.content)
 
-    def test_uli_and_ulw_coexist(self):
-        self.assertIn("<ulw-done>", self.skill_content, "ULW branch must be in SKILL.md")
+    def test_uli_is_single_autonomous_completion_tag(self):
+        self.assertNotIn("<ulw-done>", self.content, "ULW completion tag must not remain")
         self.assertIn("<uli-done>", self.uli_content, "ULI branch must be in ULI.md")
 
 
@@ -548,8 +476,9 @@ class UliCommandDocTests(unittest.TestCase):
     def test_activation_examples_present(self):
         self.assertRegex(self.content, r"(?i)(uli\s+\w|/uli)", "Must show activation examples")
 
-    def test_distinguishes_from_ulw(self):
-        self.assertIn("ulw", self.content.lower(), "Must compare ULI to ULW")
+    def test_documents_legacy_ulw_alias(self):
+        self.assertIn("ulw", self.content.lower(), "Must document legacy ULW alias")
+        self.assertIn("<uli-done>", self.content, "Legacy alias must use ULI completion")
 
     def test_documents_hard_acceptance(self):
         self.assertRegex(

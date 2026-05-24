@@ -5,7 +5,6 @@
 
 FLOW_DIR=".claude/flow"
 STATE_FILE="$FLOW_DIR/workflow-state.json"
-ULW_STATE_FILE="$FLOW_DIR/ulw-state.json"
 LAST_VERIFICATION="$FLOW_DIR/last-verification.json"
 
 # ANSI colors
@@ -190,25 +189,6 @@ build_line1() {
   [ -n "$VIM_PART" ] && out="${out}${VIM_PART}"
   printf "%s" "$out"
 }
-
-# ── ULW active -> 2-line display ───────────────────────────
-if [ -f "$ULW_STATE_FILE" ]; then
-  ULW_ACTIVE=$(sed -n 's/.*"active"[[:space:]]*:[[:space:]]*\([a-z]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
-  if [ "$ULW_ACTIVE" = "true" ]; then
-    INTENT=$(sed -n 's/.*"intent"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$ULW_STATE_FILE" | head -1)
-    ULW_DONE=$(sed -n 's/.*"task_done"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
-    ULW_TOTAL=$(sed -n 's/.*"task_total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
-    ULW_ITER=$(sed -n 's/.*"iteration"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$ULW_STATE_FILE" | head -1)
-
-    ULW_DONE="${ULW_DONE:-0}"
-    PROG=""; [ -n "$ULW_TOTAL" ] && [ "${ULW_TOTAL:-0}" -gt 0 ] && PROG=" ${ULW_DONE}/${ULW_TOTAL}"
-    LOOP=""; [ -n "$ULW_ITER" ] && [ "${ULW_ITER:-0}" -gt 0 ] && LOOP=" #${ULW_ITER}"
-
-    printf "%s\n" "$(build_line1)"
-    printf "%s\n" "flow:${YEL}ulw${R}:${CYN}${INTENT:-?}${R}${PROG}${LOOP}${VERIFY}"
-    exit 0
-  fi
-fi
 
 # ── Normal workflow phase ─────────────────────────────────
 PHASE_DISPLAY="idle"; PHASE_COLOR="$DIM"; PROGRESS=""; FLOW_META=""

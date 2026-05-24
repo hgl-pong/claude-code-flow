@@ -55,7 +55,6 @@ REGISTRY = [
         "event": "UserPromptSubmit",
         "matcher": "",
         "hooks": [
-            ("python", "hooks/scripts/ulw-detector.py", 3),
             ("python", "hooks/scripts/uli-detector.py", 3),
             ("python", "hooks/scripts/plan-detector.py", 3),
             ("python", "hooks/scripts/keyword-router.py", 3),
@@ -140,9 +139,7 @@ REGISTRY = [
         "matcher": "",
         "hooks": [
             ("python", "hooks/scripts/todo-enforcer.py", 5),
-            ("bash", "hooks/scripts/ulw-stop-hook.sh", 10, ["claude"]),
             ("bash", "hooks/scripts/uli-stop-hook.sh", 10, ["claude"]),
-            ("python", "hooks/scripts/ulw-stop-hook.py", 10, ["codex"]),
             ("python", "hooks/scripts/uli-stop-hook.py", 10, ["codex"]),
             ("python", "hooks/scripts/on-workflow-stop.py", 10),
         ],

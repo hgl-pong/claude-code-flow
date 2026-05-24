@@ -48,8 +48,7 @@ Research uses the `research` skill methodology with general-purpose subagents. U
 | `/workflow-timeline` | Show session execution timeline. |
 | `/workflow-metrics` | Show session metrics. |
 | `/workflow-skills` | Manage or inspect workflow skills. |
-| `/ulw <task>` | Single-task autonomous mode. |
-| `/uli <goal>` | Product iteration loop. |
+| `/uli <goal>` | Autonomous product iteration loop. Legacy `ulw`/`ultrawork` prompts route here. |
 
 ## Skills
 

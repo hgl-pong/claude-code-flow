@@ -1,67 +1,34 @@
 ---
-name: Systematic Debugging
-version: "2.1.0"
-description: "Debug bugs, test failures, crashes, build failures, regressions, and unexpected behavior via root-cause analysis."
-when_to_use: "Trigger on 'bug', 'failing test', 'error', 'crash', 'broken', 'regression', 'unexpected behavior', 'build failed'. Skip feature planning."
-argument-hint: "<bug or error to debug>"
+name: systematic-debugging
+description: "Debug bugs, test failures, crashes, build failures, regressions, performance issues, and unexpected behavior via root-cause analysis. Use when there is a symptom to diagnose; skip feature planning or broad review."
 ---
 
 # Systematic Debugging
 
+Find root cause before fixing.
+
 ## Iron Law
 
-**NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.**
+No fix without a reproduced symptom and a root-cause hypothesis supported by evidence.
 
-If you haven't completed Phase 1, you cannot propose fixes. Patching without understanding is how bugs multiply.
+## Workflow
 
-**Violating the letter of this process is violating the spirit of debugging.**
-
-## Use / Skip
-
-Use for ANY technical issue — test failures, bugs, crashes, regressions, unexpected behavior, performance problems, and build failures. Especially under time pressure, when "just one quick fix" seems obvious, or after previous fixes didn't work.
-
-Skip for new feature planning, broad code review, or implementation requests without a failing symptom.
-
-## The Four Phases
-
-Complete each phase before proceeding to the next. See `phases.md` in this directory for full details.
-
-1. **Root Cause Investigation** — Reproduce, read errors, check changes, trace data flow
-2. **Pattern Analysis** — Find working examples, compare, identify differences
-3. **Hypothesis and Testing** — One hypothesis, minimal test, verify
-4. **Implementation** — Failing test, single fix, verify. If >= 3 fixes failed: question architecture
-
-## Rationalization Table
-
-| Excuse | Reality |
-|--------|---------|
-| "Issue is simple, don't need process" | Simple issues have root causes too. Process is fast. |
-| "Emergency, no time" | Systematic debugging is FASTER than guess-and-check thrashing. |
-| "Just try this first" | First fix sets the pattern. Do it right from the start. |
-| "I'll write test after confirming fix" | Untested fixes don't stick. Test first proves it. |
-| "Multiple fixes at once saves time" | Can't isolate what worked. Causes new bugs. |
-| "I see the problem, let me fix it" | Seeing symptoms is not understanding root cause. |
-| "One more fix attempt" (after 2+ failures) | 3+ failures = architectural problem. Question the pattern. |
-
-## Red Flags — STOP
-
-- "Quick fix for now, investigate later"
-- "Just try changing X and see if it works"
-- Proposing solutions before tracing data flow
-- Changing multiple things in one attempt
-- "One more fix attempt" (when already tried 2+)
-
-**All of these mean: STOP. Return to Phase 1.**
-
-## Done When
-
-The issue is reproduced, root cause is identified, a minimal fix is made, regression coverage exists when feasible, and verification passes.
+1. Capture the exact symptom, expected behavior, and recent changes.
+2. Reproduce with the smallest command/test/action.
+3. Localize the failing boundary using logs, tests, traces, or code paths.
+4. Form and test a root-cause hypothesis.
+5. Add or update a regression test when possible.
+6. Apply the smallest fix.
+7. Re-run the failing check and nearby regression checks.
 
 ## Output
 
-Report:
-- Reproduction command or scenario
+- Symptom
+- Reproduction
 - Root cause
 - Fix
-- Regression test added
-- Verification command and result
+- Verification evidence
+
+## References
+
+- `phases.md` - full debugging phases.
