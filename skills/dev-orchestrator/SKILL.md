@@ -5,7 +5,7 @@ description: "Orchestrate dev work: implement, build, fix, refactor, test, revie
 
 # Development Orchestrator
 
-Route and execute software work through the project pipeline.
+Route and execute software work through the project pipeline. Treat the orchestrator as the harness control plane: route requests, advance `.claude/flow/workflow-state.json`, dispatch isolated agents, enforce policy through hooks, and require `.claude/flow/verification-evidence.jsonl` before completion claims.
 
 <SUBAGENT-STOP>
 If dispatched as a subagent for a specific implementation task, skip routing and run the assigned task only.

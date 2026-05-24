@@ -14,7 +14,7 @@ EXEC_LOG = os.path.join(FLOW_DIR, "exec-log.jsonl")
 SESSION_ID_FILE = os.path.join(FLOW_DIR, "session-id.txt")
 
 PATTERNS = [
-    ("test", re.compile(r"\b(pytest|vitest|jest|mocha|go\s+test|cargo\s+test|npm\s+(run\s+)?test|pnpm\s+(run\s+)?test|yarn\s+test|mvn\s+test|gradle\s+test)\b", re.I)),
+    ("test", re.compile(r"\b(pytest|vitest|jest|mocha|go\s+test|cargo\s+test|python\s+(-m\s+unittest|tests/run-tests\.py)|npm\s+(run\s+)?test|pnpm\s+(run\s+)?test|yarn\s+test|mvn\s+test|gradle\s+test)\b", re.I)),
     ("build", re.compile(r"\b(npm\s+run\s+build|pnpm\s+(run\s+)?build|yarn\s+build|cargo\s+build|go\s+build|mvn\s+package|gradle\s+build|make(\s|$))\b", re.I)),
     ("lint", re.compile(r"\b(eslint|ruff|flake8|pylint|golangci-lint|cargo\s+clippy|npm\s+(run\s+)?lint|pnpm\s+(run\s+)?lint|yarn\s+lint)\b", re.I)),
     ("typecheck", re.compile(r"\b(tsc|mypy|pyright|npm\s+(run\s+)?typecheck|pnpm\s+(run\s+)?typecheck|yarn\s+typecheck)\b", re.I)),

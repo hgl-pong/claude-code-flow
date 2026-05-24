@@ -12,6 +12,7 @@ Synthesize evidence into a recommendation with sources and uncertainty.
 - Use Context7 for current library/framework/API/SDK docs.
 - Use web/search tools only when current external evidence is required.
 - For repo-local questions, inspect local code first.
+- When research feeds planning or implementation, write a research artifact with local findings, external findings, sources, uncertainty, and the decision it supports.
 - Label uncertainty and distinguish facts from judgment.
 - Do not copy external workflows wholesale; send workflow adaptation to `workflow-intake`.
 

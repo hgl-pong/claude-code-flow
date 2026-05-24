@@ -1,6 +1,21 @@
 # Subagent Prompt Templates
 
-Templates for dispatching agents in the CCF pipeline. Paste full task text — never make subagents read plan files.
+Templates for dispatching agents in the CCF pipeline. Paste full task text — never make subagents read plan files. Every dispatch must include a Handoff Artifact schema so completion can be verified without trusting agent prose.
+
+## Handoff Artifact
+
+All agents return this block exactly once:
+
+```markdown
+## Handoff Artifact
+- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED | REJECT
+- Scope completed: <requirements satisfied or not>
+- Files read: <exact paths>
+- Files modified: <exact paths, or N/A>
+- Evidence: `<command>` -> <pass/fail/unknown + key output>
+- Next owner: orchestrator | oracle | forge | prism | sentinel | user
+- Open risks: <specific risks, or "none">
+```
 
 ## Forge (Implementer)
 

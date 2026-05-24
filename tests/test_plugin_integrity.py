@@ -635,6 +635,63 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertEqual(state["verification_count"], 1)
             self.assertEqual(state["last_verification"]["status"], "pass")
 
+    def test_track_verification_records_python_test_evidence(self):
+        commands = [
+            "python -m unittest tests.test_plugin_integrity",
+            "python tests/run-tests.py",
+        ]
+
+        for command in commands:
+            with self.subTest(command=command):
+                payload = {
+                    "tool_input": {"command": command},
+                    "tool_response": {"exit_code": 0},
+                }
+
+                with tempfile.TemporaryDirectory() as tmp:
+                    result = subprocess.run(
+                        [sys.executable, str(ROOT / "hooks/scripts/track-verification.py")],
+                        cwd=tmp,
+                        input=json.dumps(payload),
+                        text=True,
+                        capture_output=True,
+                    )
+
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    evidence = json.loads((Path(tmp) / ".claude" / "flow" / "last-verification.json").read_text(encoding="utf-8"))
+                    self.assertEqual(evidence["kind"], ["test"])
+                    self.assertEqual(evidence["status"], "pass")
+
+    def test_orchestrator_references_harness_control_plane(self):
+        orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
+
+        self.assertIn("control plane", orchestrator.lower())
+        self.assertIn("workflow-state.json", orchestrator)
+        self.assertIn("verification-evidence.jsonl", orchestrator)
+        self.assertIn("Policy Trace", pipeline)
+        self.assertIn("Decision Trace", dispatch)
+        self.assertIn("Handoff Artifact", prompts)
+
+    def test_workflow_requires_documented_research_plan_and_md_self_review(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        planning = read_text(ROOT / "skills/planning/SKILL.md")
+        research = read_text(ROOT / "skills/research/SKILL.md")
+
+        self.assertIn("local file inspection", pipeline.lower())
+        self.assertIn("external research", pipeline.lower())
+        self.assertIn("before plan", pipeline.lower())
+        self.assertIn("before implementation", pipeline.lower())
+        self.assertIn("Generated Markdown Document Review", pipeline)
+        self.assertIn("self-review loop", pipeline.lower())
+        self.assertIn("plan document", planning.lower())
+        self.assertIn("Local Research", planning)
+        self.assertIn("External Research", planning)
+        self.assertIn("Self Review Result", planning)
+        self.assertIn("research artifact", research.lower())
+
     def test_metrics_collects_verification_counts(self):
         with tempfile.TemporaryDirectory() as tmp:
             flow_dir = Path(tmp) / ".claude" / "flow"

@@ -1,6 +1,10 @@
 # Pipeline Operations Reference
 
-Detailed gate specifications, context envelope templates, and scheduling rules for the development pipeline.
+Detailed gate specifications, context envelope templates, and scheduling rules for the development pipeline. This reference is the harness control-plane contract: explicit gates, durable state, structured handoffs, hook-enforced policy, and evidence-based completion.
+
+## Policy Trace
+
+Each gate decision must leave a short trace in the active plan or phase context: checked/skipped, reason, owner, and required evidence. Hooks may enforce deterministic policy (routing, dangerous tools, completion blocking), but product judgment stays in the orchestrator/oracle path.
 
 ## Mandatory Gate Checklist (Full)
 
@@ -11,13 +15,16 @@ GATE CHECKLIST (evaluate for this specific task):
     architecture changes, broad refactors. Skip only for: narrow bug fixes with
     known root cause, config changes, single-file edits with clear spec.
 
-[ ] Gate 2: Research (general-purpose subagent + research skill) — see mode
-    table. If mandatory: research subagents MUST cover required local codebase
-    analysis, external web research, product analysis, or design discovery before
-    plan gate. **Dispatch with `subagent_type: "general-purpose"` — research is
-    a skill, not an agent.** Multiple independent research/product/design streams
-    MAY run in parallel. Oracle remains SEQUENTIAL after research — never dispatch
-    oracle until required research finishes and findings are available.
+[ ] Gate 2: Research (general-purpose subagent + research skill) — mandatory
+    before plan for any implementation, workflow change, behavior change,
+    architecture change, broad refactor, or unfamiliar code. Research MUST include
+    local file inspection and external research unless the user explicitly forbids
+    network access or the environment cannot access the network. Produce a
+    written research artifact before plan; chat-only synthesis is not enough.
+    **Dispatch with `subagent_type: "general-purpose"` — research is a skill, not
+    an agent.** Multiple independent research/product/design streams MAY run in
+    parallel. Oracle remains SEQUENTIAL after research — never dispatch oracle
+    until required research finishes and findings are available.
 
 [ ] Gate 2a: Reference Intake (workflow-intake skill) — mandatory when the
     user asks to reference, borrow from, port, import, compare with, or optimize
@@ -27,8 +34,11 @@ GATE CHECKLIST (evaluate for this specific task):
     with oracle planning and must not introduce a second agent taxonomy, command
     system, hook runtime, or external control plane.
 
-[ ] Gate 3: Plan (oracle) — ALWAYS mandatory for standard/deep/autonomous.
-    Oracle MUST produce `<output_dir>/plan-brief.md` with TaskCreate tasks.
+[ ] Gate 3: Plan (oracle) — ALWAYS mandatory before implementation in every
+    mode. Oracle/orchestrator MUST produce a plan document at
+    `<output_dir>/plan-brief.md` with TaskCreate tasks before any forge or direct
+    code edit starts. The plan document MUST include Local Research, External
+    Research, Success Criteria, Verification, and Self Review Result sections.
     Oracle MUST receive research findings as input when Gate 2 was checked and
     intake decisions as input when Gate 2a was checked.
 
@@ -87,6 +97,14 @@ unchecked gates. You MAY NOT skip a checked gate. You MAY NOT reorder gates.
 Gate 2a runs after research when both are checked, otherwise immediately before
 Plan.
 ```
+
+## Generated Markdown Document Review
+
+Every workflow-generated Markdown document that controls downstream work (`plan-brief.md`, `phase-context.md`, `DESIGN.md`, `ui-research.md`, intake decisions, review summaries) MUST run a self-review loop before the next gate consumes it:
+
+1. Check requirement coverage, exact file paths, runnable commands, evidence/source links, contradictions, and placeholders.
+2. If any issue is found, revise the document and run the self-review loop again.
+3. Only documents with `Self Review Result: PASS` may unblock planning, implementation, review, or acceptance.
 
 ## Context Envelope Template
 

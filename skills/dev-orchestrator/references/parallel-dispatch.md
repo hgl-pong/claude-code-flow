@@ -1,6 +1,6 @@
 # Parallel Dispatch
 
-Maximize throughput by running non-conflicting agents simultaneously. Every dispatch decision starts with file conflict analysis — never skip it.
+Maximize throughput by running non-conflicting agents simultaneously. Every dispatch decision starts with file conflict analysis — never skip it. The orchestrator keeps decision authority; agents perform bounded workstreams and return structured artifacts.
 
 ## Iron Law
 
@@ -26,6 +26,10 @@ Parallel dispatch is the default for complex work, not an optimization to rememb
 ## When NOT to Parallelize
 
 Keep work in the main conversation when all are true: narrow scope, 1-2 files, obvious implementation, single verification command, no review/acceptance handoff needed. Do not create agents just to edit one clear line or run one command.
+
+## Decision Trace
+
+Before any multi-agent batch, record: decomposition reason, file-conflict map, chosen isolation, blockedBy edges, and why each task is parallel or sequential. Do not rely on agent-to-agent chat; durable state and task records are the coordination surface.
 
 ## Dispatch Ritual
 
