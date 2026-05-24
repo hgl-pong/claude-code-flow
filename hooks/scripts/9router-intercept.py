@@ -161,11 +161,12 @@ def main():
         else:
             msg = _fetch(base_url, value)
 
+        summary = msg.splitlines()[0] if msg else "9router returned replacement context."
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
                 "permissionDecision": "deny",
-                "permissionDecisionReason": f"Original {tool_name} skipped; replacement context provided by 9router.",
+                "permissionDecisionReason": f"Original {tool_name} skipped; {summary}",
                 "additionalContext": msg,
             },
             "suppressOutput": False,
