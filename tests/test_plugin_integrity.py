@@ -1190,5 +1190,10 @@ class PluginIntegrityTests(unittest.TestCase):
         for term in ["Product State Schema", "Completed iterations", "Known gaps", "Last acceptance evidence", "Next PD input"]:
             self.assertIn(term, text)
 
+    def test_final_acceptance_handoff_blocks_completion_claims(self):
+        text = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        for term in ["Final Acceptance Handoff", "active goal", "completed iteration or task ids", "commit or PR reference", "Do not emit `<uli-done>`"]:
+            self.assertIn(term, text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

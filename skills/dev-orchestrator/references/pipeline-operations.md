@@ -183,6 +183,10 @@ Every non-lightweight gate transition updates workflow-state.json or the active 
 
 Workflow orchestration changes must keep regression coverage tied to workflow-state.json and verification-evidence.jsonl so routing, dispatch, review, and acceptance claims remain observable instead of conversational.
 
+## Final Acceptance Handoff
+
+Final completion requires an acceptance handoff that links the active goal, completed iteration or task ids, final verification-evidence.jsonl entries, workflow-state.json phase, remaining known gaps, and commit or PR reference. Do not emit `<uli-done>` or claim completion until this handoff is written or reported with fresh evidence after the final relevant change.
+
 ## Mode Escalation Table
 
 | Requested mode | Allowed only when | Escalation rule |
