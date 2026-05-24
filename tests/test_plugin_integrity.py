@@ -711,13 +711,19 @@ class PluginIntegrityTests(unittest.TestCase):
             "more than 3 newly created files",
             "broad\n    behavior/workflow/prompt/hook/test changes",
             "architecture/UI changes",
+            "design system website/multi-page UI request",
         ]:
             self.assertIn(trigger, pipeline)
         self.assertIn("touches more than 5 files", dispatch)
         self.assertIn("creates more than 3 files", dispatch)
         self.assertIn("1-2 small new files", dispatch)
+        self.assertIn("design system website", dispatch)
+        self.assertIn("multi-page UI", dispatch)
         self.assertIn("touches more than 5 files", prompts)
         self.assertIn("creates more than 3 files", prompts)
+        self.assertIn("design system website", prompts)
+        self.assertIn("2+ subtasks or acceptance checks", dispatch)
+        self.assertNotIn("3+ subtasks or acceptance checks", dispatch)
 
     def test_long_task_harness_coordination_is_documented(self):
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
@@ -742,6 +748,7 @@ class PluginIntegrityTests(unittest.TestCase):
             body = prompts[start:end]
             self.assertIn("## Handoff Artifact", body)
             self.assertIn("TaskList update", body)
+            self.assertIn("run_in_background: true", body)
 
     def test_external_research_is_materiality_scoped(self):
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
@@ -749,6 +756,18 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Research MUST include local file inspection", pipeline)
         self.assertIn("Include external research only", pipeline)
         self.assertIn("materially affect the solution", pipeline)
+        self.assertIn("when research is required", pipeline)
+
+    def test_vague_product_ui_requests_require_clarification(self):
+        orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+
+        self.assertIn("ask clarifying questions", orchestrator)
+        self.assertIn("Gate 0: Requirement Clarification", pipeline)
+        self.assertIn("product/UI/site/design-system outcome", pipeline)
+        self.assertIn("Do not answer\n    \"I'll do the minimal version\"", pipeline)
+        self.assertIn("what pages/sections are required", pipeline)
+        self.assertIn("acceptance criteria", pipeline)
 
     def test_metrics_collects_verification_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

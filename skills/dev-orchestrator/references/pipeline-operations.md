@@ -11,6 +11,13 @@ Each gate decision must leave a short trace in the active plan or phase context:
 ```
 GATE CHECKLIST (evaluate for this specific task):
 
+[ ] Gate 0: Requirement Clarification — mandatory before classification when the
+    user asks for a product/UI/site/design-system outcome without concrete scope,
+    pages, audience, visual direction, content, or success criteria. Do not answer
+    "I'll do the minimal version" for vague outcome requests. Ask what to build,
+    what pages/sections are required, target users, style references, constraints,
+    and acceptance criteria; then proceed through the normal gates.
+
 [ ] Gate 1: Brainstorm — mandatory for: new features, behavior changes, UI work,
     architecture changes, broad refactors. Skip only for: narrow bug fixes with
     known root cause, config changes, single-file edits with clear spec.
@@ -21,15 +28,16 @@ GATE CHECKLIST (evaluate for this specific task):
     or adding 1-2 small files with obvious scope. Heavy tasks MUST use the full
     flow: more than 5 touched files, more than 3 newly created files, broad
     behavior/workflow/prompt/hook/test changes, architecture/UI changes, unfamiliar
-    code, or quality-sensitive outcomes. When unsure, classify as heavy enough to
-    research and plan.
+    code, quality-sensitive outcomes, or any website/official site/landing page/
+    docs site/design system website/multi-page UI request. When unsure, classify
+    as heavy enough to research and plan.
     Research MUST include local file inspection. Include external research only
     when external facts, library/API behavior, competitive/product comparison, or
     current ecosystem knowledge materially affect the solution, unless the user
     forbids network access or the environment cannot access the network. Produce
-    a written research artifact before plan; chat-only synthesis
-    is not enough. Strong research is a quality gate: it determines whether the
-    final solution is merely functional or competitive.
+    a written research artifact before plan when research is required; chat-only
+    synthesis is not enough. Strong research is a quality gate: it determines
+    whether the final solution is merely functional or competitive.
     **Dispatch with `subagent_type: "general-purpose"` — research is a skill, not
     an agent.** Multiple independent research/product/design streams MAY run in
     parallel. Oracle remains SEQUENTIAL after research — never dispatch oracle

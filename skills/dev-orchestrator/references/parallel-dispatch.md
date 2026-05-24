@@ -12,7 +12,7 @@ Subagent dispatch is the default for non-trivial work, not an optimization to re
 
 | Condition | Decision |
 |-----------|----------|
-| 3+ subtasks or acceptance checks | Create tasks + dispatch subagents |
+| 2+ subtasks or acceptance checks | Create tasks + dispatch subagents |
 | Research/product/design streams are separable | Dispatch separate read-only subagents before plan/impl |
 | 3+ likely changed files or 2+ file clusters | Split by file cluster before implementation |
 | Tasks write to different file clusters | Parallel — no isolation needed |
@@ -25,7 +25,7 @@ Subagent dispatch is the default for non-trivial work, not an optimization to re
 
 ## When NOT to Dispatch Subagents
 
-Keep work in the main conversation for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Use the full flow when the task likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, or feels unfamiliar/quality-sensitive.
+Keep work in the main conversation for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Use the full flow when the task likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, feels unfamiliar/quality-sensitive, or asks for a website, official site, landing page, docs site, design system website, or multi-page UI.
 
 ## Decision Trace
 
@@ -51,7 +51,7 @@ Before starting implementation work on standard/deep/autonomous modes, run this 
 
 ```
 1. VERY LIGHTWEIGHT: Is this only a few lines, 1-2 touched files, or 1-2 small new files with obvious scope? If yes → main conversation may implement directly.
-2. HEAVY THRESHOLD: Will this touch >5 files or create >3 files? If yes → full flow with research/plan/decomposition.
+2. HEAVY THRESHOLD: Will this touch >5 files, create >3 files, or build a website/official site/landing page/docs site/design system website/multi-page UI? If yes → full flow with research/plan/decomposition.
 3. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
 4. SCAN: Does work span 2+ domains or file clusters? If yes → dispatch subagents.
 5. GATES: Does the pipeline need impl + tests + review? → dispatch subagents.

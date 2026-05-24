@@ -4,7 +4,7 @@ Templates for dispatching agents in the CCF pipeline. Paste full task text — n
 
 ## Agentic Default Rule
 
-The main conversation implements directly only for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Heavy work uses the full flow when it likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, or feels unfamiliar/quality-sensitive. Otherwise the main conversation decomposes work, builds self-contained envelopes, dispatches role-specific subagents, checks returned artifacts against scope, records evidence, and performs final reporting.
+The main conversation implements directly only for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Heavy work uses the full flow when it likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, feels unfamiliar/quality-sensitive, or asks for a website, official site, landing page, docs site, design system website, or multi-page UI. Otherwise the main conversation decomposes work, builds self-contained envelopes, dispatches role-specific subagents, checks returned artifacts against scope, records evidence, and performs final reporting.
 
 ## Long-Task Harness Rules
 
@@ -35,6 +35,7 @@ Agent({
   description: "Implement Task N: [task name]",
   subagent_type: "claude-code-flow:forge",
   model: "sonnet",
+  run_in_background: true,
   prompt: """
 ## Task Description
 
@@ -86,6 +87,7 @@ Agent({
   description: "Spec compliance review for Task N",
   subagent_type: "claude-code-flow:sentinel",
   model: "sonnet",
+  run_in_background: true,
   prompt: """
 Review whether implementation matches specification. READ-ONLY — do not modify any files.
 
@@ -130,6 +132,7 @@ Agent({
   description: "Code quality review for Task N",
   subagent_type: "claude-code-flow:sentinel",
   model: "sonnet",
+  run_in_background: true,
   prompt: """
 Code quality review. READ-ONLY — do not modify any files.
 
@@ -166,6 +169,7 @@ Agent({
   description: "Acceptance testing for Task N",
   subagent_type: "claude-code-flow:prism",
   model: "sonnet",
+  run_in_background: true,
   prompt: """
 ## Task
 
