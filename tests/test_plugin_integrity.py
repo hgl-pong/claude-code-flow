@@ -692,6 +692,64 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("Self Review Result", planning)
         self.assertIn("research artifact", research.lower())
 
+    def test_workflow_defines_lightweight_and_heavy_size_thresholds(self):
+        orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
+
+        self.assertIn("default to non-trivial", orchestrator)
+        for allowed in [
+            "changing only a few lines",
+            "touching 1-2 files",
+            "adding 1-2 small files",
+        ]:
+            self.assertIn(allowed, pipeline)
+            self.assertIn(allowed, prompts)
+        for trigger in [
+            "more than 5 touched files",
+            "more than 3 newly created files",
+            "broad\n    behavior/workflow/prompt/hook/test changes",
+            "architecture/UI changes",
+        ]:
+            self.assertIn(trigger, pipeline)
+        self.assertIn("touches more than 5 files", dispatch)
+        self.assertIn("creates more than 3 files", dispatch)
+        self.assertIn("1-2 small new files", dispatch)
+        self.assertIn("touches more than 5 files", prompts)
+        self.assertIn("creates more than 3 files", prompts)
+
+    def test_long_task_harness_coordination_is_documented(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
+
+        for required in ["TeamCreate", "TaskList", "SendMessage", "team_name", "stable", "idle"]:
+            self.assertIn(required, dispatch + prompts + pipeline)
+        self.assertIn("3+ task nodes", pipeline)
+        self.assertIn("multiple dispatch waves", pipeline)
+        self.assertIn("Team Mode Ritual", dispatch)
+
+    def test_subagent_templates_use_handoff_artifacts_without_commits(self):
+        prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
+
+        self.assertNotIn("Commit your work", prompts)
+        self.assertGreaterEqual(prompts.count("## Handoff Artifact"), 5)
+        sections = ["## Forge (Implementer)", "## Sentinel Stage 1", "## Sentinel Stage 2", "## Prism", "## Research"]
+        for section, next_section in zip(sections, sections[1:]):
+            start = prompts.index(section)
+            end = prompts.index(next_section)
+            body = prompts[start:end]
+            self.assertIn("## Handoff Artifact", body)
+            self.assertIn("TaskList update", body)
+
+    def test_external_research_is_materiality_scoped(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+
+        self.assertIn("Research MUST include local file inspection", pipeline)
+        self.assertIn("Include external research only", pipeline)
+        self.assertIn("materially affect the solution", pipeline)
+
     def test_metrics_collects_verification_counts(self):
         with tempfile.TemporaryDirectory() as tmp:
             flow_dir = Path(tmp) / ".claude" / "flow"

@@ -16,14 +16,18 @@ GATE CHECKLIST (evaluate for this specific task):
     known root cause, config changes, single-file edits with clear spec.
 
 [ ] Gate 2: Research (general-purpose subagent + research skill) — default-on
-    before plan. Skip only for trivial tasks: narrow, obvious, likely one file,
-    no behavior/design ambiguity, one verification command, and no independent
-    review/acceptance handoff. Research is mandatory for any implementation,
-    workflow change, behavior change, architecture change, broad refactor,
-    unfamiliar code, competitive/product decision, or quality-sensitive outcome.
-    Research MUST include local file inspection and external research unless the
-    user explicitly forbids network access or the environment cannot access the
-    network. Produce a written research artifact before plan; chat-only synthesis
+    before plan. First classify the request by estimated size. Very lightweight
+    tasks may skip research/plan: changing only a few lines, touching 1-2 files,
+    or adding 1-2 small files with obvious scope. Heavy tasks MUST use the full
+    flow: more than 5 touched files, more than 3 newly created files, broad
+    behavior/workflow/prompt/hook/test changes, architecture/UI changes, unfamiliar
+    code, or quality-sensitive outcomes. When unsure, classify as heavy enough to
+    research and plan.
+    Research MUST include local file inspection. Include external research only
+    when external facts, library/API behavior, competitive/product comparison, or
+    current ecosystem knowledge materially affect the solution, unless the user
+    forbids network access or the environment cannot access the network. Produce
+    a written research artifact before plan; chat-only synthesis
     is not enough. Strong research is a quality gate: it determines whether the
     final solution is merely functional or competitive.
     **Dispatch with `subagent_type: "general-purpose"` — research is a skill, not
@@ -40,7 +44,7 @@ GATE CHECKLIST (evaluate for this specific task):
     system, hook runtime, or external control plane.
 
 [ ] Gate 3: Plan (oracle) — default-on before implementation. Skip only for
-    trivial tasks using the same criteria as Gate 2. Oracle/orchestrator MUST
+    very lightweight tasks using the size criteria from Gate 2. Oracle/orchestrator MUST
     produce a plan document at `<output_dir>/plan-brief.md` with TaskCreate tasks
     before any forge or direct code edit starts. The plan document MUST include
     Local Research, External Research, Success Criteria, Verification, and Self
@@ -64,13 +68,14 @@ GATE CHECKLIST (evaluate for this specific task):
     until the user explicitly approves. If the user requests changes, oracle
     revises and both phases repeat.
 
-    After approval, classify execution as trivial or agentic. Direct main-conversation
-    implementation is allowed only for trivial tasks: narrow, obvious, likely one
-    file, no behavior/design ambiguity, one verification command, and no independent
-    review/acceptance handoff. All other implementation work MUST dispatch bounded
+    After approval, classify execution as very lightweight or agentic. Direct
+    main-conversation implementation is allowed only for tasks under the Gate 2
+    size thresholds. All other implementation work MUST dispatch bounded
     subagents by role (forge for code, prism for verification, sentinel for review)
     while the main conversation owns decomposition, envelopes, task coordination,
-    artifact checks, evidence recording, and final reporting.
+    artifact checks, evidence recording, and final reporting. For long tasks with
+    3+ task nodes, multiple dispatch waves, or rolling unblocks, create a harness
+    team and use the shared TaskList as the durable coordination surface.
 
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
@@ -159,16 +164,18 @@ For implementation agents, append:
 
 ```
 Agent({
+  name: "<stable-agent-name>",
   description: "<task_subject>",
   subagent_type: "claude-code-flow:<agent>",
   model: "<agent_model>",
   prompt: "<full context envelope + task details>",
+  team_name: "<team-name for long tasks, else omit>",
   isolation: "<worktree if conflict detected, else omit>",
   run_in_background: true
 })
 ```
 
-**Dispatch all non-conflicting agents in a single message** (multiple Agent calls).
+**Dispatch all non-conflicting agents in a single message** (multiple Agent calls). Stable names are required for long tasks so the orchestrator can use `SendMessage` to correct, resume, or shut down idle teammates.
 
 ## Parallel Limits
 

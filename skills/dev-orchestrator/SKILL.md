@@ -29,10 +29,10 @@ Use plugin planning/routing; prefer `plan` and avoid `EnterPlanMode` for this wo
 
 1. Define goal, assumptions, success criteria, and verification.
 2. Inspect current state; protect unrelated user changes.
-3. Classify trivial vs non-trivial; skip research/plan only for trivial tasks.
+3. Classify very lightweight vs non-trivial; default to non-trivial unless the request matches the lightweight whitelist in `references/pipeline-operations.md`.
 4. Run research before plan for most work; treat research quality as outcome-critical.
 5. Prefer test-first for behavior changes.
-6. Classify direct vs agentic; implement directly only for trivial tasks.
+6. Classify direct vs agentic; implement directly only for very lightweight tasks.
 7. For non-trivial work, dispatch bounded subagents and keep orchestration/final verification in the main conversation.
 8. Run focused verification.
 9. Run multi-round review for non-trivial work: sentinel findings become fix tasks, fixes are verified, then review repeats until approval or escalation.

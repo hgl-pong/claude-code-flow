@@ -4,7 +4,13 @@ Templates for dispatching agents in the CCF pipeline. Paste full task text — n
 
 ## Agentic Default Rule
 
-The main conversation implements directly only for trivial tasks. A task is trivial only when it is narrow, obvious, likely one file, has no behavior/design ambiguity, needs one verification command, and needs no independent review or acceptance handoff. Otherwise the main conversation decomposes work, builds self-contained envelopes, dispatches role-specific subagents, checks returned artifacts against scope, records evidence, and performs final reporting.
+The main conversation implements directly only for very lightweight tasks: changing only a few lines, touching 1-2 files, or adding 1-2 small files with obvious scope. Heavy work uses the full flow when it likely touches more than 5 files, creates more than 3 files, spans broad behavior/workflow/prompt/hook/test changes, changes architecture/UI, or feels unfamiliar/quality-sensitive. Otherwise the main conversation decomposes work, builds self-contained envelopes, dispatches role-specific subagents, checks returned artifacts against scope, records evidence, and performs final reporting.
+
+## Long-Task Harness Rules
+
+For team-backed work, every prompt must include `team_name`, `taskId`, expected owner name, file scope, blocked dependencies already completed, and whether the agent may claim more tasks. Default: agents complete only the assigned task, mark it complete with `TaskUpdate` only after verification, then stop and report. The orchestrator alone creates/shuts down teams, changes dependency structure, dispatches newly unblocked waves, and decides final completion.
+
+Use `SendMessage` only for bounded corrections or clarifying blockers. Do not use peer chat as the handoff channel; durable state is TaskList plus Handoff Artifact.
 
 ## Handoff Artifact
 
@@ -18,6 +24,7 @@ All agents return this block exactly once:
 - Files modified: <exact paths, or N/A>
 - Evidence: `<command>` -> <pass/fail/unknown + key output>
 - Next owner: orchestrator | oracle | forge | prism | sentinel | user
+- TaskList update: <status changed / not changed + reason>
 - Open risks: <specific risks, or "none">
 ```
 
@@ -41,8 +48,8 @@ Agent({
 
 1. Implement exactly what the task specifies
 2. Write tests (TDD: write failing test → implement → verify pass)
-3. Commit your work
-4. Self-review before reporting
+3. Self-review before reporting
+4. Return the Handoff Artifact exactly once
 
 Work from: [directory]
 
@@ -58,13 +65,16 @@ Work from: [directory]
 ## FILES_MODIFIED (required on completion)
 List ALL files created or modified.
 
-## Completion Schema
+## Handoff Artifact
 
-- **Status:** DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
-- Files modified:
-- Verification (commands run + results):
-- RED/GREEN evidence:
-- Concerns:
+- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED
+- Scope completed: <requirements satisfied or not>
+- Files read: <exact paths>
+- Files modified: <exact paths, or N/A>
+- Evidence: `<command>` -> <pass/fail/unknown + key output>
+- Next owner: orchestrator | prism | sentinel | user
+- TaskList update: <status changed / not changed + reason>
+- Open risks: <specific risks, or "none">
 """
 })
 ```
@@ -97,9 +107,16 @@ Read the actual code and verify:
 
 **Verify by reading code, not by trusting the report.**
 
-Report:
-- ✅ Spec compliant
-- ❌ Issues found: [list with file:line references]
+## Handoff Artifact
+
+- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED | REJECT
+- Scope completed: <spec compliant, or missing/extra work>
+- Files read: <exact paths>
+- Files modified: N/A
+- Evidence: `read-only review` -> <pass/fail + key file:line evidence>
+- Next owner: orchestrator | forge | user
+- TaskList update: not changed - read-only review
+- Open risks: <specific risks, or "none">
 """
 })
 ```
@@ -128,11 +145,16 @@ HEAD_SHA: [current commit]
 - Are names clear and accurate?
 - Any code smells, security issues, or performance concerns?
 
-## Report Format
+## Handoff Artifact
 
-- **Strengths:** What's done well
-- **Issues:** Critical / Important / Minor (with file:line)
-- **Assessment:** Approved | Needs fixes
+- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED | REJECT
+- Scope completed: <quality approved, or issues found>
+- Files read: <exact paths>
+- Files modified: N/A
+- Evidence: `read-only review` -> <pass/fail + key file:line evidence>
+- Next owner: orchestrator | forge | user
+- TaskList update: not changed - read-only review
+- Open risks: <specific risks, or "none">
 """
 })
 ```
@@ -160,12 +182,16 @@ Agent({
 3. Verify behavior matches acceptance criteria
 4. Run broader regression if applicable
 
-## Report
+## Handoff Artifact
 
-- **Status:** ACCEPT | REJECT
-- Tests run and results:
-- Behavioral verification:
-- Concerns:
+- Status: DONE | DONE_WITH_CONCERNS | NEEDS_CONTEXT | BLOCKED | REJECT
+- Scope completed: <accepted, or rejected with reason>
+- Files read: <exact paths>
+- Files modified: <exact paths, or N/A>
+- Evidence: `<command>` -> <pass/fail + key output>
+- Next owner: orchestrator | forge | sentinel | user
+- TaskList update: <status changed / not changed + reason>
+- Open risks: <specific risks, or "none">
 """
 })
 ```
