@@ -2,7 +2,7 @@
 name: forge
 description: "Use for: code implementation, feature building, API development, UI component creation. Full-stack Sonnet agent."
 model: sonnet
-effort: high
+effort: xhigh
 color: blue
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 ---

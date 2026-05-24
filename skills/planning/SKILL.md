@@ -38,3 +38,6 @@ Create executable plans; execute only after approval unless the user already app
 - Self Review Result
 - Risks / open questions
 
+## Executable Task Mapping
+
+Every approved plan must show each requirement maps to at least one task with exact file scope, dependency edges, runnable verification command, and acceptance criterion. A plan cannot unblock implementation until its document self-review says Self Review Result: PASS.

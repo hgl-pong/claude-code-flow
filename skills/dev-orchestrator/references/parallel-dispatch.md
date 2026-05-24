@@ -252,3 +252,17 @@ When forge is blocked on a design decision not in the plan:
 | No constraints on agent | "Do NOT change production code" or "Fix tests only" |
 | Vague output request | "Return summary of root cause and changes" |
 | Skipping file conflict analysis | Always build conflict map before dispatch |
+
+## Fresh-Agent Task Envelope
+
+Every implementation dispatch uses a fresh bounded agent per task. The envelope must include task text, exact file scope, relevant specs, constraints, verification command, allowed write set, and required handoff fields. Do not ask the agent to infer scope from plan files unless those files are explicitly part of the read scope.
+
+Use one agent per independent problem domain when failures or workstreams are separable. Keep related failures together when one fix may resolve several failures.
+
+If an agent returns NEEDS_CONTEXT, add the missing context and re-dispatch. If an agent returns BLOCKED, change one variable before retry: split the task, improve the envelope, raise capability, sequence conflicting work, or escalate. The same prompt must not be retried unchanged.
+
+## Envelope Completeness Checklist
+
+Each agent envelope must include the allowed write set, exact read scope, task id, acceptance criterion, verification command, and file-conflict map. If the file-conflict map is missing, stop and refine tasks before dispatch.
+
+Team mode requires named owners for ready work, explicit blockedBy edges, and immediate scheduling of newly unblocked tasks after each valid handoff. Idle is not completion; only a checked handoff artifact plus evidence can complete a task.

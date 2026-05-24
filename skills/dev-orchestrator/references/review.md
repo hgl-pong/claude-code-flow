@@ -73,3 +73,13 @@ Review reports should lead with findings, then open questions, then a brief summ
 - exact evidence for each finding
 
 For external feedback received through `/code-review --receive`, report verified understanding, implemented items with test evidence, and technical pushback for rejected suggestions.
+
+## Review Reception Gate
+
+Verify before implementing review feedback. Restate or clarify unclear feedback, check it against codebase reality, then either implement with tests or give technical pushback. External feedback is a suggestion to evaluate, not an order to follow.
+
+For pipeline review, the spec compliance reviewer must approve before code quality review starts. If spec compliance requests changes, fix and re-review spec compliance before any quality review. Quality findings then follow the same fix-and-re-review loop.
+
+## One Feedback Item at a Time
+
+When implementing review feedback, handle one feedback item at a time unless items are inseparable. For each item: verify it against codebase reality, decide accept/reject, implement accepted changes, run focused verification, then continue. Use technical pushback for incorrect, unused, or scope-expanding suggestions.

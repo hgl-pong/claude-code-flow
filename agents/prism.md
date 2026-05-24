@@ -2,7 +2,7 @@
 name: prism
 description: "Use for: writing tests, running builds, acceptance verification, CI/CD. Covers unit, integration, E2E, performance testing and functional acceptance."
 model: sonnet
-effort: high
+effort: xhigh
 color: green
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
 ---

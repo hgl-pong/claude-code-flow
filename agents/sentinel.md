@@ -2,7 +2,7 @@
 name: sentinel
 description: "Use for: code review, spec compliance checks, security audit. Two-stage: spec compliance then code quality. READ-ONLY."
 model: sonnet
-effort: high
+effort: xhigh
 color: red
 tools: ["Read", "Grep", "Glob"]
 ---

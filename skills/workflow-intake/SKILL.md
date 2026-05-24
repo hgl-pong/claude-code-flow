@@ -31,3 +31,6 @@ When intake affects implementation, create/update `intake-decision.md` with:
 - Native destination
 - Risks / verification
 
+## Intake Decision Artifact
+
+For workflow/plugin references, produce intake-decision.md before planning. Each candidate idea must be classified Adopt / Adapt / Reject / Defer, grouped by agents, skills, commands, hooks, rules, docs, or runtime. Do not import a full external agent catalog; prefer strengthening existing surfaces.

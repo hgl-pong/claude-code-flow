@@ -508,10 +508,10 @@ class PluginIntegrityTests(unittest.TestCase):
             "sentinel": "sonnet",
         }
         expected_effort = {
-            "forge": "high",
-            "oracle": "xhigh",
-            "prism": "high",
-            "sentinel": "high",
+            "forge": "xhigh",
+            "oracle": "max",
+            "prism": "xhigh",
+            "sentinel": "xhigh",
         }
         allowed_effort = {"low", "medium", "high", "xhigh", "max"}
 
@@ -1078,6 +1078,67 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertIn("PROJECT_MEMORY:", result.stdout)
             self.assertIn("Active sprint: v2.", result.stdout)
 
+
+    def test_superpowers_intake_strengthens_workflow_orchestration(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        review = read_text(ROOT / "skills/dev-orchestrator/references/review.md")
+        verification = read_text(ROOT / "skills/dev-orchestrator/references/verification-gate.md")
+        uli = read_text(ROOT / "skills/ultrawork/ULI.md")
+
+        for term in [
+            "Continuous Execution Rule",
+            "do not pause to ask whether to continue",
+            "Adopt / Adapt / Reject / Defer",
+            "must not import a parallel skill catalog",
+        ]:
+            self.assertIn(term, pipeline)
+
+        for term in [
+            "Fresh-Agent Task Envelope",
+            "NEEDS_CONTEXT",
+            "BLOCKED",
+            "same prompt must not be retried unchanged",
+            "one agent per independent problem domain",
+        ]:
+            self.assertIn(term, dispatch)
+
+        for term in [
+            "Review Reception Gate",
+            "Verify before implementing",
+            "technical pushback",
+            "spec compliance reviewer must approve before code quality review starts",
+        ]:
+            self.assertIn(term, review)
+
+        self.assertIn("agent success reports are claims, not evidence", verification.lower())
+        self.assertIn('No "should I continue?" checkpoints', uli)
+        self.assertIn("fresh bounded agent per task", uli)
+
+    def test_ten_iteration_workflow_orchestration_contracts(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        dispatch = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        review = read_text(ROOT / "skills/dev-orchestrator/references/review.md")
+        verification = read_text(ROOT / "skills/dev-orchestrator/references/verification-gate.md")
+        uli = read_text(ROOT / "skills/ultrawork/ULI.md")
+        intake = read_text(ROOT / "skills/workflow-intake/SKILL.md")
+        planning = read_text(ROOT / "skills/planning/SKILL.md")
+
+        expectations = {
+            "iteration 2": (pipeline, ["Workflow State Gate", "phase, mode, owner, status, evidence pointer"]),
+            "iteration 3": (intake, ["intake-decision.md", "Adopt / Adapt / Reject / Defer", "Do not import a full external agent catalog"]),
+            "iteration 4": (planning, ["Executable Task Mapping", "each requirement maps to at least one task", "Self Review Result: PASS"]),
+            "iteration 5": (dispatch, ["Envelope Completeness Checklist", "allowed write set", "file-conflict map"]),
+            "iteration 6": (dispatch, ["Idle is not completion", "newly unblocked tasks", "named owners"]),
+            "iteration 7": (review, ["One Feedback Item at a Time", "verify it against codebase reality", "technical pushback"]),
+            "iteration 8": (verification, ["Stale Evidence Rejection", "latest run after the final relevant file change", "Agent success reports are claims"]),
+            "iteration 9": (uli, ["Iteration Accounting Gate", "does not increment until acceptance passes", "Do not split a PD proposal"]),
+            "iteration 10": (pipeline, ["Ten-Iteration Regression Contract", "workflow-state.json", "verification-evidence.jsonl"]),
+        }
+        for label, (text, terms) in expectations.items():
+            with self.subTest(iteration=label):
+                for term in terms:
+                    self.assertIn(term, text)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

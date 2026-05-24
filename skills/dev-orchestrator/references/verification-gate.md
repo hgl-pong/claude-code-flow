@@ -67,3 +67,11 @@ Short. 3-5 bullets or 1-2 short paragraphs.
 - Files touched
 - Verification run
 - Residual risk or skipped checks
+
+## Agent Evidence Boundary
+
+Agent success reports are claims, not evidence. Before reporting completion, independently check the handoff artifact, changed file scope, command output, exit code, and the latest `.claude/flow/verification-evidence.jsonl` entries relevant to the claim.
+
+## Stale Evidence Rejection
+
+Evidence is stale unless it comes from the latest run after the final relevant file change. Agent success reports are claims, not evidence; completion needs fresh command output, exit code, and matching verification-evidence.jsonl entry.

@@ -255,3 +255,13 @@ Apply verification gate (see `skills/dev-orchestrator/references/verification-ga
 11. **Ralph Loop runs tasks, not iterations** — the loop processes individual tasks within one iteration. Iteration boundary is PD→acceptance→commit.
 12. **Iteration context isolation** — each iteration's agents read from files, not session history. Prior iteration outputs are invisible to new agents.
 13. **VERIFY after every step** — proposal exists, plan exists, tasks done, acceptance passed. No skipping.
+
+## Continuous ULI Execution
+
+No "should I continue?" checkpoints inside ULI. Once autonomous mode starts, each accepted proposal runs through planning, implementation, review, acceptance, commit, and the next PD proposal until max iterations, goal completion, rejection escalation, blocker, or user interrupt.
+
+ULI implementation uses a fresh bounded agent per task. The orchestrator owns task envelopes, file-conflict scheduling, evidence checks, review ordering, and product-state updates; agents do only their bounded lane.
+
+## Iteration Accounting Gate
+
+The ULI iteration counter does not increment until acceptance passes, product-state.md is updated, and the iteration commit is created. Do not split a PD proposal across iterations, and do not count fix retries as new iterations.

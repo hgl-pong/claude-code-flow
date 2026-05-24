@@ -2,7 +2,7 @@
 name: oracle
 description: "Use for: planning, architecture, system decomposition, task breakdown. Opus-tier planner."
 model: opus
-effort: xhigh
+effort: max
 color: cyan
 tools: ["Read", "Write", "Grep", "Glob", "Bash"]
 ---

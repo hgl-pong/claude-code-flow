@@ -168,3 +168,17 @@ Use `references/review.md` for review command boundaries, sentinel dispatch inpu
 - Deep/autonomous modes require separate spec-compliance and code-quality sentinel stages before acceptance.
 - Quick/standard modes may use one sentinel run when review is checked.
 - Any REQUEST CHANGES result stays in Gate 7 until `review.md`'s fix-loop outcome permits acceptance or escalation.
+
+## Continuous Execution Rule
+
+Once a plan, ULI proposal, or approved workflow gate authorizes execution, do not pause to ask whether to continue between tasks. Continue until all unblocked tasks are complete, a checked gate fails, a blocker needs user input, or the user interrupts. Status updates are fine; "should I continue?" checkpoints are not.
+
+Reference intake decisions must remain explicit: every external workflow idea is marked Adopt / Adapt / Reject / Defer, and accepted ideas strengthen existing agents, skills, commands, hooks, rules, docs, or runtime surfaces. Intake must not import a parallel skill catalog, duplicate agent taxonomy, new command system, hook runtime, daemon, installer, or external control plane unless the user approves that as a separate design.
+
+## Workflow State Gate
+
+Every non-lightweight gate transition updates workflow-state.json or the active phase context with phase, mode, owner, status, evidence pointer, and next blocked/unblocked action. Chat summaries do not replace this durable state.
+
+## Ten-Iteration Regression Contract
+
+Workflow orchestration changes must keep regression coverage tied to workflow-state.json and verification-evidence.jsonl so routing, dispatch, review, and acceptance claims remain observable instead of conversational.
