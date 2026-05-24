@@ -719,6 +719,10 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("1-2 small new files", dispatch)
         self.assertIn("design system website", dispatch)
         self.assertIn("multi-page UI", dispatch)
+        self.assertIn("website, official site, landing page, docs site, design system website", orchestrator)
+        self.assertIn("never quick/lightweight", orchestrator)
+        self.assertIn("clarification → research → plan → UI research/design", orchestrator)
+        self.assertIn("do not dispatch forge or write code until UI Design Gate 6c", orchestrator)
         self.assertIn("touches more than 5 files", prompts)
         self.assertIn("creates more than 3 files", prompts)
         self.assertIn("design system website", prompts)
@@ -735,6 +739,8 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("3+ task nodes", pipeline)
         self.assertIn("multiple dispatch waves", pipeline)
         self.assertIn("Team Mode Ritual", dispatch)
+        self.assertIn("request the TaskList update", prompts)
+        self.assertIn("orchestrator validates scope/evidence and performs `TaskUpdate`", prompts)
 
     def test_subagent_templates_use_handoff_artifacts_without_commits(self):
         prompts = read_text(ROOT / "skills/dev-orchestrator/references/subagent-prompts.md")
@@ -749,6 +755,8 @@ class PluginIntegrityTests(unittest.TestCase):
             self.assertIn("## Handoff Artifact", body)
             self.assertIn("TaskList update", body)
             self.assertIn("run_in_background: true", body)
+            for field in ["team_name", "taskId", "expected owner", "file scope", "completed dependencies", "may claim more tasks"]:
+                self.assertIn(field, body)
 
     def test_external_research_is_materiality_scoped(self):
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
@@ -758,16 +766,28 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("materially affect the solution", pipeline)
         self.assertIn("when research is required", pipeline)
 
-    def test_vague_product_ui_requests_require_clarification(self):
+    def test_vague_requests_require_clarification(self):
         orchestrator = read_text(ROOT / "skills/dev-orchestrator/SKILL.md")
         pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
 
-        self.assertIn("ask clarifying questions", orchestrator)
+        self.assertIn("requirements are vague or underspecified", orchestrator)
+        self.assertIn("ask clarifying questions before classification or implementation", orchestrator)
         self.assertIn("Gate 0: Requirement Clarification", pipeline)
-        self.assertIn("product/UI/site/design-system outcome", pipeline)
-        self.assertIn("Do not answer\n    \"I'll do the minimal version\"", pipeline)
-        self.assertIn("what pages/sections are required", pipeline)
-        self.assertIn("acceptance criteria", pipeline)
+        self.assertIn("any\n    request is vague or underspecified", pipeline)
+        self.assertIn("missing concrete scope, constraints", pipeline)
+        self.assertIn("expected behavior", pipeline)
+        self.assertIn("Do not answer \"I'll do the minimal version\"", pipeline)
+        self.assertIn("what to build/change", pipeline)
+        self.assertIn("acceptance\n    criteria", pipeline)
+        self.assertIn("Product/UI/site/design-system\n    outcomes require extra care", pipeline)
+
+    def test_quick_fix_cannot_claim_vague_or_site_work(self):
+        quick_fix = read_text(ROOT / "commands/quick-fix.md")
+
+        self.assertIn("design system websites", quick_fix)
+        self.assertIn("broad UI outcomes", quick_fix)
+        self.assertIn("Vague or underspecified requests", quick_fix)
+        self.assertIn("normal gates", quick_fix)
 
     def test_metrics_collects_verification_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

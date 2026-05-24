@@ -8,7 +8,7 @@ The main conversation implements directly only for very lightweight tasks: chang
 
 ## Long-Task Harness Rules
 
-For team-backed work, every prompt must include `team_name`, `taskId`, expected owner name, file scope, blocked dependencies already completed, and whether the agent may claim more tasks. Default: agents complete only the assigned task, mark it complete with `TaskUpdate` only after verification, then stop and report. The orchestrator alone creates/shuts down teams, changes dependency structure, dispatches newly unblocked waves, and decides final completion.
+For team-backed work, every prompt must include `team_name`, `taskId`, expected owner name, file scope, blocked dependencies already completed, and whether the agent may claim more tasks. Default: agents complete only the assigned task, request the TaskList update in their Handoff Artifact, then stop and report. The orchestrator validates scope/evidence and performs `TaskUpdate`. The orchestrator alone creates/shuts down teams, changes dependency structure, dispatches newly unblocked waves, and decides final completion.
 
 Use `SendMessage` only for bounded corrections or clarifying blockers. Do not use peer chat as the handoff channel; durable state is TaskList plus Handoff Artifact.
 
@@ -40,6 +40,15 @@ Agent({
 ## Task Description
 
 [FULL TEXT of task from plan — paste it here]
+
+## Harness Coordination
+
+- team_name: <team name, or N/A - not team-backed>
+- taskId: <task id, or N/A - not team-backed>
+- expected owner: <agent name>
+- file scope: <exact files allowed for this task>
+- completed dependencies: <blocking task outputs already complete>
+- may claim more tasks: no unless orchestrator explicitly says yes
 
 ## Context
 
@@ -91,6 +100,15 @@ Agent({
   prompt: """
 Review whether implementation matches specification. READ-ONLY — do not modify any files.
 
+## Harness Coordination
+
+- team_name: <team name, or N/A - not team-backed>
+- taskId: <task id, or N/A - not team-backed>
+- expected owner: <agent name>
+- file scope: <exact files to review>
+- completed dependencies: <implementation/verification outputs already complete>
+- may claim more tasks: no
+
 ## What Was Requested
 
 [FULL TEXT of task requirements]
@@ -136,6 +154,15 @@ Agent({
   prompt: """
 Code quality review. READ-ONLY — do not modify any files.
 
+## Harness Coordination
+
+- team_name: <team name, or N/A - not team-backed>
+- taskId: <task id, or N/A - not team-backed>
+- expected owner: <agent name>
+- file scope: <exact files to review>
+- completed dependencies: <spec review output already complete>
+- may claim more tasks: no
+
 ## Scope
 
 BASE_SHA: [commit before task]
@@ -171,6 +198,15 @@ Agent({
   model: "sonnet",
   run_in_background: true,
   prompt: """
+## Harness Coordination
+
+- team_name: <team name, or N/A - not team-backed>
+- taskId: <task id, or N/A - not team-backed>
+- expected owner: <agent name>
+- file scope: <exact files/tests allowed for this task>
+- completed dependencies: <forge/review outputs already complete>
+- may claim more tasks: no
+
 ## Task
 
 [FULL TEXT of acceptance criteria from plan]

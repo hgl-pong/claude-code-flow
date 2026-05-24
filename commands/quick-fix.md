@@ -73,6 +73,8 @@ Streamlined workflow for small tasks. Skips research, design, and plan approval.
 - Architectural changes
 - Tasks requiring external research
 - Anything that needs a plan review
+- Websites, official sites, landing pages, docs sites, design system websites, multi-page UI, or broad UI outcomes
+- Vague or underspecified requests; clarify first, then route through the normal gates
 
 ## Usage
 

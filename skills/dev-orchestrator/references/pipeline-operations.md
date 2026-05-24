@@ -11,12 +11,15 @@ Each gate decision must leave a short trace in the active plan or phase context:
 ```
 GATE CHECKLIST (evaluate for this specific task):
 
-[ ] Gate 0: Requirement Clarification — mandatory before classification when the
-    user asks for a product/UI/site/design-system outcome without concrete scope,
-    pages, audience, visual direction, content, or success criteria. Do not answer
-    "I'll do the minimal version" for vague outcome requests. Ask what to build,
-    what pages/sections are required, target users, style references, constraints,
-    and acceptance criteria; then proceed through the normal gates.
+[ ] Gate 0: Requirement Clarification — mandatory before classification when any
+    request is vague or underspecified: missing concrete scope, constraints,
+    success criteria, acceptance criteria, target files/areas, or expected behavior.
+    Do not answer "I'll do the minimal version" for vague outcome requests. Ask
+    what to build/change, what files/areas or pages/sections are involved, target
+    users when relevant, style references when relevant, constraints, and acceptance
+    criteria; then proceed through the normal gates. Product/UI/site/design-system
+    outcomes require extra care: if scope, pages, audience, visual direction,
+    content, or success criteria are unclear, clarify before classification.
 
 [ ] Gate 1: Brainstorm — mandatory for: new features, behavior changes, UI work,
     architecture changes, broad refactors. Skip only for: narrow bug fixes with

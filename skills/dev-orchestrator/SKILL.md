@@ -27,7 +27,13 @@ Run one routing pass unless a command, hook, or active skill already selected th
 
 Use plugin planning/routing; prefer `plan` and avoid `EnterPlanMode` for this workflow. Runtime plan state lives in `.claude/flow/plan-state.json`; workflow state lives in `.claude/flow/workflow-state.json`; plan handoff brief is `plan-brief.md`.
 
-1. Define goal, assumptions, success criteria, and verification; if product/UI/site requirements are vague, ask clarifying questions before choosing a minimal implementation.
+## Hard Stops Before Implementation
+
+- If the request is vague or underspecified, ask clarifying questions before classification, planning, or implementation.
+- If the request is a website, official site, landing page, docs site, design system website, multi-page UI, or broad UI outcome, it is never quick/lightweight: run clarification → research → plan → UI research/design as applicable before any code edits.
+- For frontend-UI work in standard+ mode, do not dispatch forge or write code until UI Design Gate 6c has explicit user approval.
+
+1. Define goal, assumptions, success criteria, and verification; if requirements are vague or underspecified, ask clarifying questions before classification or implementation.
 2. Inspect current state; protect unrelated user changes.
 3. Classify very lightweight vs non-trivial; default to non-trivial unless the request matches the lightweight whitelist in `references/pipeline-operations.md`.
 4. Run research before plan for most work; treat research quality as outcome-critical.
