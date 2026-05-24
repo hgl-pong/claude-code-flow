@@ -2,6 +2,10 @@
 
 Templates for dispatching agents in the CCF pipeline. Paste full task text — never make subagents read plan files. Every dispatch must include a Handoff Artifact schema so completion can be verified without trusting agent prose.
 
+## Agentic Default Rule
+
+The main conversation implements directly only for trivial tasks. A task is trivial only when it is narrow, obvious, likely one file, has no behavior/design ambiguity, needs one verification command, and needs no independent review or acceptance handoff. Otherwise the main conversation decomposes work, builds self-contained envelopes, dispatches role-specific subagents, checks returned artifacts against scope, records evidence, and performs final reporting.
+
 ## Handoff Artifact
 
 All agents return this block exactly once:

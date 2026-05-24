@@ -29,11 +29,14 @@ Use plugin planning/routing; prefer `plan` and avoid `EnterPlanMode` for this wo
 
 1. Define goal, assumptions, success criteria, and verification.
 2. Inspect current state; protect unrelated user changes.
-3. Prefer test-first for behavior changes.
-4. Implement surgically.
-5. Run focused verification.
-6. Run review loop when changes are non-trivial.
-7. Report changed files and fresh evidence only.
+3. Classify trivial vs non-trivial; skip research/plan only for trivial tasks.
+4. Run research before plan for most work; treat research quality as outcome-critical.
+5. Prefer test-first for behavior changes.
+6. Classify direct vs agentic; implement directly only for trivial tasks.
+7. For non-trivial work, dispatch bounded subagents and keep orchestration/final verification in the main conversation.
+8. Run focused verification.
+9. Run multi-round review for non-trivial work: sentinel findings become fix tasks, fixes are verified, then review repeats until approval or escalation.
+10. Report changed files and fresh evidence only.
 
 ## Required References
 

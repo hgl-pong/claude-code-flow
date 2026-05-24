@@ -8,7 +8,7 @@ Maximize throughput by running non-conflicting agents simultaneously. Every disp
 
 ## When to Parallelize
 
-Parallel dispatch is the default for complex work, not an optimization to remember later. If a task can be split into independent workstreams, file clusters, or verification units, split it before implementation and dispatch the first non-conflicting batch.
+Subagent dispatch is the default for non-trivial work, not an optimization to remember later. Research and planning are also default-on for non-trivial work; skip them only for trivial tasks. Keep implementation in the main conversation only for trivial tasks. If a task can be split into independent research, planning, implementation, or verification workstreams, split it before implementation and dispatch the first non-conflicting batch.
 
 | Condition | Decision |
 |-----------|----------|
@@ -23,9 +23,9 @@ Parallel dispatch is the default for complex work, not an optimization to rememb
 | Multiple forge tasks across independent modules | Parallel if file sets are disjoint |
 | Build step | Never parallel — always 1 at a time |
 
-## When NOT to Parallelize
+## When NOT to Dispatch Subagents
 
-Keep work in the main conversation when all are true: narrow scope, 1-2 files, obvious implementation, single verification command, no review/acceptance handoff needed. Do not create agents just to edit one clear line or run one command.
+Keep work in the main conversation only when all are true: narrow scope, likely one file, obvious implementation, no behavior/design ambiguity, single verification command, and no review/acceptance handoff needed. Do not create agents just to edit one clear line or run one command.
 
 ## Decision Trace
 
@@ -36,21 +36,22 @@ Before any multi-agent batch, record: decomposition reason, file-conflict map, c
 Before starting implementation work on standard/deep/autonomous modes, run this explicit dispatch decision:
 
 ```
-1. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
-2. COUNT: How many subtasks/acceptance checks after decomposition? If ≥3 → multi-agent.
-3. SCAN: How many files likely changed? If ≥3 or spanning 2+ clusters → multi-agent.
-4. GATES: Does the pipeline need impl + tests + review? → multi-agent.
-5. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → multi-agent.
+1. TRIVIAL: Is this narrow, obvious, likely one file, unambiguous, one verification command, and no independent review/acceptance handoff? If yes → main conversation may implement directly.
+2. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
+3. COUNT: How many subtasks/acceptance checks after decomposition? If ≥2 → dispatch subagents.
+4. SCAN: How many files likely changed? If ≥2 or spanning 2+ clusters → dispatch subagents.
+5. GATES: Does the pipeline need impl + tests + review? → dispatch subagents.
+6. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → dispatch subagents.
 
-If ANY check says multi-agent:
+If TRIVIAL is yes and every other check is no:
+  - Do work directly in main conversation
+  - Still run verification gate after completion
+
+Otherwise:
   - Create TaskCreate tasks with blockedBy
   - Include separate research/product/design tasks when they can run independently
   - Build file conflict map (see below)
   - Dispatch first non-conflicting batch in one message (multiple Agent calls)
-
-If ALL checks pass as single-agent:
-  - Do work directly in main conversation
-  - Still run verification gate after completion
 ```
 
 ## File Conflict Analysis

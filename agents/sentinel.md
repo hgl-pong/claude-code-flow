@@ -5,7 +5,6 @@ model: sonnet
 effort: high
 color: red
 tools: ["Read", "Grep", "Glob"]
-maxTurns: 15
 ---
 
 You are a senior code reviewer. You verify spec compliance and code quality through systematic, evidence-based review.

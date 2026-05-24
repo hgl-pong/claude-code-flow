@@ -15,12 +15,17 @@ GATE CHECKLIST (evaluate for this specific task):
     architecture changes, broad refactors. Skip only for: narrow bug fixes with
     known root cause, config changes, single-file edits with clear spec.
 
-[ ] Gate 2: Research (general-purpose subagent + research skill) — mandatory
-    before plan for any implementation, workflow change, behavior change,
-    architecture change, broad refactor, or unfamiliar code. Research MUST include
-    local file inspection and external research unless the user explicitly forbids
-    network access or the environment cannot access the network. Produce a
-    written research artifact before plan; chat-only synthesis is not enough.
+[ ] Gate 2: Research (general-purpose subagent + research skill) — default-on
+    before plan. Skip only for trivial tasks: narrow, obvious, likely one file,
+    no behavior/design ambiguity, one verification command, and no independent
+    review/acceptance handoff. Research is mandatory for any implementation,
+    workflow change, behavior change, architecture change, broad refactor,
+    unfamiliar code, competitive/product decision, or quality-sensitive outcome.
+    Research MUST include local file inspection and external research unless the
+    user explicitly forbids network access or the environment cannot access the
+    network. Produce a written research artifact before plan; chat-only synthesis
+    is not enough. Strong research is a quality gate: it determines whether the
+    final solution is merely functional or competitive.
     **Dispatch with `subagent_type: "general-purpose"` — research is a skill, not
     an agent.** Multiple independent research/product/design streams MAY run in
     parallel. Oracle remains SEQUENTIAL after research — never dispatch oracle
@@ -34,13 +39,13 @@ GATE CHECKLIST (evaluate for this specific task):
     with oracle planning and must not introduce a second agent taxonomy, command
     system, hook runtime, or external control plane.
 
-[ ] Gate 3: Plan (oracle) — ALWAYS mandatory before implementation in every
-    mode. Oracle/orchestrator MUST produce a plan document at
-    `<output_dir>/plan-brief.md` with TaskCreate tasks before any forge or direct
-    code edit starts. The plan document MUST include Local Research, External
-    Research, Success Criteria, Verification, and Self Review Result sections.
-    Oracle MUST receive research findings as input when Gate 2 was checked and
-    intake decisions as input when Gate 2a was checked.
+[ ] Gate 3: Plan (oracle) — default-on before implementation. Skip only for
+    trivial tasks using the same criteria as Gate 2. Oracle/orchestrator MUST
+    produce a plan document at `<output_dir>/plan-brief.md` with TaskCreate tasks
+    before any forge or direct code edit starts. The plan document MUST include
+    Local Research, External Research, Success Criteria, Verification, and Self
+    Review Result sections. Oracle MUST receive research findings as input when
+    Gate 2 was checked and intake decisions as input when Gate 2a was checked.
 
 [ ] Gate 3a: Plan Review — ALWAYS mandatory (all modes including quick).
     Two-phase review before execution begins:
@@ -58,6 +63,14 @@ GATE CHECKLIST (evaluate for this specific task):
     Present the plan to the user for approval. No implementation dispatches
     until the user explicitly approves. If the user requests changes, oracle
     revises and both phases repeat.
+
+    After approval, classify execution as trivial or agentic. Direct main-conversation
+    implementation is allowed only for trivial tasks: narrow, obvious, likely one
+    file, no behavior/design ambiguity, one verification command, and no independent
+    review/acceptance handoff. All other implementation work MUST dispatch bounded
+    subagents by role (forge for code, prism for verification, sentinel for review)
+    while the main conversation owns decomposition, envelopes, task coordination,
+    artifact checks, evidence recording, and final reporting.
 
 [ ] Gate 4: Architecture (oracle) — see mode table. If mandatory: oracle
     MUST produce design document before implementation.
@@ -87,7 +100,10 @@ GATE CHECKLIST (evaluate for this specific task):
     Forge CANNOT be dispatched for UI work until Gate 6c (user approval) passes.
 
 [ ] Gate 7: Review (sentinel) — see mode table. If mandatory: sentinel
-    MUST approve before acceptance.
+    MUST approve before acceptance. Review is multi-round: REQUEST CHANGES
+    findings create bounded fix tasks, forge fixes them, prism verifies the fix,
+    and sentinel re-reviews. Repeat until sentinel approves, returns NEEDS
+    DISCUSSION, or the review round limit is reached.
 
 [ ] Gate 8: Acceptance (prism) — mandatory for standard/deep/autonomous.
     Prism MUST accept before completion.
@@ -202,8 +218,10 @@ Use `references/review.md` for review command boundaries, sentinel dispatch inpu
 
 For deep and autonomous modes, dispatch each review stage as a **separate sentinel subagent** for zero context contamination:
 
-1. Dispatch sentinel with `review_focus: spec_compliance` in the context envelope → spec-only review
-2. If APPROVE: dispatch a **fresh** sentinel with `review_focus: code_quality` → quality-only review
-3. If Stage 1 REQUEST CHANGES: back to implementer (max 3 rounds)
+1. Dispatch sentinel with `review_focus: spec_compliance` in the context envelope → spec-only review.
+2. If REQUEST CHANGES: run the multi-round fix loop for spec findings, then re-dispatch a fresh spec sentinel (max 3 rounds).
+3. If APPROVE: dispatch a **fresh** sentinel with `review_focus: code_quality` → quality-only review.
+4. If REQUEST CHANGES: run the multi-round fix loop for quality findings, then re-dispatch a fresh quality sentinel (max 3 rounds).
+5. Only after both stages APPROVE may the pipeline enter acceptance.
 
-For quick/standard: single sentinel run with both stages (no `review_focus` parameter) — backward compatible.
+For quick/standard: single sentinel run with both stages (no `review_focus` parameter), but REQUEST CHANGES still triggers the same multi-round fix loop.

@@ -5,7 +5,6 @@ model: sonnet
 effort: high
 color: green
 tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash"]
-maxTurns: 20
 ---
 
 You are a quality engineer specializing in testing, build systems, and acceptance verification.

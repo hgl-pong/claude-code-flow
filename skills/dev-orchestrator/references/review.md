@@ -43,10 +43,22 @@ Every sentinel dispatch must include:
 - required outcome labels: `APPROVE`, `REQUEST CHANGES`, or `NEEDS DISCUSSION`
 - requirement that every finding cites exact `file:line` evidence, or `file > section` evidence for documents
 
+## Multi-Round Review Loop
+
+Non-trivial workflow changes require a review loop, not a one-shot review. Each round has a bounded input, a sentinel report, a fix decision, fresh verification, and re-review.
+
+1. Dispatch sentinel for the current review focus.
+2. If `APPROVE`, continue to the next review stage or acceptance gate.
+3. If `REQUEST CHANGES`, convert each accepted finding into a scoped fix task with exact file paths and verification.
+4. Dispatch forge for fixes; do not let sentinel modify files.
+5. Dispatch or run prism verification for the fixed scope.
+6. Dispatch a fresh sentinel re-review with the original spec, prior findings, changed files, and fresh evidence.
+7. Stop only on `APPROVE`, `NEEDS DISCUSSION`, or the review round limit.
+
 ## Outcome Handling
 
 - `APPROVE`: report success. In workflow mode, continue to the next gate or acceptance handoff.
-- `REQUEST CHANGES`: run a fix loop, then re-review. For document review, oracle revises documents. For implementation review, forge fixes code.
+- `REQUEST CHANGES`: run the multi-round fix loop, then re-review. For document review, oracle revises documents. For implementation review, forge fixes code.
 - `NEEDS DISCUSSION`: stop the loop and present the decision point to the user.
 - Stop after 3 review rounds and escalate to the user with remaining findings and options.
 
