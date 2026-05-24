@@ -7,8 +7,10 @@ Covers:
 - Passthrough when tool input is empty
 """
 
+import atexit
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,13 +21,16 @@ from threading import Thread
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "hooks" / "scripts" / "9router-intercept.py"
-CACHE_FILE = os.path.join(tempfile.gettempdir(), "9router-available.json")
+CACHE_DIR = tempfile.mkdtemp(prefix="9router-test-")
+CACHE_FILE = os.path.join(CACHE_DIR, "available.json")
+atexit.register(shutil.rmtree, CACHE_DIR, ignore_errors=True)
 
 
 def _run_hook(tool_name, tool_input):
     payload = json.dumps({"tool_name": tool_name, "tool_input": tool_input})
     env = os.environ.copy()
     env["NINEROUTER_URL"] = "http://localhost:1"
+    env["NINEROUTER_CACHE_FILE"] = CACHE_FILE
     result = subprocess.run(
         [sys.executable, str(SCRIPT)],
         input=payload,
@@ -185,6 +190,7 @@ class InterceptReachable(unittest.TestCase):
         payload = json.dumps({"tool_name": tool_name, "tool_input": tool_input})
         env = os.environ.copy()
         env["NINEROUTER_URL"] = f"http://localhost:{self.port}"
+        env["NINEROUTER_CACHE_FILE"] = CACHE_FILE
         result = subprocess.run(
             [sys.executable, str(SCRIPT)],
             input=payload,
@@ -309,6 +315,7 @@ class InterceptApiError(unittest.TestCase):
     def test_api_error_passthrough(self):
         env = os.environ.copy()
         env["NINEROUTER_URL"] = f"http://localhost:{self.port}"
+        env["NINEROUTER_CACHE_FILE"] = CACHE_FILE
         payload = json.dumps({"tool_name": "WebSearch", "tool_input": {"query": "test"}})
         r = subprocess.run(
             [sys.executable, str(SCRIPT)], input=payload,
@@ -335,6 +342,7 @@ class CachedAvailability(unittest.TestCase):
     def test_cache_stores_reachable(self):
         env = os.environ.copy()
         env["NINEROUTER_URL"] = f"http://localhost:{self.port}"
+        env["NINEROUTER_CACHE_FILE"] = CACHE_FILE
         payload = json.dumps({"tool_name": "WebSearch", "tool_input": {"query": "q"}})
         r = subprocess.run(
             [sys.executable, str(SCRIPT)], input=payload,
@@ -348,6 +356,7 @@ class CachedAvailability(unittest.TestCase):
     def test_cache_stores_unreachable(self):
         env = os.environ.copy()
         env["NINEROUTER_URL"] = "http://localhost:1"
+        env["NINEROUTER_CACHE_FILE"] = CACHE_FILE
         payload = json.dumps({"tool_name": "WebSearch", "tool_input": {"query": "q"}})
         r = subprocess.run(
             [sys.executable, str(SCRIPT)], input=payload,

@@ -32,7 +32,7 @@ TOOL_MAP = {
     "mcp__web_reader__webReader": ("fetch", "url"),
 }
 
-_CACHE_PATH = os.path.join(tempfile.gettempdir(), "9router-available.json")
+_CACHE_PATH = os.environ.get("NINEROUTER_CACHE_FILE") or os.path.join(tempfile.gettempdir(), "9router-available.json")
 
 
 def _available():
