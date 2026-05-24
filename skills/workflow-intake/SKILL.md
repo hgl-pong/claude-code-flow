@@ -34,3 +34,7 @@ When intake affects implementation, create/update `intake-decision.md` with:
 ## Intake Decision Artifact
 
 For workflow/plugin references, produce intake-decision.md before planning. Each candidate idea must be classified Adopt / Adapt / Reject / Defer, grouped by agents, skills, commands, hooks, rules, docs, or runtime. Do not import a full external agent catalog; prefer strengthening existing surfaces.
+
+## Surface Duplication Guard
+
+Adopt strengthens existing surfaces instead of adding rival workflow lanes. Adapt narrows useful source behavior into existing agents, skills, commands, hooks, rules, docs, or runtime state. Reject creates a documented non-goal with rationale so rejected ideas are not re-imported later.

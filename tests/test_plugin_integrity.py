@@ -1153,5 +1153,11 @@ class PluginIntegrityTests(unittest.TestCase):
         ]:
             self.assertIn(term, pipeline)
 
+    def test_intake_rejects_surface_duplication(self):
+        text = read_text(ROOT / "skills/workflow-intake/SKILL.md")
+        self.assertIn('Surface Duplication Guard', text)
+        self.assertIn('Adopt strengthens existing surfaces', text)
+        self.assertIn('Reject creates a documented non-goal', text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
