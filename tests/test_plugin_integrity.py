@@ -1140,5 +1140,18 @@ class PluginIntegrityTests(unittest.TestCase):
                 for term in terms:
                     self.assertIn(term, text)
 
+    def test_mode_escalation_prevents_quick_path_for_non_lightweight_work(self):
+        pipeline = read_text(ROOT / "skills/dev-orchestrator/references/pipeline-operations.md")
+        for term in [
+            "Mode Escalation Table",
+            "quick",
+            "standard",
+            "deep",
+            "autonomous",
+            "escalate to at least standard",
+            "cannot downgrade a checked gate",
+        ]:
+            self.assertIn(term, pipeline)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -182,3 +182,14 @@ Every non-lightweight gate transition updates workflow-state.json or the active 
 ## Ten-Iteration Regression Contract
 
 Workflow orchestration changes must keep regression coverage tied to workflow-state.json and verification-evidence.jsonl so routing, dispatch, review, and acceptance claims remain observable instead of conversational.
+
+## Mode Escalation Table
+
+| Requested mode | Allowed only when | Escalation rule |
+|---|---|---|
+| quick | very lightweight, exact scope, no broad behavior change | non-lightweight work must escalate to at least standard |
+| standard | bounded implementation with known verification | use full research/plan/review gates when any gate is checked |
+| deep | broad, risky, unfamiliar, cross-domain, or quality-sensitive work | keep separate spec compliance and code quality review stages |
+| autonomous | ULI or explicit autonomous execution | never pause for approval between accepted iteration tasks |
+
+A user-requested shortcut cannot downgrade a checked gate. Once a gate is checked by the task shape, mode only adds stricter handling; it cannot remove research, planning, review, or acceptance.
