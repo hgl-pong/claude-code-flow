@@ -206,6 +206,7 @@ class PluginIntegrityTests(unittest.TestCase):
         claude_md = read_text(ROOT / "CLAUDE.md")
         agents_md = read_text(ROOT / "AGENTS.md")
         guard_text = read_text(ROOT / "hooks/scripts/plan-mode-guard.py")
+        plan_detector = read_text(ROOT / "hooks/scripts/plan-detector.py")
 
         self.assertIn("/plan [--mode", plan_cmd)
         self.assertIn("EnterPlanMode", plan_cmd)
@@ -216,6 +217,8 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("plan-state.json", write_plan)
         self.assertIn("plan-init", write_plan)
         self.assertIn("Use /plan instead.", guard_text)
+        self.assertIn("enforce the plan command hard stops", plan_detector)
+        self.assertIn("applicable design artifacts", plan_detector)
         self.assertIn("avoid `EnterPlanMode`", orchestrator)
         self.assertIn("prefer `plan`", orchestrator.lower())
         self.assertIn("plan-state.json", orchestrator)
@@ -719,10 +722,13 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("1-2 small new files", dispatch)
         self.assertIn("design system website", dispatch)
         self.assertIn("multi-page UI", dispatch)
-        self.assertIn("website, official site, landing page, docs site, design system website", orchestrator)
+        self.assertIn("broad, high-impact, multi-step, cross-domain", orchestrator)
+        self.assertIn("quality-sensitive", orchestrator)
+        self.assertIn("outcome-oriented without exact implementation scope", orchestrator)
         self.assertIn("never quick/lightweight", orchestrator)
-        self.assertIn("clarification → research → plan → UI research/design", orchestrator)
-        self.assertIn("do not dispatch forge or write code until UI Design Gate 6c", orchestrator)
+        self.assertIn("clarification", orchestrator)
+        self.assertIn("applicable domain design", orchestrator)
+        self.assertIn("Frontend/UI/site work is one example", orchestrator)
         self.assertIn("touches more than 5 files", prompts)
         self.assertIn("creates more than 3 files", prompts)
         self.assertIn("design system website", prompts)
@@ -781,13 +787,38 @@ class PluginIntegrityTests(unittest.TestCase):
         self.assertIn("acceptance\n    criteria", pipeline)
         self.assertIn("Product/UI/site/design-system\n    outcomes require extra care", pipeline)
 
-    def test_quick_fix_cannot_claim_vague_or_site_work(self):
+    def test_quick_fix_cannot_claim_vague_or_broad_work(self):
         quick_fix = read_text(ROOT / "commands/quick-fix.md")
 
-        self.assertIn("design system websites", quick_fix)
-        self.assertIn("broad UI outcomes", quick_fix)
+        self.assertIn("Broad, high-impact, multi-step, cross-domain", quick_fix)
+        self.assertIn("quality-sensitive", quick_fix)
+        self.assertIn("outcome-oriented requests", quick_fix)
+        self.assertIn("exact implementation scope", quick_fix)
         self.assertIn("Vague or underspecified requests", quick_fix)
         self.assertIn("normal gates", quick_fix)
+
+    def test_plan_route_enforces_full_workflow_for_broad_work(self):
+        plan_command = read_text(ROOT / "commands/plan.md")
+        planning = read_text(ROOT / "skills/planning/SKILL.md")
+        plan_detector = read_text(ROOT / "hooks/scripts/plan-detector.py")
+
+        for text in [plan_command, planning, plan_detector]:
+            lowered = text.lower()
+            self.assertIn("broad, high-impact, multi-step, cross-domain", lowered)
+            self.assertIn("quality-sensitive", text)
+            self.assertIn("outcome-oriented requests", text)
+            self.assertIn("exact implementation scope", text)
+            self.assertIn("chat proposal", text)
+            self.assertIn("plan-brief.md", text)
+            self.assertIn("applicable design", text)
+            self.assertIn("explicit", text)
+            self.assertIn("approval", text)
+            self.assertIn("Frontend/UI/site", text)
+            self.assertIn("example", text)
+            self.assertIn("DESIGN.md", text)
+        self.assertIn("local research", plan_command.lower())
+        self.assertIn("material external/domain research", plan_command)
+        self.assertIn("do not hand off to implementation", plan_command.lower())
 
     def test_metrics_collects_verification_counts(self):
         with tempfile.TemporaryDirectory() as tmp:

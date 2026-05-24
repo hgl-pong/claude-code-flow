@@ -21,7 +21,7 @@ PLUGIN PLAN ROUTING ACTIVE
 
 Primary route: `/plan`.
 Do not separately invoke `using-claude-code-flow` (now merged into dev-orchestrator); this hook already performed the routing pass.
-Inside `/plan`, use `brainstorming` only if unresolved product/design decisions remain. Skip brainstorming for approved requirements, direct execution, narrow fixes, routine maintenance, or saved specs.
+Inside `/plan`, enforce the plan command hard stops. For vague requests, ask clarification before any plan or implementation. For broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope, do not stop at a chat proposal and do not write code: require clarification notes, local research, material external/domain research, `plan-brief.md`, applicable design artifacts, document self-review PASS, then explicit approval before implementation. Frontend/UI/site work is one example: include external/UI research and UI `DESIGN.md` when Gate 6 is checked.
 IMPORTANT: Do not enter built-in plan mode.
 Use /plan instead, and avoid invoking EnterPlanMode.
 """

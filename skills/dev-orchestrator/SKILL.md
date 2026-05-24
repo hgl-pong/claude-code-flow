@@ -30,8 +30,8 @@ Use plugin planning/routing; prefer `plan` and avoid `EnterPlanMode` for this wo
 ## Hard Stops Before Implementation
 
 - If the request is vague or underspecified, ask clarifying questions before classification, planning, or implementation.
-- If the request is a website, official site, landing page, docs site, design system website, multi-page UI, or broad UI outcome, it is never quick/lightweight: run clarification → research → plan → UI research/design as applicable before any code edits.
-- For frontend-UI work in standard+ mode, do not dispatch forge or write code until UI Design Gate 6c has explicit user approval.
+- If the request is broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented without exact implementation scope, it is never quick/lightweight: run clarification → research → plan → applicable domain design before any code edits.
+- Frontend/UI/site work is one example of that rule: use UI research/design gates when applicable, and do not dispatch forge or write code until UI Design Gate 6c has explicit user approval.
 
 1. Define goal, assumptions, success criteria, and verification; if requirements are vague or underspecified, ask clarifying questions before classification or implementation.
 2. Inspect current state; protect unrelated user changes.

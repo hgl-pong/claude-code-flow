@@ -24,9 +24,17 @@ Start the plugin planning pipeline for a feature or task. This is the plugin-sid
 /plan [--mode quick|standard|deep|autonomous] <task description>
 ```
 
+## Hard Stops
+
+- If the request is vague or underspecified, ask blocking clarification questions before writing any plan or code.
+- Broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope are never quick mode.
+- For those requests, do not stop at a chat proposal. Produce the required artifacts in order: clarification notes, local research, material external/domain research, `<output_dir>/plan-brief.md`, applicable domain design artifacts, document self-review `PASS`, then explicit user approval.
+- Frontend/UI/site requests are examples, not the whole rule: include external/UI research and UI `DESIGN.md` when Gate 6 is checked.
+- Do not hand off to implementation, dispatch forge, or edit product files until plan approval and any applicable design approval gates have passed.
+
 ## Process
 
-1. Treat `/plan` as the selected route. The entry routing in `dev-orchestrator` has already classified the task.
+1. Treat `/plan` as the selected route. The entry routing in `dev-orchestrator` has already classified this task, but this command still enforces the hard stops above.
 2. Classify only what the planning entry needs: domain (frontend-UI / backend / cross-domain), rough complexity, external-reference presence, and whether the request is truly a quick fix.
 3. Select mode using `dev-orchestrator` Mode Selection. For narrow one-file fixes with a known root cause and no design change, redirect to `/quick-fix`.
 4. Set state:

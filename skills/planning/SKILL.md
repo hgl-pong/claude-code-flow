@@ -7,6 +7,8 @@ description: "Write and execute implementation plans with task breakdowns, appro
 
 Plans are executable documents, not chat summaries. Before approval or implementation, every plan document MUST include `Local Research`, `External Research`, `Success Criteria`, `Verification`, and `Self Review Result` sections. If self-review finds missing requirements, vague tasks, missing file paths, unrunnable commands, or unresolved contradictions, revise the plan document and repeat self-review before dispatch.
 
+For broad, high-impact, multi-step, cross-domain, unfamiliar, quality-sensitive, or outcome-oriented requests without exact implementation scope, never stop at a chat proposal and never execute directly. Clarify missing requirements, inspect local files, run material external/domain research, write `plan-brief.md`, produce applicable design artifacts, self-review generated documents to `PASS`, then request explicit approval before implementation. Frontend/UI/site work is one example: include external/UI research and UI `DESIGN.md` when Gate 6 is checked.
+
 Create executable plans; execute only after approval unless the user already approved the plan.
 
 ## Rules
