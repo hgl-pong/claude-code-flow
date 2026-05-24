@@ -1185,5 +1185,10 @@ class PluginIntegrityTests(unittest.TestCase):
         for term in ["Evidence Ledger Schema", "command", "exit_code", "files_changed_after", "claim"]:
             self.assertIn(term, text)
 
+    def test_uli_product_state_schema_documented(self):
+        text = read_text(ROOT / "skills/ultrawork/ULI.md")
+        for term in ["Product State Schema", "Completed iterations", "Known gaps", "Last acceptance evidence", "Next PD input"]:
+            self.assertIn(term, text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

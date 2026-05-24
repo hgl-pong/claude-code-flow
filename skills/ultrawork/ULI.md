@@ -265,3 +265,7 @@ ULI implementation uses a fresh bounded agent per task. The orchestrator owns ta
 ## Iteration Accounting Gate
 
 The ULI iteration counter does not increment until acceptance passes, product-state.md is updated, and the iteration commit is created. Do not split a PD proposal across iterations, and do not count fix retries as new iterations.
+
+## Product State Schema
+
+`product-state.md` is the only cross-iteration product memory. Keep it structured with: Goal, Completed iterations, Delivered capabilities, Known gaps, Last acceptance evidence, and Next PD input. PD proposals must use this file instead of chat history when choosing the next iteration.
