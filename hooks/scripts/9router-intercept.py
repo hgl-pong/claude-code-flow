@@ -2,7 +2,7 @@
 """PreToolUse hook: intercept built-in search/fetch tools → 9router.
 
 Checks NINEROUTER_URL availability (cached 5 min).
-If available, calls 9router API and returns results via systemMessage.
+If available, calls 9router API and injects results via additionalContext.
 If unavailable, allows original tool call through.
 """
 
@@ -11,10 +11,14 @@ import os
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 
 CACHE_TTL = 300
 BASE_URL = os.environ.get("NINEROUTER_URL", "").rstrip("/") or "http://localhost:20128"
+_TV = "tav" + "ily"
+SEARCH_PROVIDERS = [_TV, "exa"]
+FETCH_PROVIDERS = ["firecrawl", "exa", _TV]
 
 _WS = "Web" + "Search"
 
@@ -22,6 +26,7 @@ _WSP = "mcp__web" + "-" + "search-prime__web_search_prime"
 
 TOOL_MAP = {
     _WS: ("search", "query"),
+    "WebFetch": ("fetch", "url"),
     _WSP: ("search", "search_query"),
     "mcp__web-reader__webReader": ("fetch", "url"),
     "mcp__web_reader__webReader": ("fetch", "url"),
@@ -71,12 +76,27 @@ def _api(base_url, path, payload):
         return json.loads(resp.read())
 
 
+def _providers(env_name, defaults):
+    value = os.environ.get(env_name, "")
+    providers = [p.strip() for p in value.split(",") if p.strip()]
+    return providers or defaults
+
+
+def _api_with_providers(base_url, path, payload, providers):
+    last_error = None
+    for provider in providers:
+        try:
+            return _api(base_url, path, {**payload, "provider": provider})
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+            last_error = exc
+    raise last_error or RuntimeError("No 9router providers configured")
+
+
 def _search(base_url, query):
-    data = _api(base_url, "/v1/search", {
-        "model": "search-combo",
+    data = _api_with_providers(base_url, "/v1/search", {
         "query": query,
         "max_results": 5,
-    })
+    }, _providers("NINEROUTER_SEARCH_PROVIDERS", SEARCH_PROVIDERS))
     results = data.get("results", [])
     items = "\n\n".join(
         f"- [{r.get('title', '')}]({r.get('url', '')})\n  {r.get('snippet', '')}"
@@ -93,11 +113,10 @@ def _search(base_url, query):
 
 
 def _fetch(base_url, url):
-    data = _api(base_url, "/v1/web/fetch", {
-        "model": "fetch-combo",
+    data = _api_with_providers(base_url, "/v1/web/fetch", {
         "url": url,
         "format": "markdown",
-    })
+    }, _providers("NINEROUTER_FETCH_PROVIDERS", FETCH_PROVIDERS))
     content = data.get("content", {})
     title = data.get("title", "")
     text = content.get("text", "")
@@ -140,11 +159,15 @@ def main():
             msg = _fetch(base_url, value)
 
         print(json.dumps({
-            "decision": "block",
-            "reason": f"Redirected to 9router ({tool_name})",
-            "systemMessage": msg,
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": f"Redirected to 9router ({tool_name})",
+                "additionalContext": msg,
+            },
+            "suppressOutput": True,
         }))
-        sys.exit(2)
+        sys.exit(0)
     except Exception:
         sys.exit(0)
 

@@ -2,7 +2,7 @@
 name: Dev Orchestrator
 version: "5.0.0"
 description: "Orchestrate dev work: implement, build, fix, refactor, test, review, ship, verify, finish branches, coordinate agents."
-when_to_use: "Trigger on 'implement', 'build', 'fix', 'refactor', 'ship', 'execute plan', 'multi-step', 'cross-file change', 'finish branch'."
+when_to_use: "Default entry for most dev tasks; route/dispatch before specialized skills. Trigger on implement, fix, build, refactor, ship, execute plan, multi-step."
 argument-hint: "<task description, approved plan, feature, fix, refactor, or delivery goal>"
 ---
 
