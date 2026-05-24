@@ -8,14 +8,46 @@ Maximize throughput by running non-conflicting agents simultaneously. Every disp
 
 ## When to Parallelize
 
+Parallel dispatch is the default for complex work, not an optimization to remember later. If a task can be split into independent workstreams, file clusters, or verification units, split it before implementation and dispatch the first non-conflicting batch.
+
 | Condition | Decision |
 |-----------|----------|
+| 3+ subtasks or acceptance checks | Create tasks + dispatch subagents |
+| Research/product/design streams are separable | Dispatch separate read-only subagents before plan/impl |
+| 3+ likely changed files or 2+ file clusters | Split by file cluster before implementation |
 | Tasks write to different file clusters | Parallel — no isolation needed |
 | Tasks read same files, write different files | Parallel — reads are safe |
 | Tasks write to the same file | Sequential, or worktree isolation |
-| forge → prism (tests need implementation) | Sequential — prism blocked by forge |
+| failing tests → forge | Sequential — forge blocked by RED evidence |
+| forge → prism acceptance/build | Sequential — prism blocked by forge |
 | Multiple forge tasks across independent modules | Parallel if file sets are disjoint |
 | Build step | Never parallel — always 1 at a time |
+
+## When NOT to Parallelize
+
+Keep work in the main conversation when all are true: narrow scope, 1-2 files, obvious implementation, single verification command, no review/acceptance handoff needed. Do not create agents just to edit one clear line or run one command.
+
+## Dispatch Ritual
+
+Before starting implementation work on standard/deep/autonomous modes, run this explicit dispatch decision:
+
+```
+1. DECOMPOSE: Is this one broad request hiding separable research/design/impl/test/review workstreams? If yes → create tasks first.
+2. COUNT: How many subtasks/acceptance checks after decomposition? If ≥3 → multi-agent.
+3. SCAN: How many files likely changed? If ≥3 or spanning 2+ clusters → multi-agent.
+4. GATES: Does the pipeline need impl + tests + review? → multi-agent.
+5. DOMAINS: Does work cross frontend/backend, hooks/scripts, skills/tests boundaries? → multi-agent.
+
+If ANY check says multi-agent:
+  - Create TaskCreate tasks with blockedBy
+  - Include separate research/product/design tasks when they can run independently
+  - Build file conflict map (see below)
+  - Dispatch first non-conflicting batch in one message (multiple Agent calls)
+
+If ALL checks pass as single-agent:
+  - Do work directly in main conversation
+  - Still run verification gate after completion
+```
 
 ## File Conflict Analysis
 
@@ -53,7 +85,7 @@ Use `isolation: "worktree"` only when file conflict is confirmed.
 | prism (unit/integration) | 2 | |
 | prism (build) | 1 | build is global state |
 | sentinel | 1 per review stage | stage 1 must finish before stage 2 |
-| research (general-purpose) | unlimited | read-only, no conflicts |
+| research (general-purpose) | 3 by default | read-only; exceed only with explicit user need |
 
 ## Completion Handling
 
@@ -71,15 +103,16 @@ After each agent completes:
 ### Feature (new behavior)
 
 ```
-Task 1: Types/interfaces            [forge]  no deps
-Task 2: Backend implementation      [forge]  blockedBy: [1]
-Task 3: Frontend implementation     [forge]  blockedBy: [1]
-Task 4: Tests — unit                [prism]  blockedBy: [2, 3]
-Task 5: Tests — integration         [prism]  blockedBy: [4]
-Task 6: Review                      [sentinel] blockedBy: [5]
+Task 1: Research/product/design streams [general-purpose/oracle] no deps, parallel if independent
+Task 2: Types/interfaces                [forge]  blockedBy: [1]
+Task 3: Failing unit/acceptance tests    [prism]  blockedBy: [2]
+Task 4: Backend implementation          [forge]  blockedBy: [3]
+Task 5: Frontend implementation         [forge]  blockedBy: [3]
+Task 6: Integration verification        [prism]  blockedBy: [4, 5]
+Task 7: Review                          [sentinel] blockedBy: [6]
 ```
 
-Tasks 2 and 3 run in parallel (both blocked by 1, no file overlap).
+Tasks 4 and 5 run in parallel when both are unblocked and have no file overlap.
 
 ### Refactor (restructure without behavior change)
 
@@ -91,25 +124,28 @@ Task 4: Regression tests            [prism]  blockedBy: [all forge]
 Task 5: Review                      [sentinel] blockedBy: [4]
 ```
 
-### Bug Fix (unknown cause)
+### Bug Fix (known cause)
+
+Unknown-cause bugs route to `systematic-debugging` before this pattern.
 
 ```
 Task 1: Write failing test          [prism]  no deps
 Task 2: Root cause + fix            [forge]  blockedBy: [1]
 Task 3: Verify + run suite          [prism]  blockedBy: [2]
-Task 4: Review (optional)           [sentinel] blockedBy: [3]
+Task 4: Review                      [sentinel] blockedBy: [3] (mandatory for standard/deep/autonomous; optional only in quick)
 ```
 
 ### Large Task (complex, many files)
 
-Split when a task needs **multiple independent verification commands**:
+Split when a task has separable research/design streams, disjoint write clusters, independent domains, separable acceptance criteria, or multiple verification commands.
 
 ```
-Batch A (parallel): tasks with disjoint write sets, each independently verifiable
-Batch B (sequential): tasks whose verification depends on Batch A's output existing
-Batch C (parallel with B if no write conflicts): additional independent verifiable units
-Batch D: integration verification  [prism]  blockedBy: [all impl batches]
-Batch E: review                    [sentinel] blockedBy: [D]
+Batch A (parallel): independent research/product/design streams
+Batch B (parallel): failing tests or acceptance harnesses by subsystem
+Batch C (parallel): implementation tasks with disjoint write sets
+Batch D (sequential): tasks whose verification depends on Batch C's output existing
+Batch E: integration verification  [prism]  blockedBy: [all impl batches]
+Batch F: review                    [sentinel] blockedBy: [E]
 ```
 
 ## Inter-Agent Handoff Protocol

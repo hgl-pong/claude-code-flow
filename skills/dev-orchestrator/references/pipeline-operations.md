@@ -12,12 +12,12 @@ GATE CHECKLIST (evaluate for this specific task):
     known root cause, config changes, single-file edits with clear spec.
 
 [ ] Gate 2: Research (general-purpose subagent + research skill) — see mode
-    table. If mandatory: research subagent MUST complete BOTH local codebase
-    analysis AND external web research before plan gate. **Dispatch with
-    `subagent_type: "general-purpose"` — research is a skill, not an agent.**
-    Research and oracle
-    are SEQUENTIAL — never dispatch oracle until research finishes and its
-    findings are available.
+    table. If mandatory: research subagents MUST cover required local codebase
+    analysis, external web research, product analysis, or design discovery before
+    plan gate. **Dispatch with `subagent_type: "general-purpose"` — research is
+    a skill, not an agent.** Multiple independent research/product/design streams
+    MAY run in parallel. Oracle remains SEQUENTIAL after research — never dispatch
+    oracle until required research finishes and findings are available.
 
 [ ] Gate 2a: Reference Intake (workflow-intake skill) — mandatory when the
     user asks to reference, borrow from, port, import, compare with, or optimize

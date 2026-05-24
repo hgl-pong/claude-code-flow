@@ -79,6 +79,22 @@ Strong trigger phrases:
 
 Auto-recommend: 1-2 subtasks → **quick**; 3-5 → **standard**; 6+ or cross-module → **deep**; "just ship it" → **autonomous**; `ulw`/`ultrawork` → **ultrawork**; `uli` → **uli**.
 
+## Dispatch Escalation
+
+Do the work in the main conversation only for quick tasks. For standard/deep/autonomous tasks, the orchestrator owns scheduling and SHOULD create `TaskCreate` tasks plus dispatch subagents unless the work is clearly a single-file or single-command change.
+
+Escalate to multi-agent scheduling when any trigger is true:
+
+- 3+ independent subtasks or acceptance checks
+- 3+ files likely changed, or 2+ file clusters/modules
+- research, product analysis, design, implementation, tests, or review can proceed as separate workstreams
+- implementation + tests + review all needed
+- cross-domain work (frontend/backend, hooks/skills/tests, docs/scripts/tests)
+- unknown root cause plus expected fix/verification loop
+- user asks to orchestrate, coordinate, pipeline, ship, or handle a complex task
+
+Default decomposition: general-purpose research subagents for independent discovery streams; oracle/planner for task DAG when requirements are not already decomposed; design-focused subagents for UI/architecture exploration when design is a separate deliverable; up to 3 forge agents for disjoint impl clusters; up to 2 prism agents for independent test/acceptance work; sentinel sequential for review stages. Do not spawn subagents for trivial edits, single obvious fixes, or tasks whose context envelope would be larger than doing the work directly.
+
 | Mode | Research | Architecture | UI Design | Plan Approval | Review | Auto-retry |
 |------|----------|-------------|-----------|---------------|--------|------------|
 | quick | No | No | No | No | Optional | No |
@@ -113,7 +129,7 @@ See `references/pipeline-operations.md` for full gate checklist and execution de
 
 Key rules:
 - **Gate 2a: Reference Intake → Plan Gate**: mandatory when referencing external repos/plugins/workflows. Inspect selectively, record Adopt/Adapt/Reject/Defer in `intake-decision.md`.
-- **Research Gate → Plan Gate**: research subagent and oracle are STRICTLY SEQUENTIAL. Never dispatch in parallel.
+- **Research Gate → Plan Gate**: independent research/product/design subagents may run in parallel; oracle starts only after required findings are available.
 - **Plan Gate**: oracle creates plan-brief.md + TaskCreate with blockedBy
 - **Plan Review Gate**: ALWAYS mandatory — oracle self-reviews plan, then user reviews and approves before execution
 - **UI Design Gate**: self-review → design viewer (optional) → user approval before forge dispatch
@@ -134,6 +150,10 @@ FOR each task batch:
 ```
 
 For 3+ subtasks: see `references/parallel-dispatch.md` for batch grouping and conflict isolation.
+
+**Decomposition priority:** A single broad user request is not a single implementation task. For deep/autonomous or cross-module standard work, first decompose by research stream, design stream, file cluster, acceptance criterion, and verification command; then dispatch the first non-conflicting batch up to parallel limits.
+
+**Dispatch priority:** For standard/deep/autonomous modes, prefer dispatching subagents over doing work directly. Only do the work yourself when: the task is trivial (1-2 lines, single file), no subagent is available for the task type, or the task is an escalation decision that requires orchestrator judgment.
 
 ### 10-11. Review + Acceptance
 
@@ -161,6 +181,7 @@ Concise: outcome, files changed, verification, caveats.
 - "This frontend task doesn't need ui-design skill" ← if UI Design gate checked → run it
 - "I'll dispatch forge for UI work without DESIGN.md" ← WRONG
 - "Should work now" / "Probably fine" / "Seems to pass" ← NOT EVIDENCE
+- "I'll just do it myself" for tasks with 3+ files, 3+ subtasks, or cross-domain scope ← WRONG — dispatch subagents instead
 
 ## Response Style
 
