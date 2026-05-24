@@ -1170,5 +1170,10 @@ class PluginIntegrityTests(unittest.TestCase):
         for term in ["Conflict Recovery Matrix", "same file", "sequence the tasks", "shared new artifact", "create a blocking task"]:
             self.assertIn(term, text)
 
+    def test_team_mode_requires_shutdown_and_owner_handoff(self):
+        text = read_text(ROOT / "skills/dev-orchestrator/references/parallel-dispatch.md")
+        for term in ["Team Shutdown Gate", "shutdown_request", "TeamDelete", "owner handoff", "unassigned completed tasks are invalid"]:
+            self.assertIn(term, text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

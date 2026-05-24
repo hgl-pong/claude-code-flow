@@ -277,3 +277,7 @@ Team mode requires named owners for ready work, explicit blockedBy edges, and im
 | verification uses global state | run one prism/build lane at a time |
 
 Never resolve conflicts by letting agents coordinate ad hoc. The orchestrator owns conflict recovery.
+
+## Team Shutdown Gate
+
+Team mode requires an owner handoff for every task before completion; unassigned completed tasks are invalid. Before TeamDelete, send shutdown_request to active teammates, wait for shutdown confirmation or idle-safe completion, verify final evidence, then remove the team. Do not delete a team while tasks remain pending, in_progress, or missing evidence.
