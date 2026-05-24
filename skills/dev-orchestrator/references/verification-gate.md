@@ -75,3 +75,7 @@ Agent success reports are claims, not evidence. Before reporting completion, ind
 ## Stale Evidence Rejection
 
 Evidence is stale unless it comes from the latest run after the final relevant file change. Agent success reports are claims, not evidence; completion needs fresh command output, exit code, and matching verification-evidence.jsonl entry.
+
+## Evidence Ledger Schema
+
+Each verification-evidence.jsonl entry should be sufficient to audit a claim: phase, claim, command, exit_code, summary, timestamp, files_changed_after, and relevant task or iteration id. If the claim cannot be tied to a fresh command and changed-file boundary, it is not accepted evidence.

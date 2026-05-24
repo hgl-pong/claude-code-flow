@@ -1180,5 +1180,10 @@ class PluginIntegrityTests(unittest.TestCase):
         for term in ["Review Loop State Machine", "REQUEST CHANGES", "NEEDS DISCUSSION", "round counter", "fresh evidence"]:
             self.assertIn(term, text)
 
+    def test_verification_evidence_ledger_schema_documented(self):
+        text = read_text(ROOT / "skills/dev-orchestrator/references/verification-gate.md")
+        for term in ["Evidence Ledger Schema", "command", "exit_code", "files_changed_after", "claim"]:
+            self.assertIn(term, text)
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
