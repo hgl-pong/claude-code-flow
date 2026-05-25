@@ -1,357 +1,202 @@
 #!/usr/bin/env bash
-# Helper functions for Claude Code E2E tests.
-# Helper functions modelled on common Claude Code plugin test patterns.
+# Helper functions for Claude Code skill tests
 
-set -euo pipefail
-
-# ---------------------------------------------------------------------------
-# Infrastructure helpers
-# ---------------------------------------------------------------------------
-
-is_claude_infra_failure() {
-  local file="$1"
-  grep -Eiq "API Error|ECONNRESET|Unable to connect|network error|ETIMEDOUT|ENOTFOUND" "$file"
-}
-
-# Run Claude Code in headless (-p) mode and return its stdout.
-# Returns 77 (SKIP) when the model/API is unavailable.
-# Usage: run_claude "prompt" [timeout_seconds] [allowed_tools] [extra_flags...]
+# Run Claude Code with a prompt and capture output
+# Usage: run_claude "prompt text" [timeout_seconds] [allowed_tools]
 run_claude() {
-  local prompt="$1"
-  local timeout_seconds="${2:-120}"
-  local allowed_tools="${3:-}"
-  local output_file
-  output_file="$(mktemp)"
+    local prompt="$1"
+    local timeout="${2:-60}"
+    local allowed_tools="${3:-}"
+    local output_file=$(mktemp)
 
-  local cmd=(claude -p "$prompt")
-  if [ -n "$allowed_tools" ]; then
-    cmd+=(--allowed-tools="$allowed_tools")
-  fi
-  # Forward any extra flags passed as $4 $5 …
-  shift 3 2>/dev/null || true
-  cmd+=("$@")
-
-  if timeout "$timeout_seconds" "${cmd[@]}" >"$output_file" 2>&1; then
-    if [ ! -s "$output_file" ] || is_claude_infra_failure "$output_file"; then
-      echo "SKIP: Claude Code returned no usable model output." >&2
-      cat "$output_file" >&2
-      rm -f "$output_file"
-      return 77
+    # Build command
+    local cmd="claude -p \"$prompt\""
+    if [ -n "$allowed_tools" ]; then
+        cmd="$cmd --allowed-tools=$allowed_tools"
     fi
-    cat "$output_file"
-    rm -f "$output_file"
-    return 0
-  fi
 
-  local exit_code=$?
-  if is_claude_infra_failure "$output_file"; then
-    echo "SKIP: Claude Code model/API unavailable." >&2
-    cat "$output_file" >&2
-    rm -f "$output_file"
-    return 77
-  fi
-
-  cat "$output_file" >&2
-  rm -f "$output_file"
-  return "$exit_code"
+    # Run Claude in headless mode with timeout
+    if timeout "$timeout" bash -c "$cmd" > "$output_file" 2>&1; then
+        cat "$output_file"
+        rm -f "$output_file"
+        return 0
+    else
+        local exit_code=$?
+        cat "$output_file" >&2
+        rm -f "$output_file"
+        return $exit_code
+    fi
 }
 
-# Run Claude and capture output to a named file for later transcript analysis.
-# Usage: run_claude_to_file "prompt" output_file [timeout] [allowed_tools] [extra_flags...]
-run_claude_to_file() {
-  local prompt="$1"
-  local output_file="$2"
-  local timeout_seconds="${3:-300}"
-  local allowed_tools="${4:-}"
-  shift 4 2>/dev/null || true
-
-  local cmd=(claude -p "$prompt")
-  if [ -n "$allowed_tools" ]; then
-    cmd+=(--allowed-tools="$allowed_tools")
-  fi
-  cmd+=("$@")
-
-  timeout "$timeout_seconds" "${cmd[@]}" >"$output_file" 2>&1
-}
-
-# ---------------------------------------------------------------------------
-# Project / fixture helpers
-# ---------------------------------------------------------------------------
-
-# Create a temporary test project directory and echo its path.
-create_test_project() {
-  mktemp -d
-}
-
-# Remove a test project directory.
-cleanup_test_project() {
-  local dir="$1"
-  [ -d "$dir" ] && rm -rf "$dir"
-}
-
-# Write a minimal Node.js package.json (ESM) into a directory.
-init_node_project() {
-  local dir="$1"
-  cat >"$dir/package.json" <<'PKGJSON'
-{
-  "name": "test-project",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": { "test": "node --test" }
-}
-PKGJSON
-  mkdir -p "$dir/src" "$dir/test"
-}
-
-# Initialise a bare git repo inside a directory with an initial commit.
-init_git_repo() {
-  local dir="$1"
-  git -C "$dir" init --quiet
-  git -C "$dir" config user.email "test@example.com"
-  git -C "$dir" config user.name "Test User"
-  git -C "$dir" add .
-  git -C "$dir" commit -m "Initial commit" --quiet
-}
-
-# Create a minimal claude-code-flow plan file.
-# Usage: create_test_plan <project_dir> [plan_filename]
-create_test_plan() {
-  local dir="$1"
-  local name="${2:-test-plan}"
-  local plan_file="$dir/docs/plans/$name.md"
-  mkdir -p "$(dirname "$plan_file")"
-  cat >"$plan_file" <<'PLAN'
-# Test Implementation Plan
-
-## Task 1: Create Add Function
-
-Create a function that adds two numbers.
-
-**File:** `src/math.js`
-**Requirements:**
-- Export function named `add(a, b)` returning `a + b`
-
-**Tests:** `test/math.test.js` — verify add(2,3)=5, add(0,0)=0, add(-1,1)=0
-**Verification:** `npm test`
-
-## Task 2: Create Multiply Function
-
-Add a multiply function to `src/math.js`.
-
-**Requirements:**
-- Export function named `multiply(a, b)` returning `a * b`
-- Do NOT add divide, subtract, or power functions
-
-**Tests:** add to `test/math.test.js` — verify multiply(2,3)=6, multiply(0,5)=0
-**Verification:** `npm test`
-PLAN
-  echo "$plan_file"
-}
-
-# Find the most-recently-modified Claude session JSONL for a given working dir.
-# Usage: find_session_file "/abs/path/to/working/dir" [max_age_minutes]
-find_session_file() {
-  local working_dir="$1"
-  local max_age="${2:-60}"
-  # Claude encodes the working dir path as the project subdir name
-  local encoded
-  encoded="$(printf '%s' "$working_dir" | sed 's|/|-|g' | sed 's|^-||')"
-  local session_dir="$HOME/.claude/projects/$encoded"
-  find "$session_dir" -name "*.jsonl" -type f -mmin "-$max_age" 2>/dev/null \
-    | sort -r | head -1
-}
-
-# Find the most-recent Claude session JSONL whose transcript contains a marker.
-# Usage: find_session_file_containing "/abs/path/to/working/dir" "marker" [max_age_minutes]
-find_session_file_containing() {
-  local working_dir="$1"
-  local marker="$2"
-  local max_age="${3:-60}"
-  local encoded
-  encoded="$(printf '%s' "$working_dir" | sed 's|/|-|g' | sed 's|^-||')"
-  local session_dir="$HOME/.claude/projects/$encoded"
-  find "$session_dir" -name "*.jsonl" -type f -mmin "-$max_age" 2>/dev/null \
-    | while IFS= read -r session; do
-        grep -Fq "$marker" "$session" 2>/dev/null && printf '%s\n' "$session"
-      done \
-    | sort -r | head -1
-}
-
-# ---------------------------------------------------------------------------
-# Assertion helpers
-# ---------------------------------------------------------------------------
-
+# Check if output contains a pattern
+# Usage: assert_contains "output" "pattern" "test name"
 assert_contains() {
-  local output="$1"
-  local pattern="$2"
-  local name="${3:-assert_contains}"
+    local output="$1"
+    local pattern="$2"
+    local test_name="${3:-test}"
 
-  if printf '%s\n' "$output" | grep -Eiq "$pattern"; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-
-  echo "  [FAIL] $name"
-  echo "  Expected pattern: $pattern"
-  echo "  Output:"
-  printf '%s\n' "$output" | sed 's/^/    /'
-  return 1
+    if echo "$output" | grep -q "$pattern"; then
+        echo "  [PASS] $test_name"
+        return 0
+    else
+        echo "  [FAIL] $test_name"
+        echo "  Expected to find: $pattern"
+        echo "  In output:"
+        echo "$output" | sed 's/^/    /'
+        return 1
+    fi
 }
 
+# Check if output does NOT contain a pattern
+# Usage: assert_not_contains "output" "pattern" "test name"
 assert_not_contains() {
-  local output="$1"
-  local pattern="$2"
-  local name="${3:-assert_not_contains}"
+    local output="$1"
+    local pattern="$2"
+    local test_name="${3:-test}"
 
-  if printf '%s\n' "$output" | grep -Eiq "$pattern"; then
-    echo "  [FAIL] $name"
-    echo "  Unexpected pattern: $pattern"
-    echo "  Output:"
-    printf '%s\n' "$output" | sed 's/^/    /'
-    return 1
-  fi
-
-  echo "  [PASS] $name"
+    if echo "$output" | grep -q "$pattern"; then
+        echo "  [FAIL] $test_name"
+        echo "  Did not expect to find: $pattern"
+        echo "  In output:"
+        echo "$output" | sed 's/^/    /'
+        return 1
+    else
+        echo "  [PASS] $test_name"
+        return 0
+    fi
 }
 
-assert_order() {
-  local output="$1"
-  local first="$2"
-  local second="$3"
-  local name="${4:-assert_order}"
-
-  local first_line second_line
-  first_line="$(printf '%s\n' "$output" | grep -Ein "$first"  | head -1 | cut -d: -f1 || true)"
-  second_line="$(printf '%s\n' "$output" | grep -Ein "$second" | head -1 | cut -d: -f1 || true)"
-
-  if [ -z "$first_line" ] || [ -z "$second_line" ]; then
-    echo "  [FAIL] $name"
-    echo "  Missing order pattern(s): $first / $second"
-    printf '%s\n' "$output" | sed 's/^/    /'
-    return 1
-  fi
-
-  if [ "$first_line" -lt "$second_line" ]; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-
-  echo "  [FAIL] $name"
-  echo "  Expected '$first' before '$second'"
-  printf '%s\n' "$output" | sed 's/^/    /'
-  return 1
-}
-
-# Verify that a grep pattern matches exactly N times.
+# Check if output matches a count
 # Usage: assert_count "output" "pattern" expected_count "test name"
 assert_count() {
-  local output="$1"
-  local pattern="$2"
-  local expected="$3"
-  local name="${4:-assert_count}"
+    local output="$1"
+    local pattern="$2"
+    local expected="$3"
+    local test_name="${4:-test}"
 
-  local actual
-  actual="$(printf '%s\n' "$output" | grep -Eic "$pattern" || echo 0)"
+    local actual=$(echo "$output" | grep -c "$pattern" || echo "0")
 
-  if [ "$actual" -eq "$expected" ]; then
-    echo "  [PASS] $name (found $actual)"
-    return 0
-  fi
-
-  echo "  [FAIL] $name"
-  echo "  Expected $expected occurrences of: $pattern"
-  echo "  Found: $actual"
-  printf '%s\n' "$output" | sed 's/^/    /'
-  return 1
+    if [ "$actual" -eq "$expected" ]; then
+        echo "  [PASS] $test_name (found $actual instances)"
+        return 0
+    else
+        echo "  [FAIL] $test_name"
+        echo "  Expected $expected instances of: $pattern"
+        echo "  Found $actual instances"
+        echo "  In output:"
+        echo "$output" | sed 's/^/    /'
+        return 1
+    fi
 }
 
-# Assert that a file exists.
-assert_file_exists() {
-  local path="$1"
-  local name="${2:-file exists: $path}"
-  if [ -f "$path" ]; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-  echo "  [FAIL] $name (not found: $path)"
-  return 1
+# Check if pattern A appears before pattern B
+# Usage: assert_order "output" "pattern_a" "pattern_b" "test name"
+assert_order() {
+    local output="$1"
+    local pattern_a="$2"
+    local pattern_b="$3"
+    local test_name="${4:-test}"
+
+    # Get line numbers where patterns appear
+    local line_a=$(echo "$output" | grep -n "$pattern_a" | head -1 | cut -d: -f1)
+    local line_b=$(echo "$output" | grep -n "$pattern_b" | head -1 | cut -d: -f1)
+
+    if [ -z "$line_a" ]; then
+        echo "  [FAIL] $test_name: pattern A not found: $pattern_a"
+        return 1
+    fi
+
+    if [ -z "$line_b" ]; then
+        echo "  [FAIL] $test_name: pattern B not found: $pattern_b"
+        return 1
+    fi
+
+    if [ "$line_a" -lt "$line_b" ]; then
+        echo "  [PASS] $test_name (A at line $line_a, B at line $line_b)"
+        return 0
+    else
+        echo "  [FAIL] $test_name"
+        echo "  Expected '$pattern_a' before '$pattern_b'"
+        echo "  But found A at line $line_a, B at line $line_b"
+        return 1
+    fi
 }
 
-# Assert that a file contains a pattern.
-assert_file_contains() {
-  local path="$1"
-  local pattern="$2"
-  local name="${3:-file contains: $pattern}"
-  if grep -Eiq "$pattern" "$path" 2>/dev/null; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-  echo "  [FAIL] $name"
-  echo "  Pattern not found in $path: $pattern"
-  return 1
+# Create a temporary test project directory
+# Usage: test_project=$(create_test_project)
+create_test_project() {
+    local test_dir=$(mktemp -d)
+    echo "$test_dir"
 }
 
-# Assert that a session JSONL file contains a grep pattern.
-# Usage: assert_session_contains "session.jsonl" "pattern" "test name"
-assert_session_contains() {
-  local session_file="$1"
-  local pattern="$2"
-  local name="${3:-session contains: $pattern}"
-  if grep -Eiq "$pattern" "$session_file" 2>/dev/null; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-  echo "  [FAIL] $name (pattern not found in session JSONL: $pattern)"
-  return 1
+# Cleanup test project
+# Usage: cleanup_test_project "$test_dir"
+cleanup_test_project() {
+    local test_dir="$1"
+    if [ -d "$test_dir" ]; then
+        rm -rf "$test_dir"
+    fi
 }
 
-# Assert that one session JSONL pattern appears before another.
-# Usage: assert_session_order "session.jsonl" "first" "second" "test name"
-assert_session_order() {
-  local session_file="$1"
-  local first="$2"
-  local second="$3"
-  local name="${4:-session order}"
+# Create a simple plan file for testing
+# Usage: create_test_plan "$project_dir" "$plan_name"
+create_test_plan() {
+    local project_dir="$1"
+    local plan_name="${2:-test-plan}"
+    local plan_file="$project_dir/docs/superpowers/plans/$plan_name.md"
 
-  local first_line second_line
-  first_line="$(grep -Ein "$first" "$session_file" 2>/dev/null | head -1 | cut -d: -f1 || true)"
-  second_line="$(grep -Ein "$second" "$session_file" 2>/dev/null | head -1 | cut -d: -f1 || true)"
+    mkdir -p "$(dirname "$plan_file")"
 
-  if [ -n "$first_line" ] && [ -n "$second_line" ] && [ "$first_line" -lt "$second_line" ]; then
-    echo "  [PASS] $name"
-    return 0
-  fi
+    cat > "$plan_file" <<'EOF'
+# Test Implementation Plan
 
-  echo "  [FAIL] $name (session JSONL order not found: $first before $second)"
-  return 1
+## Task 1: Create Hello Function
+
+Create a simple hello function that returns "Hello, World!".
+
+**File:** `src/hello.js`
+
+**Implementation:**
+```javascript
+export function hello() {
+  return "Hello, World!";
+}
+```
+
+**Tests:** Write a test that verifies the function returns the expected string.
+
+**Verification:** `npm test`
+
+## Task 2: Create Goodbye Function
+
+Create a goodbye function that takes a name and returns a goodbye message.
+
+**File:** `src/goodbye.js`
+
+**Implementation:**
+```javascript
+export function goodbye(name) {
+  return `Goodbye, ${name}!`;
+}
+```
+
+**Tests:** Write tests for:
+- Default name
+- Custom name
+- Edge cases (empty string, null)
+
+**Verification:** `npm test`
+EOF
+
+    echo "$plan_file"
 }
 
-# Assert that a JSONL session file contains a tool invocation.
-# Usage: assert_session_tool "session.jsonl" "ToolName" "test name"
-assert_session_tool() {
-  local session_file="$1"
-  local tool_name="$2"
-  local name="${3:-session uses $tool_name}"
-  if grep -q "\"name\":\"$tool_name\"" "$session_file" 2>/dev/null; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-  echo "  [FAIL] $name (tool '$tool_name' not found in session)"
-  return 1
-}
-
-# Assert that a JSONL session file invoked a specific Skill.
-# Matches both "skill":"name" and "skill":"namespace:name".
-# Usage: assert_session_skill "session.jsonl" "skill-name" "test name"
-assert_session_skill() {
-  local session_file="$1"
-  local skill_name="$2"
-  local name="${3:-session invokes skill: $skill_name}"
-  local pattern="\"skill\":\"([^\"]*:)?${skill_name}\""
-  if grep -Eq "$pattern" "$session_file" 2>/dev/null; then
-    echo "  [PASS] $name"
-    return 0
-  fi
-  echo "  [FAIL] $name (skill '$skill_name' not invoked in session)"
-  return 1
-}
+# Export functions for use in tests
+export -f run_claude
+export -f assert_contains
+export -f assert_not_contains
+export -f assert_count
+export -f assert_order
+export -f create_test_project
+export -f cleanup_test_project
+export -f create_test_plan
