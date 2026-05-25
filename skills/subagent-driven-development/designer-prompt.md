@@ -79,10 +79,12 @@ Task tool (general-purpose):
        - What conventions do users expect?
        - Where is there room to differentiate?
 
-    4. **Synthesize** — write a brief research summary in the DESIGN.md preamble:
+    4. **Synthesize** — save UI research to `.claude/research/<task-name>/ui-research.md` before creating DESIGN.md. Include:
+       - Sources reviewed (competitors, platform guidance, domain references)
        - What patterns are common (users expect these)
        - What patterns are differentiating opportunities
        - Design direction: warm/cool, dense/airy, playful/serious, etc.
+       - Rationale for major visual choices the DESIGN.md will make
 
     ### Phase 2: Design System Definition
 
@@ -263,7 +265,7 @@ Task tool (general-purpose):
 
     ## DESIGN.md Structure
 
-    Save to `DESIGN.md` at project root. Full structure:
+    Save to `DESIGN.md` at project root only after `.claude/research/<task-name>/ui-research.md` exists. DESIGN.md must cite/summarize the UI research conclusions and connect major token/layout/state decisions back to those conclusions. Full structure:
 
     ```markdown
     # Design System: [Project Name]
@@ -274,7 +276,7 @@ Task tool (general-purpose):
 
     ## Research Summary
 
-    [Phase 1 synthesis: competitive landscape, conventions, differentiating choices]
+    [Cite/summarize `.claude/research/<task-name>/ui-research.md`: competitive landscape, conventions, differentiating choices, and how those conclusions informed the design direction]
 
     ## Colors
     [Token table as defined above]
@@ -311,7 +313,8 @@ Task tool (general-purpose):
     ## Design Quality Checklist
 
     Before reporting done:
-    - [ ] UI research completed (3+ competitors analyzed, web sources cited)
+    - [ ] UI research saved to `.claude/research/<task-name>/ui-research.md` (3+ competitors analyzed, web sources cited)
+    - [ ] DESIGN.md cites/summarizes UI research conclusions
     - [ ] Design direction explicitly stated (not just "modern and clean")
     - [ ] accent-primary is NOT #3B82F6 or #6366F1
     - [ ] font-family-body is NOT Inter/Roboto/system-ui without domain justification
@@ -334,6 +337,14 @@ Task tool (general-purpose):
     - **Vague usage**: "Used for buttons" vs "Primary action buttons, submit forms, CTAs" → Fix: be specific about context
     - **Flat elevation**: Same shadow on everything → Fix: define clear elevation hierarchy
     - **Token-only thinking**: DESIGN.md has tokens but no layout, component, or accessibility guidance → Fix: all sections required
+
+    ## Design Reviewer Loop
+
+    After DESIGN.md is saved, a design reviewer reviews DESIGN.md against the design brief and `.claude/research/<task-name>/ui-research.md`.
+
+    - If reviewer returns `APPROVED`: design work is complete.
+    - If reviewer returns `NEEDS_REVISION`: revise DESIGN.md using the specific fix instructions, then send the revised DESIGN.md to the same reviewer for re-review. Repeat until `APPROVED`.
+    - If reviewer returns `BLOCKED`: report the blocker and required missing context.
 
     ## Report Format
 
