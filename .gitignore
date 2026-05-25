@@ -1,4 +1,6 @@
-.claude/
+.claude/*
+!.claude/specs/
+!.claude/plans/
 __pycache__/
 *.pyc
 .codex/
@@ -6,3 +8,4 @@ __pycache__/
 !.agents/plugins/
 .agents/plugins/*
 !.agents/plugins/marketplace.json
+.gitnexus
