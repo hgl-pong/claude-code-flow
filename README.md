@@ -97,7 +97,7 @@ claude plugin install claude-code-flow@claude-code-flow
 
 ### Codex plugin
 
-The repository root is also a Codex plugin. Following the Superpowers-style layout, Claude Code and Codex share the same root `skills/` and `agents/` directories instead of maintaining host-specific copies.
+The repository root is also a Codex plugin. Claude Code and Codex share the same root `skills/` and `agents/` directories instead of maintaining host-specific copies.
 
 Codex reads `.codex-plugin/plugin.json`, loads `skills/`, uses `hooks/codex-hooks.json`, and picks up Playwright MCP configuration from `.mcp.json`.
 

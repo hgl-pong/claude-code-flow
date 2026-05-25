@@ -1,0 +1,6 @@
+{
+  "name": "claude-code-flow",
+  "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
+  "version": "1.7.0",
+  "contextFileName": "GEMINI.md"
+}

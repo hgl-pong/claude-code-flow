@@ -63,7 +63,7 @@ digraph process {
     "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Dispatch final code reviewer subagent for entire implementation" [shape=box];
-    "Use superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
+    "Use claude-code-flow:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
@@ -82,7 +82,7 @@ digraph process {
     "Mark task complete in TodoWrite" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
-    "Dispatch final code reviewer subagent for entire implementation" -> "Use superpowers:finishing-a-development-branch";
+    "Dispatch final code reviewer subagent for entire implementation" -> "Use claude-code-flow:finishing-a-development-branch";
 }
 ```
 
@@ -90,16 +90,19 @@ digraph process {
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+**forge** (Sonnet) — general implementation, backend + frontend, full-stack work. Use `./forge-implementer-prompt.md`.
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+**oracle** (Opus) — planning, architecture, system decomposition. Use `./oracle-planner-prompt.md`.
 
-**Architecture, design, and review tasks**: use the most capable available model.
+**prism** (Sonnet) — testing, builds, acceptance verification. Use `./prism-verifier-prompt.md`.
+
+**Default implementer** — for straightforward mechanical tasks (1-2 files, complete spec). Use `./implementer-prompt.md`.
 
 **Task complexity signals:**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
+- Touches 1-2 files with a complete spec → default implementer (cheap model)
+- Full-stack, UI, multi-file coordination → forge (Sonnet)
+- Requires plan creation or architecture → oracle (Opus)
+- Requires test engineering or acceptance gate → prism (Sonnet)
 
 ## Handling Implementer Status
 
@@ -121,9 +124,21 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 ## Prompt Templates
 
-- `./implementer-prompt.md` - Dispatch implementer subagent
-- `./spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
-- `./code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
+**Implementers:**
+- `./implementer-prompt.md` - Default implementer (mechanical tasks, cheap model)
+- `./forge-implementer-prompt.md` - Forge implementer (full-stack, UI, multi-file)
+
+**Planner:**
+- `./oracle-planner-prompt.md` - Oracle planner (architecture, task decomposition)
+
+**Reviewers:**
+- `./spec-reviewer-prompt.md` - Spec compliance reviewer
+- `./code-quality-reviewer-prompt.md` - Code quality reviewer
+- `./prism-verifier-prompt.md` - Prism verifier (test engineering, build, acceptance)
+
+**Specialized:**
+- `./researcher-prompt.md` - Researcher (market analysis, tech evaluation, feasibility)
+- `./designer-prompt.md` - Designer (UI/UX design, DESIGN.md output)
 
 ## Example Workflow
 
@@ -141,7 +156,7 @@ Task 1: Hook installation script
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
-You: "User level (~/.config/superpowers/hooks/)"
+You: "User level (~/.config/claude-code-flow/hooks/)"
 
 Implementer: "Got it. Implementing now..."
 [Later] Implementer:
@@ -267,13 +282,13 @@ Done!
 ## Integration
 
 **Required workflow skills:**
-- **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
-- **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:requesting-code-review** - Code review template for reviewer subagents
-- **superpowers:finishing-a-development-branch** - Complete development after all tasks
+- **claude-code-flow:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
+- **claude-code-flow:writing-plans** - Creates the plan this skill executes
+- **claude-code-flow:requesting-code-review** - Code review template for reviewer subagents
+- **claude-code-flow:finishing-a-development-branch** - Complete development after all tasks
 
 **Subagents should use:**
-- **superpowers:test-driven-development** - Subagents follow TDD for each task
+- **claude-code-flow:test-driven-development** - Subagents follow TDD for each task
 
 **Alternative workflow:**
-- **superpowers:executing-plans** - Use for parallel session instead of same-session execution
+- **claude-code-flow:executing-plans** - Use for parallel session instead of same-session execution

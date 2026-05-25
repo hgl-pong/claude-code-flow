@@ -162,4 +162,23 @@ fi
 
 echo ""
 
+# Test 10: Verify researcher and designer templates
+echo "Test 10: Researcher and designer templates..."
+
+output=$(run_claude "What specialized subagent templates does subagent-driven-development have for research and UI design work?" 30)
+
+if assert_contains "$output" "researcher" "Mentions researcher template"; then
+    : # pass
+else
+    exit 1
+fi
+
+if assert_contains "$output" "designer" "Mentions designer template"; then
+    : # pass
+else
+    exit 1
+fi
+
+echo ""
+
 echo "=== All subagent-driven-development skill tests passed ==="

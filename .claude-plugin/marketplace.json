@@ -1,16 +1,12 @@
 {
   "name": "claude-code-flow",
-  "owner": {
-    "name": "hgl-pong"
-  },
+  "description": "Development marketplace for Claude Code Flow core skills library",
   "plugins": [
     {
       "name": "claude-code-flow",
-      "source": {
-        "source": "github",
-        "repo": "hgl-pong/claude-code-flow"
-      },
-      "description": "General-purpose development workflow with model-tiered agents, Superpowers-inspired skills, hooks for verification evidence, and local regression tests for plugin integrity."
+      "description": "Core skills library for Claude Code: workflow orchestration, debugging, collaboration patterns, and proven techniques",
+      "version": "1.7.0",
+      "source": "./"
     }
   ]
 }

@@ -1,10 +1,16 @@
 {
   "name": "claude-code-flow",
+  "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
   "version": "1.7.0",
-  "description": "Development workflow plugin with model-tiered agents and 30+ skills covering engineering (ADR, deploy, incident, tech-debt, testing), design (critique, handoff, accessibility, UX copy), research (synthesis, user research), and product (spec writing, brainstorming)",
-  "author": {
-    "name": "hgl"
-  },
+  "homepage": "https://github.com/hgl-pong/claude-code-flow",
   "repository": "https://github.com/hgl-pong/claude-code-flow",
-  "keywords": ["workflow", "agents", "skills", "tdd", "debugging", "code-review", "testing", "planning", "orchestration", "documentation", "design", "architecture", "accessibility", "research", "spec-writing", "brainstorming", "incident-response", "statusline"]
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "tdd",
+    "debugging",
+    "collaboration",
+    "best-practices",
+    "workflows"
+  ]
 }
