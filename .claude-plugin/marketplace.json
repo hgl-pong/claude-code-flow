@@ -1,16 +1,16 @@
 {
   "name": "claude-code-flow",
   "description": "Development marketplace for Claude Code Flow core skills library",
+  "owner": {
+    "name": "hgl-pong",
+    "url": "https://github.com/hgl-pong"
+  },
   "plugins": [
     {
       "name": "claude-code-flow",
       "description": "Core skills library for Claude Code: workflow orchestration, debugging, collaboration patterns, and proven techniques",
       "version": "1.7.0",
-      "source": "./",
-      "owner": {
-        "name": "hgl-pong",
-        "url": "https://github.com/hgl-pong"
-      }
+      "source": "./"
     }
   ]
 }
