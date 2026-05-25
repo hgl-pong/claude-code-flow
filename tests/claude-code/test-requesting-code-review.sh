@@ -117,15 +117,15 @@ echo ""
 echo "Analyzing reviewer output..."
 echo ""
 
-# Find the session transcript. Because we ran claude from $TEST_PROJECT (a
-# unique tmp dir), its sessions live in their own ~/.claude/projects/ folder.
-# Resolve the real path (macOS mktemp returns /var/... but claude normalizes
-# it to /private/var/...) and replicate claude's normalization (every
-# non-alphanumeric char becomes `-`).
-TEST_PROJECT_REAL=$(cd "$TEST_PROJECT" && pwd -P)
-SESSION_DIR="$HOME/.claude/projects/$(echo "$TEST_PROJECT_REAL" | sed 's|[^a-zA-Z0-9]|-|g')"
-# `|| true` prevents pipefail killing the script if ls gets SIGPIPE'd by head.
-SESSION_FILE=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1 || true)
+# Find the session transcript. On Windows, pwd -P returns /c/Users/... but
+# Claude normalizes C:\Users\... to C--Users-..., so we search for the most
+# recently modified project directory instead of computing the exact name.
+LATEST_PROJECT=$(ls -dt "$HOME/.claude/projects/"*/ 2>/dev/null | head -1)
+if [ -n "$LATEST_PROJECT" ]; then
+    SESSION_FILE=$(ls -t "$LATEST_PROJECT"/*.jsonl 2>/dev/null | head -1 || true)
+else
+    SESSION_FILE=""
+fi
 
 FAILED=0
 

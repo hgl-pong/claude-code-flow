@@ -29,7 +29,7 @@ def analyze_main_session(filepath):
         'description': None
     })
 
-    with open(filepath, 'r') as f:
+    with open(filepath, 'r', encoding='utf-8') as f:
         for line in f:
             try:
                 data = json.loads(line)

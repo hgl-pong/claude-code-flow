@@ -9,3 +9,11 @@ __pycache__/
 .agents/plugins/*
 !.agents/plugins/marketplace.json
 .gitnexus
+
+.worktrees/
+.private-journal/
+.claude/
+.DS_Store
+node_modules/
+inspo
+triage/

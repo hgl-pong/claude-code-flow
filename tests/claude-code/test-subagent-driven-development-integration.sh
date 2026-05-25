@@ -137,6 +137,8 @@ EOF
 # Use --allowed-tools to enable tool usage in headless mode
 PROMPT="Execute the implementation plan at .claude/plans/implementation-plan.md using the subagent-driven-development skill.
 
+CONTINUOUS EXECUTION: Do not pause to ask questions. Auto-choose option 1 (keep as-is) if prompted. Execute all tasks in the plan, do not stop between tasks. Just complete the full plan.
+
 IMPORTANT: Follow the skill exactly. I will be verifying that you:
 1. Read the plan once at the beginning
 2. Provide full task text to subagents (don't make them read files)
@@ -165,17 +167,13 @@ echo ""
 echo "Execution complete. Analyzing results..."
 echo ""
 
-# Find the session transcript. Because we ran claude from $TEST_PROJECT (a
-# unique tmp dir), its sessions live in their own ~/.claude/projects/ folder
-# and we can pick the most-recent one without racing other concurrent sessions.
-# Resolve the real path because macOS mktemp returns /var/... but claude
-# normalizes it to /private/var/... when naming the project dir.
-TEST_PROJECT_REAL=$(cd "$TEST_PROJECT" && pwd -P)
-# Claude normalizes the cwd to a directory name by replacing every non-alphanumeric
-# character with `-` (so `_`, `.`, `/` all become `-`).
-SESSION_DIR="$HOME/.claude/projects/$(echo "$TEST_PROJECT_REAL" | sed 's|[^a-zA-Z0-9]|-|g')"
-# `|| true` prevents pipefail killing the script if ls gets SIGPIPE'd by head.
-SESSION_FILE=$(ls -t "$SESSION_DIR"/*.jsonl 2>/dev/null | head -1 || true)
+# Find the session transcript. Use most-recently-modified project directory
+# instead of computing the exact name (path normalization differs per platform).
+LATEST_PROJECT=$(ls -dt "$HOME/.claude/projects/"*/ 2>/dev/null | head -1)
+SESSION_FILE=""
+if [ -n "$LATEST_PROJECT" ]; then
+    SESSION_FILE=$(ls -t "$LATEST_PROJECT"/*.jsonl 2>/dev/null | head -1 || true)
+fi
 
 if [ -z "$SESSION_FILE" ]; then
     echo "ERROR: Could not find session transcript file"
@@ -213,11 +211,17 @@ else
 fi
 echo ""
 
-# Test 3: TodoWrite was used for tracking
+# Test 3: Task tracking (TodoWrite or TaskCreate)
 echo "Test 3: Task tracking..."
-todo_count=$(grep -c '"name":"TodoWrite"' "$SESSION_FILE" || echo "0")
-if [ "$todo_count" -ge 1 ]; then
-    echo "  [PASS] TodoWrite used $todo_count time(s) for task tracking"
+todo_count=$(grep -c '"name":"TodoWrite"' "$SESSION_FILE" 2>/dev/null || true)
+todo_count=$(echo "$todo_count" | tr -d '[:space:]' | tail -1)
+if [ -z "$todo_count" ]; then todo_count=0; fi
+taskcreate_count=$(grep -c '"name":"TaskCreate"' "$SESSION_FILE" 2>/dev/null || true)
+taskcreate_count=$(echo "$taskcreate_count" | tr -d '[:space:]' | tail -1)
+if [ -z "$taskcreate_count" ]; then taskcreate_count=0; fi
+total_tasks=$(( todo_count + taskcreate_count ))
+if [ "$total_tasks" -ge 1 ]; then
+    echo "  [PASS] Task tracking used: $todo_count TodoWrite + $taskcreate_count TaskCreate = $total_tasks total"
 else
     echo "  [FAIL] TodoWrite not used"
     FAILED=$((FAILED + 1))
