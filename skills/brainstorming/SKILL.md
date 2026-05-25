@@ -24,12 +24,15 @@ You MUST create a task for each of these items and complete them in order:
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Propose 2-3 approaches** — with trade-offs and your recommendation
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `.claude/specs/YYYY-MM-DD-<topic>-design.md` and commit
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+4. **Write research artifacts** — after requirements are clear, save type-specific research under `.claude/research/<task-name>/`
+5. **Run frontend/UI design path** (if task involves pages, components, styling, layout, interaction, visual states, or visible UI) — designer writes `.claude/research/<task-name>/ui-research.md`, produces `DESIGN.md`, and design reviewer approves it
+6. **Propose 2-3 approaches** — with trade-offs and your recommendation, citing research artifacts
+7. **Present design** — in sections scaled to their complexity, get user approval after each section
+8. **Write design doc** — save draft to `.claude/specs/YYYY-MM-DD-<topic>-design.md`
+9. **Review design doc** — reviewer loop: draft → reviewer → revise → re-review until approved
+10. **Commit reviewed design doc** — commit only after reviewer approval
+11. **User reviews written spec** — ask user to review the spec file before proceeding
+12. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
@@ -39,11 +42,17 @@ digraph brainstorming {
     "Visual questions ahead?" [shape=diamond];
     "Offer Visual Companion\n(own message, no other content)" [shape=box];
     "Ask clarifying questions" [shape=box];
+    "Write research artifacts\n.claude/research/<task-name>/" [shape=box];
+    "Frontend/UI task?" [shape=diamond];
+    "Designer writes ui-research.md + DESIGN.md" [shape=box];
+    "Design reviewer approves?" [shape=diamond];
+    "Designer revises DESIGN.md" [shape=box];
     "Propose 2-3 approaches" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
-    "Write design doc" [shape=box];
-    "Spec self-review\n(fix inline)" [shape=box];
+    "Write spec doc" [shape=box];
+    "Reviewer approves spec?" [shape=diamond];
+    "Revise spec" [shape=box];
     "User reviews spec?" [shape=diamond];
     "Invoke writing-plans skill" [shape=doublecircle];
 
@@ -51,19 +60,28 @@ digraph brainstorming {
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
     "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
     "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
+    "Ask clarifying questions" -> "Write research artifacts\n.claude/research/<task-name>/";
+    "Write research artifacts\n.claude/research/<task-name>/" -> "Frontend/UI task?";
+    "Frontend/UI task?" -> "Designer writes ui-research.md + DESIGN.md" [label="yes"];
+    "Designer writes ui-research.md + DESIGN.md" -> "Design reviewer approves?";
+    "Design reviewer approves?" -> "Designer revises DESIGN.md" [label="no"];
+    "Designer revises DESIGN.md" -> "Design reviewer approves?";
+    "Design reviewer approves?" -> "Propose 2-3 approaches" [label="yes"];
+    "Frontend/UI task?" -> "Propose 2-3 approaches" [label="no"];
     "Propose 2-3 approaches" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write design doc" [label="changes requested"];
+    "User approves design?" -> "Write spec doc" [label="yes"];
+    "Write spec doc" -> "Reviewer approves spec?";
+    "Reviewer approves spec?" -> "Revise spec" [label="no"];
+    "Revise spec" -> "Reviewer approves spec?";
+    "Reviewer approves spec?" -> "User reviews spec?" [label="yes"];
+    "User reviews spec?" -> "Write spec doc" [label="changes requested"];
     "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
 }
 ```
 
-**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans. Required research/design/reviewer subagents inside brainstorming are allowed before that terminal state.
 
 ## The Process
 
@@ -76,6 +94,22 @@ digraph brainstorming {
 - Prefer multiple choice questions when possible, but open-ended is fine too
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
+**Research artifacts:**
+
+- Once requirements are clear, write research before proposing approaches or drafting the spec.
+- Save research under `.claude/research/<task-name>/`.
+- Split files by research type, for example `product-research.md`, `ui-research.md`, `market-research.md`, `accessibility-research.md`, or `feasibility-research.md`.
+- Specs must cite the research document paths that informed them and summarize the conclusions that shaped the design.
+- If research reveals requirement conflicts or unresolved ambiguity, stop and ask the user before continuing.
+
+**Frontend/UI design path:**
+
+- If the task involves pages, components, styling, layout, interaction, visual states, or any visible UI, dispatch a designer before proposing approaches.
+- The designer must save UI research to `.claude/research/<task-name>/ui-research.md` before producing root `DESIGN.md`.
+- Dispatch the design reviewer using `skills/subagent-driven-development/design-reviewer-prompt.md`.
+- If the design reviewer finds issues, the designer revises and the same reviewer re-reviews. Repeat until approved.
+- Do not proceed to the general design/spec or implementation planning until `DESIGN.md` is approved.
+- The approved `DESIGN.md` is binding for downstream UI implementation.
 
 **Exploring approaches:**
 
@@ -111,24 +145,23 @@ digraph brainstorming {
 - Write the validated design (spec) to `.claude/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
 - Use elements-of-style:writing-clearly-and-concisely skill if available
-- Commit the design document to git
+- Commit the design document to git only after the spec reviewer approves it
 
-**Spec Self-Review:**
-After writing the spec document, look at it with fresh eyes:
+**Spec Review Loop:**
+After writing the spec document, run a reviewer loop:
 
-1. **Placeholder scan:** Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
-2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
-3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
-4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
-
-Fix any issues inline. No need to re-review — just fix and move on.
+1. Dispatch a reviewer with the spec, research document paths, and approved `DESIGN.md` path if applicable.
+2. Reviewer checks placeholders, contradictions, ambiguity, scope creep, missing research citations, and whether the spec reflects research conclusions.
+3. If the reviewer finds issues, revise the spec and send it back to the same reviewer for re-review.
+4. Repeat until the reviewer approves.
+5. If the loop exposes unresolved requirement conflicts, stop and ask the user.
 
 **User Review Gate:**
-After the spec review loop passes, ask the user to review the written spec before proceeding:
+After the reviewer loop passes, ask the user to review the written spec before proceeding:
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+> "Spec written and reviewed at `<path>`. Please review it and let me know if you want changes before we start writing the implementation plan."
 
-Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+Wait for the user's response. If they request changes, make them and re-run the reviewer loop. Only proceed once the user approves.
 
 **Implementation:**
 

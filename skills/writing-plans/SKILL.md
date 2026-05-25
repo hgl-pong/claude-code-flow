@@ -22,6 +22,24 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
 
+## Technical Research Gate
+
+Before writing the plan, perform code and technical research. Save it to:
+
+```text
+.claude/research/<task-name>/technical-research.md
+```
+
+Technical research must cover:
+
+- Relevant files and symbols
+- Existing patterns to follow
+- Impact/risk areas
+- Test commands and acceptance checks
+- Constraints that shape task decomposition
+
+The plan must cite the technical research path and reflect its conclusions. If research reveals the spec is ambiguous, too broad, or technically inconsistent, stop and ask the user before planning.
+
 ## File Structure
 
 Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
@@ -56,6 +74,10 @@ This structure informs the task decomposition. Each task should produce self-con
 **Architecture:** [2-3 sentences about approach]
 
 **Tech Stack:** [Key technologies/libraries]
+
+**Spec:** `.claude/specs/YYYY-MM-DD-<feature-name>-design.md`
+
+**Technical research:** `.claude/research/<task-name>/technical-research.md`
 
 ---
 ```
@@ -119,23 +141,21 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Exact commands with expected output
 - DRY, YAGNI, TDD, frequent commits
 
-## Self-Review
+## Plan Review Loop
 
-After writing the complete plan, look at the spec with fresh eyes and check the plan against it. This is a checklist you run yourself — not a subagent dispatch.
+After writing the complete plan, run a reviewer loop before offering execution choices:
 
-**1. Spec coverage:** Skim each section/requirement in the spec. Can you point to a task that implements it? List any gaps.
-
-**2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
-
-**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
-
-If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+1. Dispatch a reviewer with the spec, technical research doc, approved `DESIGN.md` if applicable, and the plan.
+2. Reviewer checks spec coverage, research coverage, missing steps, placeholders, type/signature consistency, command accuracy, testability, and scope creep.
+3. If the reviewer finds issues, revise the plan and send it back to the same reviewer for re-review.
+4. Repeat until approved.
+5. If the loop exposes unresolved requirement conflicts or technical blockers, stop and ask the user.
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After the plan reviewer approves the plan, save it and offer execution choice:
 
-**"Plan complete and saved to `.claude/plans/<filename>.md`. Two execution options:**
+**"Plan complete, reviewed, and saved to `.claude/plans/<filename>.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 

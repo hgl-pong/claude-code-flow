@@ -104,6 +104,10 @@ Use the least powerful model that can handle each role to conserve cost and incr
 - Requires plan creation or architecture → oracle (Opus)
 - Requires test engineering or acceptance gate → prism (Sonnet)
 
+## UI Implementation Constraint
+
+For tasks involving visible UI, read the approved root `DESIGN.md` before dispatching the implementer. Include the relevant tokens, layout rules, component states, accessibility requirements, and path to `.claude/research/<task-name>/ui-research.md` in the implementer prompt. UI implementation that ignores approved `DESIGN.md` is not spec compliant. Spec review verifies the task matches the plan; design review verifies UI work matches `DESIGN.md`. Do not let spec review substitute for design review when `DESIGN.md` exists.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:
@@ -134,11 +138,12 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 **Reviewers:**
 - `./spec-reviewer-prompt.md` - Spec compliance reviewer
 - `./code-quality-reviewer-prompt.md` - Code quality reviewer
+- `./design-reviewer-prompt.md` - Design compliance reviewer for UI work against `DESIGN.md`
 - `./prism-verifier-prompt.md` - Prism verifier (test engineering, build, acceptance)
 
 **Specialized:**
-- `./researcher-prompt.md` - Researcher (market analysis, tech evaluation, feasibility)
-- `./designer-prompt.md` - Designer (UI/UX design, DESIGN.md output)
+- `./researcher-prompt.md` - Researcher (writes `.claude/research/<task-name>/<research-type>-research.md`)
+- `./designer-prompt.md` - Designer (UI/UX research, `.claude/research/<task-name>/ui-research.md`, root `DESIGN.md` output)
 
 ## Example Workflow
 
@@ -262,6 +267,10 @@ Done!
 - Skip review loops (reviewer found issues = implementer fixes = review again)
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
+- Skip approved source `DESIGN.md` for UI work
+- Use a `DESIGN.md` summary or spec summary instead of reading the source `DESIGN.md`
+- Let spec review substitute for design review when reviewing against `DESIGN.md`
+- Treat researcher/designer summaries as enough when saved research files are required
 - Move to next task while either review has open issues
 
 **If subagent asks questions:**
