@@ -1,133 +1,150 @@
 # Claude Code Flow
 
-Claude Code Flow is a shared Claude Code and Codex workflow plugin for multi-step software delivery. It provides curated skills, model-tiered agent prompts, hook-driven workflow state, and local regression tests.
+Claude Code Flow is a software development methodology for your coding agents, built on top of composable skills that trigger automatically at the right moments.
 
-## Core Ideas
+## Quickstart
 
-- **Shared plugin root:** Claude Code and Codex use the same `skills/`, `agents/`, `hooks/scripts/`, and `commands/` directories.
-- **Structured plan state:** planning authority lives in `.claude/flow/plan-state.json` and `.claude/flow/workflow-state.json`; `plan_hash` ties exported briefs back to the active plan.
-- **Plan mode routing:** `/plan` is the plugin planning entry. Host-level plan transitions such as Shift+Tab or SDK permission-mode changes cannot always be intercepted, so exit host plan mode and rerun `/plan <task>` when needed.
-- **Thin entry points:** commands and top-level docs route to authoritative skills and references instead of duplicating complete checklists.
-- **Generated hook manifests:** `scripts/render-hooks.py` renders both Claude and Codex hook snapshots.
+Give your agent Claude Code Flow: [Claude Code](#claude-code), [Codex CLI](#codex-cli), [Codex App](#codex-app).
 
-## Source of Truth
+## How it works
 
-| Topic | Authoritative file |
-|---|---|
-| Agent roles, models, and behavioral constraints | `agents/*.md` |
-| Codex agent metadata overlay | `skills/dev-orchestrator/agents/openai.yaml` references root `agents/` |
-| Gate checklist, scheduling, review, and acceptance | `skills/dev-orchestrator/references/pipeline-operations.md` |
-| Review command boundaries and sentinel handoff | `skills/dev-orchestrator/references/review.md` |
-| Diagnostic command data and output rules | `skills/dev-orchestrator/references/diagnostics.md` |
-| Orchestration trigger bias and mode selection | `skills/dev-orchestrator/SKILL.md` |
-| Subagent prompt templates | `skills/dev-orchestrator/references/subagent-prompts.md` |
-| Slash command entry points | `commands/*.md` as thin routers |
-| Runtime workflow state | `.claude/flow/plan-state.json`, `.claude/flow/workflow-state.json` |
-| Hook registration | `scripts/render-hooks.py` -> `hooks/hooks.json`, `hooks/codex-hooks.json` |
+It starts from the moment you fire up your coding agent. As soon as it sees that you're building something, it *doesn't* just jump into writing code. Instead, it steps back and asks you what you're really trying to do.
 
-Top-level docs are navigation. If details conflict, trust the authoritative file in this table.
+Once it's teased a spec out of the conversation, it shows it to you in chunks short enough to actually read and digest.
 
-## Workflow Overview
+After you've signed off on the design, your agent puts together an implementation plan clear enough for an enthusiastic junior engineer with poor taste, no judgment, no project context, and an aversion to testing to follow. It emphasizes true red/green TDD, YAGNI (You Aren't Gonna Need It), and DRY.
 
-Agent definitions live only in `agents/*.md`. Gate order, mode behavior, scheduling, review, and acceptance live in `skills/dev-orchestrator/references/pipeline-operations.md`.
+Next up, once you say "go", it launches a *subagent-driven-development* process, dispatching agents to work through each engineering task, inspecting and reviewing their work, and continuing forward. It's not uncommon for Claude to be able to work autonomously for a couple hours at a time without deviating from the plan.
 
-Research uses the `research` skill methodology with general-purpose subagents. UI design uses the `design` skill. Review behavior is owned by `agents/sentinel.md` and `skills/dev-orchestrator/references/review.md`.
-
-## Commands
-
-| Command | Purpose |
-|---|---|
-| `/plan [--mode] <task>` | Start the plugin planning pipeline. |
-| `/quick-fix <task>` | Handle a narrow fix without the full planning gate. |
-| `/execute-plan <plan>` | Execute an approved implementation plan. |
-| `/workflow-resume` | Resume interrupted workflow state. |
-| `/code-review [files]` | Run standalone review outside the full pipeline. |
-| `/write-tests [target]` | Write or expand tests for a target. |
-| `/build-check` | Run build/verification checks. |
-| `/workflow-status` | Show current workflow state and diagnostics. |
-| `/workflow-timeline` | Show session execution timeline. |
-| `/workflow-metrics` | Show session metrics. |
-| `/workflow-skills` | Manage or inspect workflow skills. |
-| `/uli <goal>` | Autonomous product iteration loop. Legacy `ulw`/`ultrawork` prompts route here. |
-
-## Skills
-
-Skills use progressive disclosure: concise `SKILL.md` files plus `references/` loaded only when needed. Curated workflow skills live under `skills/`; external skills must pass `workflow-intake` before becoming repo-native.
-
-Entry skills: `dev-orchestrator` (default, includes routing), `brainstorming`, `planning`, `code-review`, `testing-strategy`, `systematic-debugging`, `design`, `research`, `engineering-ops`, `ultrawork`.
-
-## Workflow References
-
-- Modes, gates, scheduling, review, and acceptance: `skills/dev-orchestrator/references/pipeline-operations.md`
-- Review boundaries and fix loops: `skills/dev-orchestrator/references/review.md`
-- Diagnostics: `skills/dev-orchestrator/references/diagnostics.md`
-- Hook registration: `scripts/render-hooks.py`
-- Hook scripts: `hooks/scripts/*`
-
-## Structure
-
-```text
-claude-code-flow/
-|-- agents/                # shared agent prompt source
-|-- commands/              # thin slash-command entry points
-|-- skills/                # SKILL.md plus on-demand references
-|-- hooks/                 # generated hook manifests plus scripts
-|-- scripts/               # shared helper/render scripts
-|-- tests/                 # local and optional host E2E regression tests
-|-- .claude-plugin/        # Claude Code plugin manifest
-`-- .codex-plugin/         # Codex plugin manifest
-```
+There's a bunch more to it, but that's the core of the system. And because the skills trigger automatically, you don't need to do anything special. Your coding agent just has Claude Code Flow.
 
 ## Installation
 
-### Claude Code plugin
+### Claude Code
 
-```text
-/plugin marketplace add hgl-pong/claude-code-flow
-/plugin install claude-code-flow@claude-code-flow
-/reload-plugins
-```
+- Register the marketplace:
 
-```cmd
-claude plugin uninstall claude-code-flow@claude-code-flow
-claude plugin marketplace remove claude-code-flow
-claude plugin marketplace add hgl-pong/claude-code-flow
-claude plugin install claude-code-flow@claude-code-flow
-```
+  ```bash
+  /plugin marketplace add hgl-pong/claude-code-flow
+  ```
 
-### Codex plugin
+- Install the plugin:
 
-The repository root is also a Codex plugin. Claude Code and Codex share the same root `skills/` and `agents/` directories instead of maintaining host-specific copies.
+  ```bash
+  /plugin install claude-code-flow@claude-code-flow
+  ```
 
-Codex reads `.codex-plugin/plugin.json`, loads `skills/`, uses `hooks/codex-hooks.json`, and picks up Playwright MCP configuration from `.mcp.json`.
+Reinstall from scratch:
 
-Codex-specific agent metadata lives beside the owning skill at `skills/dev-orchestrator/agents/openai.yaml`; it references the root `agents/` roster rather than duplicating agent prompts.
+  ```bash
+  claude plugin uninstall claude-code-flow@claude-code-flow
+  claude plugin marketplace remove claude-code-flow
+  claude plugin marketplace add hgl-pong/claude-code-flow
+  claude plugin install claude-code-flow@claude-code-flow
+  ```
 
-For local Codex app discovery, use the repo marketplace at:
+### Codex CLI
 
-```text
-.agents/plugins/marketplace.json
-```
+- Register the marketplace:
 
-## Statusline
+  ```bash
+  /plugin marketplace add https://github.com/hgl-pong/claude-code-flow
+  ```
 
-The statusline shows model, project, git branch, context usage, optional cost and rate-limit data, workflow phase, task progress, and verification status.
+- Install the plugin:
 
-It is installed automatically by the Claude Code `SessionStart` hook. To configure manually, edit `~/.claude/settings.json`:
+  ```bash
+  /plugin install claude-code-flow@claude-code-flow
+  ```
 
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "bash /path/to/claude-code-flow/scripts/statusline.sh"
-  }
-}
-```
+### Codex App
 
-## Testing
+- In the Codex app, click on Plugins in the sidebar.
+- Add the marketplace: `https://github.com/hgl-pong/claude-code-flow`
+- Search for `claude-code-flow` and click `+` to install.
+
+## The Basic Workflow
+
+1. **brainstorming** — Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document and serves it via a local brainstorm server for visual review.
+
+2. **using-git-worktrees** — Activates after design approval. Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
+
+3. **writing-plans** — Activates with approved design. Breaks work into bite-sized tasks (2–5 minutes each). Every task has exact file paths, complete code, verification steps.
+
+4. **subagent-driven-development** or **executing-plans** — Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
+
+5. **test-driven-development** — Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
+
+6. **requesting-code-review** — Activates between tasks. Reviews against plan, reports issues by severity. Critical issues block progress.
+
+7. **finishing-a-development-branch** — Activates when tasks complete. Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
+
+**The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
+
+## What's Inside
+
+### Skills Library
+
+**Testing**
+- **test-driven-development** — RED-GREEN-REFACTOR cycle (includes testing anti-patterns reference)
+
+**Debugging**
+- **systematic-debugging** — 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques)
+- **verification-before-completion** — Ensure it's actually fixed
+
+**Collaboration**
+- **brainstorming** — Socratic design refinement with visual review server
+- **writing-plans** — Detailed implementation plans
+- **executing-plans** — Batch execution with checkpoints
+- **dispatching-parallel-agents** — Concurrent subagent workflows
+- **requesting-code-review** — Pre-review checklist
+- **receiving-code-review** — Responding to feedback
+- **using-git-worktrees** — Parallel development branches
+- **finishing-a-development-branch** — Merge/PR decision workflow
+- **subagent-driven-development** — Fast iteration with two-stage review (spec compliance, then code quality)
+
+**Meta**
+- **writing-skills** — Create new skills following best practices (includes testing methodology)
+- **using-claude-code-flow** — Bootstrap that teaches the agent how to find and use skills
+
+### Hooks
+
+PreToolUse hooks intercept tool calls before execution:
+
+| Hook | Matcher | Purpose |
+|---|---|---|
+| `plan-mode-guard.py` | `EnterPlanMode` | Routes plan mode through the skill pipeline |
+| `9router-intercept.py` | `WebSearch\|WebFetch\|...` | Intercepts web search/fetch for routing |
+
+Hook manifests are generated from `scripts/render-hooks.py`. Edit the registry there, then run:
 
 ```bash
-python tests/run-tests.py
-python -m unittest tests.test_plugin_integrity
-bash tests/claude-code/run-e2e-tests.sh
+python scripts/render-hooks.py claude --write
+python scripts/render-hooks.py codex --write
 ```
+
+### Brainstorm Server
+
+A lightweight HTTP server in `skills/brainstorming/scripts/server.cjs` serves pushed HTML screens with live reload via WebSocket. The design viewer at `/design-viewer` renders DESIGN.md tokens visually.
+
+### Statusline
+
+`scripts/statusline.sh` produces a compact session status bar showing model, directory, git branch, context usage, cost, and rate limits. Self-contained — no dependency on hook scripts.
+
+## Philosophy
+
+- **Test-Driven Development** — Write tests first, always
+- **Systematic over ad-hoc** — Process over guessing
+- **Complexity reduction** — Simplicity as primary goal
+- **Evidence over claims** — Verify before declaring success
+
+## Contributing
+
+The general contribution process is below. Keep in mind that we don't generally accept contributions of new skills and that any updates to skills must work across all supported coding agents.
+
+1. Fork the repository
+2. Create a branch for your work
+3. Follow the `writing-skills` skill for creating and testing new and modified skills
+4. Submit a PR, being sure to fill in the pull request template
+
+See `skills/writing-skills/SKILL.md` for the complete guide.

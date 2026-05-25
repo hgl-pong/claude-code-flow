@@ -506,7 +506,7 @@ $('#saveBtn').addEventListener('click', async () => {
       showToast(data.error || data.message || 'Save failed', 'error');
     }
   } catch(e) {
-    showToast('Server not reachable. Start: python hooks/scripts/design-server.py', 'error');
+    showToast('Server not reachable', 'error');
   }
 });
 

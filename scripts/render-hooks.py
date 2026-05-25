@@ -13,53 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 HOSTS = {
     "claude": {
         "root_var": "CLAUDE_PLUGIN_ROOT",
-        "matchers": {
-            "shell": "Bash",
-            "agent": "Agent",
-            "write": "Write|Edit",
-        },
-        "events": {
-            "UserPromptSubmit",
-            "PreToolUse",
-            "SessionStart",
-            "PostToolUse",
-            "SubagentStart",
-            "SubagentStop",
-            "TaskCreated",
-            "TaskCompleted",
-            "Stop",
-            "PreCompact",
-            "PostCompact",
-            "SessionEnd",
-        },
+        "events": {"PreToolUse"},
     },
     "codex": {
         "root_var": "PLUGIN_ROOT",
-        "matchers": {
-            "shell": "Bash|shell_command|functions.shell_command",
-            "agent": "Agent|spawn_agent|send_input|wait_agent",
-            "write": "Write|Edit|apply_patch|functions.apply_patch",
-        },
-        "events": {
-            "UserPromptSubmit",
-            "PreToolUse",
-            "SessionStart",
-            "PostToolUse",
-            "Stop",
-        },
+        "events": {"PreToolUse"},
     },
 }
 
+WEB_MATCHER = "WebSearch|WebFetch|mcp__web-search-prime__web_search_prime|mcp__web-reader__webReader|mcp__web_reader__webReader"
+
 REGISTRY = [
-    {
-        "event": "UserPromptSubmit",
-        "matcher": "",
-        "hooks": [
-            ("python", "hooks/scripts/uli-detector.py", 3),
-            ("python", "hooks/scripts/plan-detector.py", 3),
-            ("python", "hooks/scripts/keyword-router.py", 3),
-        ],
-    },
     {
         "event": "PreToolUse",
         "matcher": "EnterPlanMode",
@@ -68,99 +32,8 @@ REGISTRY = [
     },
     {
         "event": "PreToolUse",
-        "matcher": "WebSearch|WebFetch|mcp__web-search-prime__web_search_prime|mcp__web-reader__webReader|mcp__web_reader__webReader",
+        "matcher": WEB_MATCHER,
         "hooks": [("python", "hooks/scripts/9router-intercept.py", 30)],
-    },
-    {
-        "event": "PreToolUse",
-        "matcher_key": "shell",
-        "hooks": [
-            ("bash", "hooks/scripts/pre-commit-guard.sh", 10, ["claude"]),
-            ("python", "hooks/scripts/pre-commit-guard.py", 10, ["codex"]),
-        ],
-    },
-    {
-        "event": "PreToolUse",
-        "matcher_key": "agent",
-        "hooks": [
-            ("bash", "hooks/scripts/pre-agent-guard.sh", 10, ["claude"]),
-            ("python", "hooks/scripts/pre-agent-guard.py", 10, ["codex"]),
-        ],
-    },
-    {
-        "event": "SessionStart",
-        "matcher": "",
-        "hooks": [
-            ("python", "hooks/scripts/memory-inject.py", 5),
-            ("python", "hooks/scripts/auto-statusline.py", 5, ["claude"]),
-            ("python", "hooks/scripts/session-check.py", 10),
-            ("python", "hooks/scripts/flow-state.py snapshot", 5),
-        ],
-    },
-    {
-        "event": "PostToolUse",
-        "matcher_key": "write",
-        "hooks": [
-            ("python", "hooks/scripts/track-changes.py", 10),
-            ("python", "hooks/scripts/comment-checker.py", 5),
-        ],
-    },
-    {
-        "event": "PostToolUse",
-        "matcher_key": "shell",
-        "hooks": [("python", "hooks/scripts/track-verification.py", 10)],
-    },
-    {
-        "event": "SubagentStart",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/on-agent-start.py", 10)],
-    },
-    {
-        "event": "SubagentStop",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/on-agent-complete.py", 10)],
-    },
-    {
-        "event": "TaskCreated",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/on-task-created.py", 5)],
-    },
-    {
-        "event": "TaskCompleted",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/on-task-completed.py", 5)],
-    },
-    {
-        "event": "Stop",
-        "matcher": "",
-        "hooks": [
-            ("python", "hooks/scripts/todo-enforcer.py", 5),
-            ("bash", "hooks/scripts/uli-stop-hook.sh", 10, ["claude"]),
-            ("python", "hooks/scripts/uli-stop-hook.py", 10, ["codex"]),
-            ("python", "hooks/scripts/on-workflow-stop.py", 10),
-        ],
-    },
-    {
-        "event": "PreCompact",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/on-compact.py", 10)],
-    },
-    {
-        "event": "PostCompact",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/on-post-compact.py", 10)],
-    },
-    {
-        "event": "SessionEnd",
-        "matcher": "",
-        "hosts": ["claude"],
-        "hooks": [("python", "hooks/scripts/flow-state.py snapshot", 5)],
     },
 ]
 
@@ -199,10 +72,9 @@ def render(host: str) -> dict:
         if not hooks:
             continue
 
-        matcher = entry.get("matcher", config["matchers"].get(entry.get("matcher_key", ""), ""))
         payload["hooks"].setdefault(entry["event"], []).append(
             {
-                "matcher": matcher,
+                "matcher": entry["matcher"],
                 "hooks": hooks,
             }
         )
@@ -212,8 +84,8 @@ def render(host: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("host", choices=sorted(HOSTS))
-    parser.add_argument("--check", action="store_true", help="Compare rendered output to hooks/<host>-hooks.json")
-    parser.add_argument("--write", action="store_true", help="Write rendered output to hooks/<host>-hooks.json as UTF-8")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--write", action="store_true")
     args = parser.parse_args()
 
     rendered = render(args.host)

@@ -3,9 +3,9 @@
 # Reads JSON from stdin (Claude Code passes session data on every refresh)
 # Configure: "statusLine": { "type": "command", "command": "bash <path>" }
 
-FLOW_DIR=".claude/flow"
-STATE_FILE="$FLOW_DIR/workflow-state.json"
-LAST_VERIFICATION="$FLOW_DIR/last-verification.json"
+# statusline generates a compact session status bar from live Claude Code JSON on stdin.
+# Works without any hook scripts — self-contained.
+# Reads: stdin JSON → model, dir, ctx%, cost, rate limits, git, thinking, vim mode, agent info
 
 # ANSI colors
 R=$'\033[0m'
@@ -14,7 +14,6 @@ RED=$'\033[31m'
 GRN=$'\033[32m'
 YEL=$'\033[33m'
 BLU=$'\033[34m'
-MAG=$'\033[35m'
 CYN=$'\033[36m'
 
 SEP="${DIM} | ${R}"
@@ -163,20 +162,7 @@ VIM_PART=""
 AGENT_PART=""
 [ -n "$AGENT_NAME" ] && AGENT_PART="${SEP}${DIM}@${AGENT_NAME}${R}"
 
-# ── Verification status ───────────────────────────────────
-VERIFY=""
-if [ -f "$LAST_VERIFICATION" ]; then
-  VS=$(sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LAST_VERIFICATION" | head -1)
-  VK=$(sed -n 's/.*"kind"[[:space:]]*:[[:space:]]*\["\([^"]*\)".*/\1/p; s/.*"kind"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LAST_VERIFICATION" | head -1)
-  [ -z "$VK" ] && VK="check"
-  case "$VS" in
-    pass) VERIFY=" ${GRN}verify:${VK}:pass${R}" ;;
-    fail) VERIFY=" ${RED}verify:${VK}:fail${R}" ;;
-    unknown) VERIFY=" ${YEL}verify:${VK}:unknown${R}" ;;
-  esac
-fi
-
-# ── Build line 1 ──────────────────────────────────────────
+# ── Build line ────────────────────────────────────────────
 build_line1() {
   local out=""
   [ -n "$MODEL" ] && out="${BLU}${MODEL}${R}${EFFORT_PART}${THINK_PART}"
@@ -190,36 +176,4 @@ build_line1() {
   printf "%s" "$out"
 }
 
-# ── Normal workflow phase ─────────────────────────────────
-PHASE_DISPLAY="idle"; PHASE_COLOR="$DIM"; PROGRESS=""; FLOW_META=""
-if [ -f "$STATE_FILE" ]; then
-  PHASE=$(sed -n 's/.*"phase"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
-  T_TOTAL=$(sed -n 's/.*"task_total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
-  T_DONE=$(sed -n 's/.*"task_done"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
-  FLOW_MODE=$(sed -n 's/.*"mode"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
-  PLAN_STATUS=$(sed -n 's/.*"plan_status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
-  CURRENT_AGENT=$(sed -n 's/.*"current_agent"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$STATE_FILE" | head -1)
-  RETRY_COUNT=$(sed -n 's/.*"retry_count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
-  VERIFICATION_COUNT=$(sed -n 's/.*"verification_count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$STATE_FILE" | head -1)
-  case "$PHASE" in
-    plan)   PHASE_COLOR="$CYN";  PHASE_DISPLAY="plan" ;;
-    design) PHASE_COLOR="$MAG";  PHASE_DISPLAY="design" ;;
-    impl)   PHASE_COLOR="$YEL";  PHASE_DISPLAY="impl" ;;
-    review) PHASE_COLOR="$BLU";  PHASE_DISPLAY="review" ;;
-    *)      PHASE_COLOR="$DIM";  PHASE_DISPLAY="idle" ;;
-  esac
-  [ -n "$T_TOTAL" ] && [ "${T_TOTAL:-0}" -gt 0 ] && PROGRESS=" ${T_DONE:-0}/${T_TOTAL}"
-  [ -n "$FLOW_MODE" ] && FLOW_META="${FLOW_META} mode:${FLOW_MODE}"
-  [ -n "$PLAN_STATUS" ] && FLOW_META="${FLOW_META} plan:${PLAN_STATUS}"
-  [ -n "$CURRENT_AGENT" ] && FLOW_META="${FLOW_META} agent:${CURRENT_AGENT}"
-  [ -n "$RETRY_COUNT" ] && [ "${RETRY_COUNT:-0}" -gt 0 ] && FLOW_META="${FLOW_META} retry:${RETRY_COUNT}"
-  [ -n "$VERIFICATION_COUNT" ] && [ "${VERIFICATION_COUNT:-0}" -gt 0 ] && FLOW_META="${FLOW_META} checks:${VERIFICATION_COUNT}"
-fi
-
-# Active workflow -> 2-line; idle -> single line
-if [ "$PHASE_DISPLAY" != "idle" ]; then
-  printf "%s\n" "$(build_line1)"
-  printf "%s\n" "flow:${PHASE_COLOR}${PHASE_DISPLAY}${R}${PROGRESS}${FLOW_META}${VERIFY}"
-else
-  printf "%s\n" "$(build_line1)${SEP}${PHASE_COLOR}flow${R}${VERIFY}"
-fi
+printf "%s\n" "$(build_line1)${SEP}${DIM}claude-code-flow${R}"

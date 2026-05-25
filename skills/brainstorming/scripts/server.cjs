@@ -154,6 +154,10 @@ function handleRequest(req, res) {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(fs.readFileSync(filePath));
+  } else if (req.method === 'GET' && req.url === '/design-viewer') {
+    const viewerPath = path.join(__dirname, 'design-viewer.html');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(fs.readFileSync(viewerPath, 'utf-8'));
   } else {
     res.writeHead(404);
     res.end('Not found');

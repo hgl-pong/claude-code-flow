@@ -324,7 +324,7 @@ Task tool (general-purpose):
     - [ ] Breakpoints defined with specific layout changes
     - [ ] Accessibility section complete with contrast, focus, touch, motion requirements
     - [ ] DESIGN.md saved to project root
-    - [ ] Design server can be started for visual review: `python hooks/scripts/design-server.py`
+    - [ ] Design viewer available at brainstorm server: http://localhost:<PORT>/design-viewer
 
     ## Failure Modes
 
@@ -342,5 +342,5 @@ Task tool (general-purpose):
     - **Research summary:** [design direction, key competitive insights]
     - **Token sections:** [which sections populated]
     - **Component states defined:** [list]
-    - **Visual review:** Run `python hooks/scripts/design-server.py` and open http://localhost:8765
+    - **Visual review:** Open http://localhost:<PORT>/design-viewer (served by brainstorm companion)
 ```
