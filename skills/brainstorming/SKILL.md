@@ -24,7 +24,7 @@ You MUST create a task for each of these items and complete them in order:
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Write research artifacts** — after requirements are clear, save type-specific research under `.claude/research/<task-name>/`
+4. **Dispatch researcher for product/market/feasibility research** — after requirements are clear, dispatch researcher subagent using `skills/subagent-driven-development/researcher-prompt.md`. Specify research type (`product-research`, `market-research`, `feasibility-research`) based on task needs. Researcher saves to `.claude/research/<task-name>/<type>-research.md`. Read report before step 6.
 5. **Run frontend/UI design path** (if task involves pages, components, styling, layout, interaction, visual states, or visible UI) — designer writes `.claude/research/<task-name>/ui-research.md`, produces `DESIGN.md`, and design reviewer approves it
 6. **Propose 2-3 approaches** — with trade-offs and your recommendation, citing research artifacts
 7. **Present design** — in sections scaled to their complexity, get user approval after each section
@@ -42,7 +42,7 @@ digraph brainstorming {
     "Visual questions ahead?" [shape=diamond];
     "Offer Visual Companion\n(own message, no other content)" [shape=box];
     "Ask clarifying questions" [shape=box];
-    "Write research artifacts\n.claude/research/<task-name>/" [shape=box];
+    "Dispatch researcher subagent\n.claude/research/<task-name>/" [shape=box];
     "Frontend/UI task?" [shape=diamond];
     "Designer writes ui-research.md + DESIGN.md" [shape=box];
     "Design reviewer approves?" [shape=diamond];
@@ -60,8 +60,8 @@ digraph brainstorming {
     "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
     "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
     "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Write research artifacts\n.claude/research/<task-name>/";
-    "Write research artifacts\n.claude/research/<task-name>/" -> "Frontend/UI task?";
+    "Ask clarifying questions" -> "Dispatch researcher subagent\n.claude/research/<task-name>/";
+    "Dispatch researcher subagent\n.claude/research/<task-name>/" -> "Frontend/UI task?";
     "Frontend/UI task?" -> "Designer writes ui-research.md + DESIGN.md" [label="yes"];
     "Designer writes ui-research.md + DESIGN.md" -> "Design reviewer approves?";
     "Design reviewer approves?" -> "Designer revises DESIGN.md" [label="no"];
@@ -96,10 +96,11 @@ digraph brainstorming {
 - Focus on understanding: purpose, constraints, success criteria
 **Research artifacts:**
 
-- Once requirements are clear, write research before proposing approaches or drafting the spec.
-- Save research under `.claude/research/<task-name>/`.
-- Split files by research type, for example `product-research.md`, `ui-research.md`, `market-research.md`, `accessibility-research.md`, or `feasibility-research.md`.
-- Specs must cite the research document paths that informed them and summarize the conclusions that shaped the design.
+- Once requirements are clear, dispatch a researcher subagent using `skills/subagent-driven-development/researcher-prompt.md` before proposing approaches or drafting the spec.
+- Specify research type: `product-research`, `market-research`, or `feasibility-research`. (UI research is handled separately by the designer subagent in step 5.)
+- Researcher uses dual-source tools (local codebase + web search) and saves to `.claude/research/<task-name>/<type>-research.md`.
+- All research files go to `.claude/research/<task-name>/` with source provenance on every finding.
+- Read the research report before step 6 "Propose 2-3 approaches." Specs must cite the research document paths that informed them and summarize the conclusions that shaped the design.
 - If research reveals requirement conflicts or unresolved ambiguity, stop and ask the user before continuing.
 
 **Frontend/UI design path:**
