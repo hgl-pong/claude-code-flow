@@ -1,0 +1,1 @@
+Let's build a command-line tool that counts lines of code in a directory, with options to exclude certain file types and output JSON or text format.
