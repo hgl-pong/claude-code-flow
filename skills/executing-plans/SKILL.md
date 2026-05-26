@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
+description: Inline fallback for trivial tasks (config-only, no logic) — subagent-driven-development is the default
 ---
 
 # Executing Plans

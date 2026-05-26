@@ -159,20 +159,18 @@ After writing the complete plan, run a reviewer loop before offering execution c
 
 ## Execution Handoff
 
-After the plan reviewer approves the plan, save it and offer execution choice:
+After the plan reviewer approves the plan, save it and execute. Default to subagent-driven — inline is only for trivial tasks.
 
-**"Plan complete, reviewed, and saved to `.claude/plans/<filename>.md`. Two execution options:**
-
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
-
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?"**
-
-**If Subagent-Driven chosen:**
+**Default: Subagent-Driven**
 - **REQUIRED SUB-SKILL:** Use claude-code-flow:subagent-driven-development
 - Fresh subagent per task + two-stage review
 
-**If Inline Execution chosen:**
+**Inline Execution only when ALL of:**
+- Config-only, no new logic or tests
+- No review loop needed
+
+If qualifying for inline:
 - **REQUIRED SUB-SKILL:** Use claude-code-flow:executing-plans
 - Batch execution with checkpoints for review
+
+Do not ask the user to choose. Announce which mode and proceed.

@@ -137,7 +137,7 @@ EOF
 # Use --allowed-tools to enable tool usage in headless mode
 PROMPT="Execute the implementation plan at .claude/plans/implementation-plan.md using the subagent-driven-development skill.
 
-CONTINUOUS EXECUTION: Do not pause to ask questions. Auto-choose option 1 (keep as-is) if prompted. Execute all tasks in the plan, do not stop between tasks. Just complete the full plan.
+CONTINUOUS EXECUTION: Do not pause to ask questions. Execute all tasks in the plan, do not stop between tasks. Just complete the full plan.
 
 IMPORTANT: Follow the skill exactly. I will be verifying that you:
 1. Read the plan once at the beginning
