@@ -6,6 +6,23 @@
 # NOTE: These tests require OpenCode to be installed and configured
 set -euo pipefail
 
+FAILURES=0
+
+pass() { echo "  [PASS] $1"; }
+fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
+
+report_failures() {
+    if [ "$FAILURES" -eq 0 ]; then
+        echo ""
+        echo "=== All priority tests passed ==="
+        return 0
+    else
+        echo ""
+        echo "=== $FAILURES priority test(s) FAILED ==="
+        return 1
+    fi
+}
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OPENCODE_TEST_TIMEOUT_SECONDS="${OPENCODE_TEST_TIMEOUT_SECONDS:-120}"
 
@@ -69,24 +86,21 @@ echo ""
 echo "Test 1: Verifying test fixtures..."
 
 if [ -f "$CCFLOW_SKILLS_DIR/priority-test/SKILL.md" ]; then
-    echo "  [PASS] Claude Code Flow version exists"
+    pass "Claude Code Flow version exists"
 else
-    echo "  [FAIL] Claude Code Flow version missing"
-    exit 1
+    fail "Claude Code Flow version missing"
 fi
 
 if [ -f "$OPENCODE_CONFIG_DIR/skills/priority-test/SKILL.md" ]; then
-    echo "  [PASS] Personal version exists"
+    pass "Personal version exists"
 else
-    echo "  [FAIL] Personal version missing"
-    exit 1
+    fail "Personal version missing"
 fi
 
 if [ -f "$TEST_HOME/test-project/.opencode/skills/priority-test/SKILL.md" ]; then
-    echo "  [PASS] Project version exists"
+    pass "Project version exists"
 else
-    echo "  [FAIL] Project version missing"
-    exit 1
+    fail "Project version missing"
 fi
 
 # Check if opencode is available for integration tests
@@ -113,14 +127,16 @@ run_opencode() {
 
     if [ $exit_code -eq 124 ]; then
         echo "  [FAIL] OpenCode timed out after ${OPENCODE_TEST_TIMEOUT_SECONDS}s"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 
     if [ $exit_code -ne 0 ]; then
         echo "  [FAIL] OpenCode returned non-zero exit code: $exit_code"
         echo "  Output was:"
         awk 'NR <= 80 { print }' <<<"$command_output"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 
     printf -v "$result_var" '%s' "$command_output"
@@ -138,7 +154,8 @@ assert_contains() {
         echo "  Expected to find: $needle"
         echo "  Output was:"
         awk 'NR <= 80 { print }' <<<"$output"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 }
 
@@ -165,7 +182,8 @@ describe_priority_result() {
         echo "  [FAIL] Could not verify priority marker in native skill tool output"
         echo "  Output was:"
         awk 'NR <= 80 { print }' <<<"$output"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 }
 
@@ -174,26 +192,26 @@ echo ""
 echo "Test 2: Documenting personal vs ccflow priority..."
 echo "  Running from outside project directory..."
 
-run_opencode output "$HOME" "Call the skill tool with name \"priority-test\". Show the exact content including any PRIORITY_MARKER text."
+run_opencode output "$HOME" "Call the skill tool with name \"priority-test\". Show the exact content including any PRIORITY_MARKER text." || true
 describe_priority_result \
     "$output" \
     "PRIORITY_MARKER_PERSONAL_VERSION" \
     "PRIORITY_MARKER_CCFLOW_VERSION" \
     "Personal version loaded for duplicate native skill name" \
-    "Current OpenCode behavior loaded bundled ccflow version instead of personal version"
+    "Current OpenCode behavior loaded bundled ccflow version instead of personal version" || true
 
 # Test 3: Document project vs bundled ccflow priority
 echo ""
 echo "Test 3: Documenting project vs personal/ccflow priority..."
 echo "  Running from project directory..."
 
-run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"priority-test\". Show the exact content including any PRIORITY_MARKER text."
+run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"priority-test\". Show the exact content including any PRIORITY_MARKER text." || true
 describe_priority_result \
     "$output" \
     "PRIORITY_MARKER_PROJECT_VERSION" \
     "PRIORITY_MARKER_CCFLOW_VERSION" \
     "Project version loaded for duplicate native skill name" \
-    "Current OpenCode behavior loaded bundled ccflow version instead of project version"
+    "Current OpenCode behavior loaded bundled ccflow version instead of project version" || true
 
 # Test 4: Test a non-colliding bundled ccflow skill is still available
 echo ""
@@ -210,8 +228,10 @@ description: Claude Code Flow only priority test skill
 PRIORITY_MARKER_CCFLOW_ONLY_VERSION
 EOF
 
-run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"ccflow-only-test\". Show the exact content including any PRIORITY_MARKER text."
-assert_contains "$output" "PRIORITY_MARKER_CCFLOW_ONLY_VERSION" "Non-colliding ccflow skill is still registered"
+run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"ccflow-only-test\". Show the exact content including any PRIORITY_MARKER text." || true
+assert_contains "$output" "PRIORITY_MARKER_CCFLOW_ONLY_VERSION" "Non-colliding ccflow skill is still registered" || true
 
 echo ""
-echo "=== All priority tests passed ==="
+
+report_failures
+exit $?

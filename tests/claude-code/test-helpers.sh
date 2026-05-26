@@ -1,6 +1,30 @@
 #!/usr/bin/env bash
 # Helper functions for Claude Code skill tests
 
+# Failure counter — use pass() / fail() to record, report_failures() at end
+FAILURES=0
+
+pass() {
+    echo "  [PASS] $1"
+}
+
+fail() {
+    echo "  [FAIL] $1"
+    FAILURES=$((FAILURES + 1))
+}
+
+report_failures() {
+    if [ "$FAILURES" -eq 0 ]; then
+        echo ""
+        echo "=== All tests passed ==="
+        return 0
+    else
+        echo ""
+        echo "=== $FAILURES test(s) FAILED ==="
+        return 1
+    fi
+}
+
 # Run Claude Code with a prompt and capture output
 # Usage: run_claude "prompt text" [timeout_seconds] [allowed_tools]
 run_claude() {
@@ -43,6 +67,7 @@ assert_contains() {
         echo "  Expected to find: $pattern"
         echo "  In output:"
         echo "$output" | sed 's/^/    /'
+        FAILURES=$((FAILURES + 1))
         return 1
     fi
 }
@@ -59,6 +84,7 @@ assert_not_contains() {
         echo "  Did not expect to find: $pattern"
         echo "  In output:"
         echo "$output" | sed 's/^/    /'
+        FAILURES=$((FAILURES + 1))
         return 1
     else
         echo "  [PASS] $test_name"
@@ -85,6 +111,7 @@ assert_count() {
         echo "  Found $actual instances"
         echo "  In output:"
         echo "$output" | sed 's/^/    /'
+        FAILURES=$((FAILURES + 1))
         return 1
     fi
 }
@@ -103,11 +130,13 @@ assert_order() {
 
     if [ -z "$line_a" ]; then
         echo "  [FAIL] $test_name: pattern A not found: $pattern_a"
+        FAILURES=$((FAILURES + 1))
         return 1
     fi
 
     if [ -z "$line_b" ]; then
         echo "  [FAIL] $test_name: pattern B not found: $pattern_b"
+        FAILURES=$((FAILURES + 1))
         return 1
     fi
 
@@ -118,6 +147,7 @@ assert_order() {
         echo "  [FAIL] $test_name"
         echo "  Expected '$pattern_a' before '$pattern_b'"
         echo "  But found A at line $line_a, B at line $line_b"
+        FAILURES=$((FAILURES + 1))
         return 1
     fi
 }
@@ -200,3 +230,6 @@ export -f assert_order
 export -f create_test_project
 export -f cleanup_test_project
 export -f create_test_plan
+export -f pass
+export -f fail
+export -f report_failures

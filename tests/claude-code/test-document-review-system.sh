@@ -76,7 +76,7 @@ timeout 120 claude -p "$PROMPT" --permission-mode bypassPermissions 2>&1 | tee "
     echo ""
     echo "================================================================================"
     echo "EXECUTION FAILED (exit code: $exit_code)"
-    exit 1
+    SKIP_VERIFICATION=true
 }
 echo "================================================================================"
 
@@ -85,6 +85,12 @@ echo "Analyzing reviewer output..."
 echo ""
 
 FAILED=0
+
+if [ "${SKIP_VERIFICATION:-false}" = "true" ]; then
+    echo ""
+    echo "SKIPPED: Verification tests (claude execution failed)"
+    FAILED=1
+else
 
 echo "=== Verification Tests ==="
 echo ""
@@ -130,6 +136,8 @@ else
     echo "  [PASS] Reviewer identified problems (ambiguous format but found issues)"
 fi
 echo ""
+
+fi  # end SKIP_VERIFICATION check
 
 # Summary
 echo "========================================"

@@ -109,7 +109,7 @@ cd "$TEST_PROJECT" && timeout 600 claude -p "$PROMPT" \
     echo ""
     echo "================================================================================"
     echo "EXECUTION FAILED (exit code: $?)"
-    exit 1
+    SKIP_VERIFICATION=true
 }
 echo "================================================================================"
 
@@ -129,13 +129,19 @@ fi
 
 FAILED=0
 
+if [ "${SKIP_VERIFICATION:-false}" = "true" ]; then
+    echo ""
+    echo "SKIPPED: Verification tests (claude execution failed)"
+    FAILED=1
+else
+
 echo "=== Verification Tests ==="
 echo ""
 
 # Test 1: Skill was actually invoked, and a subagent was actually dispatched
 echo "Test 1: requesting-code-review skill invoked + reviewer subagent dispatched..."
 if [ -z "$SESSION_FILE" ] || [ ! -f "$SESSION_FILE" ]; then
-    echo "  [FAIL] Could not locate session transcript in $SESSION_DIR"
+    echo "  [FAIL] Could not locate session transcript in $LATEST_PROJECT"
     FAILED=$((FAILED + 1))
 elif ! grep -q '"skill":"claude-code-flow:requesting-code-review"' "$SESSION_FILE"; then
     echo "  [FAIL] requesting-code-review skill was not invoked"
@@ -190,6 +196,8 @@ else
     echo "  [PASS] Reviewer did not approve the diff"
 fi
 echo ""
+
+fi  # end SKIP_VERIFICATION check
 
 echo "========================================"
 echo " Test Summary"

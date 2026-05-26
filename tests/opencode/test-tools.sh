@@ -5,6 +5,20 @@
 # NOTE: These tests require OpenCode to be installed and configured
 set -euo pipefail
 
+FAILURES=0
+
+report_failures() {
+    if [ "$FAILURES" -eq 0 ]; then
+        echo ""
+        echo "=== All tool tests passed ==="
+        return 0
+    else
+        echo ""
+        echo "=== $FAILURES tool test(s) FAILED ==="
+        return 1
+    fi
+}
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OPENCODE_TEST_TIMEOUT_SECONDS="${OPENCODE_TEST_TIMEOUT_SECONDS:-120}"
 
@@ -37,14 +51,16 @@ run_opencode() {
 
     if [ $exit_code -eq 124 ]; then
         echo "  [FAIL] OpenCode timed out after ${OPENCODE_TEST_TIMEOUT_SECONDS}s"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 
     if [ $exit_code -ne 0 ]; then
         echo "  [FAIL] OpenCode returned non-zero exit code: $exit_code"
         echo "  Output was:"
         awk 'NR <= 80 { print }' <<<"$command_output"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 
     printf -v "$result_var" '%s' "$command_output"
@@ -62,7 +78,8 @@ assert_contains() {
         echo "  Expected to find: $needle"
         echo "  Output was:"
         awk 'NR <= 80 { print }' <<<"$output"
-        exit 1
+        FAILURES=$((FAILURES + 1))
+        return 1
     fi
 }
 
@@ -70,26 +87,28 @@ assert_contains() {
 echo "Test 1: Testing native skill tool with a personal skill..."
 echo "  Running opencode with personal-test request..."
 
-run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"personal-test\". Then print the PERSONAL_SKILL_MARKER_12345 marker."
-assert_contains "$output" '"tool":"skill"' "OpenCode called the native skill tool"
-assert_contains "$output" "PERSONAL_SKILL_MARKER_12345" "native skill tool loaded personal-test skill content"
+run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"personal-test\". Then print the PERSONAL_SKILL_MARKER_12345 marker." || true
+assert_contains "$output" '"tool":"skill"' "OpenCode called the native skill tool" || true
+assert_contains "$output" "PERSONAL_SKILL_MARKER_12345" "native skill tool loaded personal-test skill content" || true
 
 # Test 2: Test project skill loading
 echo ""
 echo "Test 2: Testing native skill tool with a project skill..."
 echo "  Running opencode with project-test request..."
 
-run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"project-test\". Then print the PROJECT_SKILL_MARKER_67890 marker."
-assert_contains "$output" "PROJECT_SKILL_MARKER_67890" "native skill tool loaded project-test skill content"
+run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"project-test\". Then print the PROJECT_SKILL_MARKER_67890 marker." || true
+assert_contains "$output" "PROJECT_SKILL_MARKER_67890" "native skill tool loaded project-test skill content" || true
 
 # Test 3: Test bundled ccflow skill loading
 echo ""
 echo "Test 3: Testing native skill tool with a ccflow skill..."
 echo "  Running opencode with brainstorming skill..."
 
-run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"brainstorming\". Then tell me the loaded skill title."
-assert_contains "$output" '"name":"brainstorming"' "native skill tool loaded bundled brainstorming skill"
-assert_contains "$output" "Brainstorming Ideas Into Designs" "brainstorming skill content was returned"
+run_opencode output "$TEST_HOME/test-project" "Call the skill tool with name \"brainstorming\". Then tell me the loaded skill title." || true
+assert_contains "$output" '"name":"brainstorming"' "native skill tool loaded bundled brainstorming skill" || true
+assert_contains "$output" "Brainstorming Ideas Into Designs" "brainstorming skill content was returned" || true
 
 echo ""
-echo "=== All native skill tool tests passed ==="
+
+report_failures
+exit $?

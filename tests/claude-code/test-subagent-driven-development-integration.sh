@@ -158,8 +158,8 @@ echo "==========================================================================
 cd "$TEST_PROJECT" && timeout 1800 claude -p "$PROMPT" --plugin-dir "$PLUGIN_DIR" --allowed-tools=all --permission-mode bypassPermissions 2>&1 | tee "$OUTPUT_FILE" || {
     echo ""
     echo "================================================================================"
-    echo "EXECUTION FAILED (exit code: $?)"
-    exit 1
+    echo "EXECUTION FAILED (exit code: $?), skipping verification"
+    SKIP_VERIFICATION=true
 }
 echo "================================================================================"
 
@@ -177,21 +177,25 @@ fi
 
 if [ -z "$SESSION_FILE" ]; then
     echo "ERROR: Could not find session transcript file"
-    echo "Looked in: $SESSION_DIR"
-    exit 1
+    echo "Looked in: $LATEST_PROJECT"
+    SKIP_VERIFICATION=true
 fi
 
 echo "Analyzing session transcript: $(basename "$SESSION_FILE")"
 echo ""
 
-# Verification tests
-FAILED=0
+if [ "${SKIP_VERIFICATION:-false}" = "true" ]; then
+    echo "SKIPPED: Verification tests (claude execution or session file missing)"
+    FAILED=1
+else
+    # Verification tests
+    FAILED=0
 
-echo "=== Verification Tests ==="
-echo ""
+    echo "=== Verification Tests ==="
+    echo ""
 
-# Test 1: Skill was invoked
-echo "Test 1: Skill tool invoked..."
+    # Test 1: Skill was invoked
+    echo "Test 1: Skill tool invoked..."
 if grep -q '"name":"Skill".*"skill":"claude-code-flow:subagent-driven-development"' "$SESSION_FILE"; then
     echo "  [PASS] subagent-driven-development skill was invoked"
 else
@@ -289,13 +293,17 @@ else
 fi
 echo ""
 
+fi  # end SKIP_VERIFICATION check
+
 # Token Usage Analysis
-echo "========================================="
-echo " Token Usage Analysis"
-echo "========================================="
-echo ""
-python3 "$SCRIPT_DIR/analyze-token-usage.py" "$SESSION_FILE"
-echo ""
+if [ -n "$SESSION_FILE" ] && [ -f "$SESSION_FILE" ]; then
+    echo "========================================="
+    echo " Token Usage Analysis"
+    echo "========================================="
+    echo ""
+    python3 "$SCRIPT_DIR/analyze-token-usage.py" "$SESSION_FILE"
+    echo ""
+fi
 
 # Summary
 echo "========================================"

@@ -3,6 +3,23 @@
 # Verifies that the claude-code-flow plugin loads correctly in OpenCode
 set -euo pipefail
 
+FAILURES=0
+
+pass() { echo "  [PASS] $1"; }
+fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
+
+report_failures() {
+    if [ "$FAILURES" -eq 0 ]; then
+        echo ""
+        echo "=== All plugin loading tests passed ==="
+        return 0
+    else
+        echo ""
+        echo "=== $FAILURES plugin loading test(s) FAILED ==="
+        return 1
+    fi
+}
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=== Test: Plugin Loading ==="
@@ -18,65 +35,60 @@ plugin_link="$OPENCODE_CONFIG_DIR/plugins/claude-code-flow.js"
 # Test 1: Verify plugin file exists and is registered
 echo "Test 1: Checking plugin registration..."
 if [ -L "$plugin_link" ]; then
-    echo "  [PASS] Plugin symlink exists"
+    pass "Plugin symlink exists"
 else
-    echo "  [FAIL] Plugin symlink not found at $plugin_link"
-    exit 1
+    fail "Plugin symlink not found at $plugin_link"
 fi
 
 # Verify symlink target exists
 if [ -f "$(readlink -f "$plugin_link")" ]; then
-    echo "  [PASS] Plugin symlink target exists"
+    pass "Plugin symlink target exists"
 else
-    echo "  [FAIL] Plugin symlink target does not exist"
-    exit 1
+    fail "Plugin symlink target does not exist"
 fi
 
 # Test 2: Verify skills directory is populated
 echo "Test 2: Checking skills directory..."
 skill_count=$(find "$CCFLOW_SKILLS_DIR" -name "SKILL.md" | wc -l)
 if [ "$skill_count" -gt 0 ]; then
-    echo "  [PASS] Found $skill_count skills"
+    pass "Found $skill_count skills"
 else
-    echo "  [FAIL] No skills found in $CCFLOW_SKILLS_DIR"
-    exit 1
+    fail "No skills found in $CCFLOW_SKILLS_DIR"
 fi
 
 # Test 3: Check using-claude-code-flow skill exists (critical for bootstrap)
 echo "Test 3: Checking using-claude-code-flow skill (required for bootstrap)..."
 if [ -f "$CCFLOW_SKILLS_DIR/using-claude-code-flow/SKILL.md" ]; then
-    echo "  [PASS] using-claude-code-flow skill exists"
+    pass "using-claude-code-flow skill exists"
 else
-    echo "  [FAIL] using-claude-code-flow skill not found (required for bootstrap)"
-    exit 1
+    fail "using-claude-code-flow skill not found (required for bootstrap)"
 fi
 
 # Test 4: Verify plugin JavaScript syntax (basic check)
 echo "Test 4: Checking plugin JavaScript syntax..."
 if node --check "$CCFLOW_PLUGIN_FILE" 2>/dev/null; then
-    echo "  [PASS] Plugin JavaScript syntax is valid"
+    pass "Plugin JavaScript syntax is valid"
 else
-    echo "  [FAIL] Plugin has JavaScript syntax errors"
-    exit 1
+    fail "Plugin has JavaScript syntax errors"
 fi
 
 # Test 5: Verify bootstrap text does not reference a hardcoded skills path
 echo "Test 5: Checking bootstrap does not advertise a wrong skills path..."
 if grep -q 'configDir}/skills/claude-code-flow/' "$CCFLOW_PLUGIN_FILE"; then
-    echo "  [FAIL] Plugin still references old configDir skills path"
-    exit 1
+    fail "Plugin still references old configDir skills path"
 else
-    echo "  [PASS] Plugin does not advertise a misleading skills path"
+    pass "Plugin does not advertise a misleading skills path"
 fi
 
 # Test 6: Verify personal test skill was created
 echo "Test 6: Checking test fixtures..."
 if [ -f "$OPENCODE_CONFIG_DIR/skills/personal-test/SKILL.md" ]; then
-    echo "  [PASS] Personal test skill fixture created"
+    pass "Personal test skill fixture created"
 else
-    echo "  [FAIL] Personal test skill fixture not found"
-    exit 1
+    fail "Personal test skill fixture not found"
 fi
 
 echo ""
-echo "=== All plugin loading tests passed ==="
+
+report_failures
+exit $?
