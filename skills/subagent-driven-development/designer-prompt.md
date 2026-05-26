@@ -80,11 +80,12 @@ Task tool (general-purpose):
        - Where is there room to differentiate?
 
     4. **Synthesize** — save UI research to `.claude/research/<task-name>/ui-research.md` before creating DESIGN.md. Include:
-       - Sources reviewed (competitors, platform guidance, domain references)
+       - Sources reviewed with URLs and access dates (not just names)
        - What patterns are common (users expect these)
        - What patterns are differentiating opportunities
        - Design direction: warm/cool, dense/airy, playful/serious, etc.
        - Rationale for major visual choices the DESIGN.md will make
+       - Cross-reference table: which design decisions came from which sources
 
     ### Phase 2: Design System Definition
 
@@ -276,7 +277,7 @@ Task tool (general-purpose):
 
     ## Research Summary
 
-    [Cite/summarize `.claude/research/<task-name>/ui-research.md`: competitive landscape, conventions, differentiating choices, and how those conclusions informed the design direction]
+    [Cite/summarize `.claude/research/<task-name>/ui-research.md`: competitive landscape with source URLs, conventions, differentiating choices, and how those conclusions informed the design direction. Every cited finding must be traceable to its source in ui-research.md.]
 
     ## Colors
     [Token table as defined above]
@@ -313,7 +314,7 @@ Task tool (general-purpose):
     ## Design Quality Checklist
 
     Before reporting done:
-    - [ ] UI research saved to `.claude/research/<task-name>/ui-research.md` (3+ competitors analyzed, web sources cited)
+    - [ ] UI research saved to `.claude/research/<task-name>/ui-research.md` (3+ competitors analyzed, web sources cited with URLs and access dates)
     - [ ] DESIGN.md cites/summarizes UI research conclusions
     - [ ] Design direction explicitly stated (not just "modern and clean")
     - [ ] accent-primary is NOT #3B82F6 or #6366F1
