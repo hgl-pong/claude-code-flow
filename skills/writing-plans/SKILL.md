@@ -24,19 +24,25 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 ## Technical Research Gate
 
-Before writing the plan, perform code and technical research. Save it to:
+Before writing the plan, dispatch a researcher subagent using `skills/subagent-driven-development/researcher-prompt.md` with research type `technical-research`. Researcher saves to:
 
 ```text
 .claude/research/<task-name>/technical-research.md
 ```
 
+The researcher uses dual-source tools:
+- **Local codebase retrieval:** Glob, Grep, Read, CodeGraph — find relevant files, symbols, patterns, call graphs, impact areas
+- **Web search:** WebSearch, WebFetch, web_search_prime, webReader — API docs, changelogs, known issues, best practices, version-specific behavior
+
 Technical research must cover:
 
-- Relevant files and symbols
+- Relevant files and symbols (with file:line references)
 - Existing patterns to follow
 - Impact/risk areas
 - Test commands and acceptance checks
 - Constraints that shape task decomposition
+
+Every finding carries source provenance (`local` | `web` | `both`). Conflicts between local code and web docs are flagged with a recommendation.
 
 The plan must cite the technical research path and reflect its conclusions. If research reveals the spec is ambiguous, too broad, or technically inconsistent, stop and ask the user before planning.
 
