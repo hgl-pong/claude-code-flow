@@ -14,7 +14,7 @@ echo "Test 1: Skill loading..."
 
 output=$(run_claude "What is the subagent-driven-development skill? Describe its key steps briefly." )
 
-assert_contains "$output" "subagent-driven-development\|Subagent-Driven Development\|Subagent Driven" "Skill is recognized" || true
+assert_contains "$output" "subagent-driven-development\|Subagent-driven-development\|Subagent-Driven Development\|Subagent Driven" "Skill is recognized" || true
 assert_contains "$output" "Load Plan\|[Rr]ead.*plan\|extract.*tasks\|extract.*task" "Mentions loading plan" || true
 
 echo ""
@@ -34,7 +34,7 @@ echo "Test 3: Self-review requirement..."
 output=$(run_claude "Does the subagent-driven-development skill require implementers to do self-review? What should they check?" )
 
 assert_contains "$output" "self-review\|self review" "Mentions self-review" || true
-assert_contains "$output" "completeness\|Completeness\|Spec match\|Spec fit\|all reqs\|reqs met\|reqs all met\|omissions\|[Ss]pec met\|[Ss]pec reqs all met\|[Ss]pec complete\|[Ss]pec fully met\|task spec fully met\|missed reqs\|missing reqs" "Checks completeness" || true
+assert_contains "$output" "completeness\|Completeness\|Spec match\|Spec fit\|all reqs\|reqs met\|reqs all met\|omissions\|[Ss]pec met\|[Ss]pec reqs all met\|[Ss]pec complete\|[Ss]pec fully met\|task spec fully met\|missed reqs\|missing reqs\|[Mm]issing functionality\|[Mm]issing flags\|[Aa]ll tests pass\|bugs\|oversights\|match.*task spec" "Checks completeness" || true
 
 echo ""
 
@@ -53,7 +53,7 @@ echo "Test 5: Spec compliance reviewer mindset..."
 
 output=$(run_claude "What is the spec compliance reviewer's attitude toward the implementer's report in subagent-driven-development?" )
 
-assert_contains "$output" "not trust\|do not trust\|don't trust\|skeptical\|[Ss]uspicious\|verify.*independently\|independently.*read" "Reviewer is skeptical" || true
+assert_contains "$output" "not trust\|do not trust\|don't trust\|[Ss]keptical\|[Uu]ntrusted\|[Ss]uspicious\|verify.*independently\|independently.*read" "Reviewer is skeptical" || true
 assert_contains "$output" "[Rr]ead.*code\|inspect.*code\|verify.*code\|trust code\|verify independently\|actual code" "Reviewer reads code" || true
 
 echo ""

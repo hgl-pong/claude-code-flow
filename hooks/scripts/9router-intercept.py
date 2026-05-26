@@ -16,6 +16,7 @@ import urllib.request
 
 CACHE_TTL = 300
 BASE_URL = os.environ.get("NINEROUTER_URL", "").rstrip("/") or "http://localhost:20128"
+AUTH_TOKEN = os.environ.get("NINEROUTER_KEY", "") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
 _TV = "tav" + "ily"
 SEARCH_PROVIDERS = [_TV, "exa"]
 FETCH_PROVIDERS = ["firecrawl", "exa", _TV]
@@ -48,9 +49,8 @@ def _available():
         pass
     try:
         req = urllib.request.Request(f"{BASE_URL}/v1/models", method="GET")
-        key = os.environ.get("NINEROUTER_KEY", "")
-        if key:
-            req.add_header("Authorization", f"Bearer {key}")
+        if AUTH_TOKEN:
+            req.add_header("Authorization", f"Bearer {AUTH_TOKEN}")
         with urllib.request.urlopen(req, timeout=2) as resp:
             ok = resp.status == 200
     except Exception:
@@ -64,15 +64,14 @@ def _available():
 
 
 def _api(base_url, path, payload):
-    key = os.environ.get("NINEROUTER_KEY", "")
     req = urllib.request.Request(
         f"{base_url}{path}",
         data=json.dumps(payload).encode(),
         method="POST",
         headers={"Content-Type": "application/json"},
     )
-    if key:
-        req.add_header("Authorization", f"Bearer {key}")
+    if AUTH_TOKEN:
+        req.add_header("Authorization", f"Bearer {AUTH_TOKEN}")
     with urllib.request.urlopen(req, timeout=20) as resp:
         return json.loads(resp.read())
 
