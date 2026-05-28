@@ -159,12 +159,16 @@ Invoke `Skill("claude-code-flow:writing-plans")` with the completed spec.
 | Technical research ambiguity | Stop and ask | Auto-resolve with best-guess based on research findings. Log to `decisions.md`. |
 | Plan reviewer loop | Fix → re-review until approved, then ask user | Same fix → re-review loop. When reviewer approves, proceed without asking user. |
 
+**Subagent dispatches still run:**
+Technical researcher — dispatched by the writing-plans skill for codebase + web research. Auto-mode lets it run normally. When research reveals ambiguity, auto-resolve with best-guess rather than stopping.
+
 ### Phase 3: Subagent-Driven Development
 
 Invoke `Skill("claude-code-flow:subagent-driven-development")` with the plan.
 
 | Situation | Normal Mode | Auto Mode |
 |-----------|-------------|-----------|
+| Implementer DONE_WITH_CONCERNS | Read concerns, address if correctness/scope, proceed | Auto-read concerns. If correctness/scope issues: address, log, re-dispatch. If observations only: note and proceed to review. |
 | Implementer NEEDS_CONTEXT | Ask user | Auto-search codebase, infer context, re-dispatch with additional info. Log to `decisions.md`. |
 | Implementer BLOCKED | Escalate to user | Try in order: (1) re-dispatch with more capable model, (2) split task into smaller pieces, (3) provide additional context from codebase search. Log each attempt. Only stop if all 3 fail. |
 | Spec reviewer finds issues | Fix → re-review loop | Same loop, auto-continue until approved. Track iterations in `state.json` `reviewer_loop_iterations`. |
@@ -179,4 +183,4 @@ Invoke `Skill("claude-code-flow:finishing-a-development-branch")`.
 
 | Gate | Normal Mode | Auto Mode |
 |------|-------------|-----------|
-| Present 4 options | Wait for user choice | **Default: Option 1 — Merge back to base branch.** Log decision. Proceed with merge. |
+| Present 4 options | Wait for user choice | **Default: Option 1 — Merge back to base branch.** Log decision to `decisions.md`. Proceed with merge. |
