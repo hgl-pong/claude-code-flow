@@ -262,7 +262,7 @@ Auto-mode writes `state.json` atomically before every state transition. This is 
 | `DECIDING` | In a decision loop (clarifying, approaches, design) | Read `current_step`, `clarifications.md`, and `decisions.md`. Skip decisions already logged. Resume from the step indicated by `current_step`. |
 | `AWAITING_SUBAGENT` | Dispatched subagent, waiting for reply | (1) Run `git log --oneline -3` — if the task's expected commit message appears, the subagent finished before session ended; read code and proceed to review. (2) If no commit found, re-dispatch with same prompt and mark `redispatched: true` in state. |
 | `AWAITING_SHELL` | Running a shell command | Read `last_command` from state.json. If idempotent (test, lint, build, search) → re-run. If state-mutating (commit, merge, push, rm, install) → check whether intended state already exists (e.g., `git log --oneline -1` for commit). If already done → skip and proceed. If not done → re-run. |
-| `EXECUTING_GATE` | Running completion gate checks | Read `gate_states` from state.json. Resume from the first gate where `passed` is `false`. Do NOT re-check gates already `true` — they were verified on disk. |
+| `EXECUTING_GATE` | Running completion gate checks | Read `gate_states` from state.json. Resume from the first gate where `passed` is `false`. Do NOT re-check gates where `passed` is `true` — they were verified on disk. |
 | `STOPPED_ASK_USER` | Auto-mode stopped to ask user a question | Do NOT auto-resume. Print the stored question (`stopped_question` in state.json) and wait. When user answers, update status to resume from where it stopped. |
 | `FINISHING` | In finishing phase (merge) | Re-check git state, continue merge. |
 | `DONE` | Pipeline complete | Nothing to do. Print summary. |
@@ -285,7 +285,7 @@ When resuming (`/auto --resume` or `CCF_AUTO_MODE=1` on startup):
 1. Read `.claude/auto/<task-name>/state.json`
 2. Read `status`
 3. Switch on status (see status table above for per-status actions)
-4. Set `phase` to the current pipeline phase from `state.json`. Set `current_step` to the first step of that phase (see `current_step` Legal Values table for the first step per phase)
+4. Set `phase` to the current pipeline phase from `state.json`. Set `current_step` to the value stored in `state.json` if it is a valid `current_step` for the current phase. If the stored value is invalid or missing, use the first step of that phase (see `current_step` Legal Values table)
 5. Update `state.json` BEFORE every subsequent state change
 
 If `.claude/auto/*/state.json` files exist but no specific task was specified for resume: Glob, sort by `updated_at`, pick most recent. Print: "Resuming auto-mode task `<name>` from `<timestamp>`. Use `/auto --new <task>` to start fresh, `/auto --resume <task-name>` to resume a different one, or `/auto --list` to see all."
@@ -393,7 +393,7 @@ Auto-mode follows the same worktree rules as normal execution:
 
 1. **Before implementation:** Create or enter a worktree via `Skill("claude-code-flow:using-git-worktrees")` unless already in one. Record `worktree_path` in `state.json`.
 2. **During finishing (merge back):** After successful merge, clean up the worktree if it was created by auto-mode — same provenance check as `finishing-a-development-branch`.
-3. **On interruption:** Worktree persists. On resume, `state.json` tells auto-mode where the worktree is. Cd into it before continuing.
+3. **On interruption:** Worktree persists. On resume, `state.json` tells auto-mode where the worktree is. `cd` into it before continuing.
 
 ## Risk Mitigation
 
