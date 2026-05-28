@@ -15,6 +15,7 @@ SKILLS=(
     "dispatching-parallel-agents"
     "executing-plans"
     "requesting-code-review"
+    "auto-mode"
 )
 
 echo "=== Running Skill Triggering Tests ==="
