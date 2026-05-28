@@ -362,3 +362,78 @@ ENTER FINISHING PHASE
 - Gates 2 and 5 use reviewer loops → 5-iteration limit per issue (enforced by `reviewer_loop_iterations` in state.json)
 - Gates 1, 3, 4, 6 track iterations in their `gate_states` entries (`gate_N_*.iterations`). 10-iteration gate timeout as backstop
 - If any gate exceeds its limit, auto-mode stops with: which gate is stuck, what was attempted, what the user can do
+
+## Stop Conditions (Only These)
+
+Auto-mode ONLY stops and asks your human partner when:
+
+1. **Requirements are genuinely ambiguous.** The task description could mean multiple, fundamentally different things and no reasonable default exists. Example: "optimize the system" — no context about what's slow.
+
+   **Action:** Write `stopped_question` to state.json, set status `STOPPED_ASK_USER`, print the single focused question. Wait for answer.
+
+2. **Platform/Infrastructure decision.** The task requires choosing a platform or infrastructure with high switching cost and no obvious default. Example: "deploy this" without knowing target (AWS vs Vercel vs self-hosted).
+
+   **Action:** Same as #1 — single focused question, wait for answer.
+
+3. **All BLOCKED-retry strategies exhausted.** Implementer stuck after trying: more capable model → smaller task → additional context. All 3 failed.
+
+   **Action:** Present the blocker with context: which task, what was tried, what's needed. Wait for guidance.
+
+4. **Reviewer loop iteration limit hit.** 5-iteration fix → re-review limit exceeded for any single reviewer issue.
+
+   **Action:** Present the reviewer feedback and attempted fixes. Ask your human partner to resolve the contradiction or provide direction.
+
+When auto-mode stops, it presents exactly what it needs — a single, focused question. After your human partner answers → update state.json → resume pipeline from where it stopped.
+
+Everything else is auto-decided: naming, file structure, library choices, UI layout, testing strategy, error handling patterns, reviewer feedback, merge strategy.
+
+## Worktree Lifecycle
+
+Auto-mode follows the same worktree rules as normal execution:
+
+1. **Before implementation:** Create or enter a worktree via `Skill("claude-code-flow:using-git-worktrees")` unless already in one. Record `worktree_path` in `state.json`.
+2. **During finishing (merge back):** After successful merge, clean up the worktree if it was created by auto-mode — same provenance check as `finishing-a-development-branch`.
+3. **On interruption:** Worktree persists. On resume, `state.json` tells auto-mode where the worktree is. Cd into it before continuing.
+
+## Risk Mitigation
+
+- **All commits are normal git commits.** Your human partner can `git revert` or `git reset` if unhappy.
+- **Spec and plan documents are written to disk** (`.claude/specs/`, `.claude/plans/`) before implementation starts. Your human partner can review what auto-mode decided even after the fact.
+- **Auto-mode announces decisions as it makes them.** Your human partner sees what's happening, can Ctrl+C to interrupt at any time.
+- **No force-push, no destructive git operations.** Same safety rules as normal mode.
+
+## Red Flags
+
+**Never:**
+- Start implementation on main/master branch (use worktree)
+- Skip any completion gate
+- Proceed to finishing with any gate failing
+- Assume subagent results on resume without checking git log
+- Re-run destructive commands on resume without checking if they already succeeded
+- Skip phases because "we probably already did that"
+- Ask your human partner for input outside the 4 stop conditions
+- Modify existing skill files (auto-mode is additive only)
+- Skip writing to audit trail — every decision must be logged
+- Ignore the 5-iteration reviewer loop limit
+- Ignore the 10-iteration gate timeout
+
+**Always:**
+- Write `state.json` BEFORE every state transition
+- Log every automated decision to the appropriate audit file
+- Announce decisions as they happen
+- Check `gate_states` on resume — do not re-check gates already passed
+- Try all 3 BLOCKED-retry strategies before stopping
+- Default to Option 1 (merge back) in finishing phase
+
+## Integration
+
+**Required workflow skills:**
+- **claude-code-flow:brainstorming** — Phase 1: requirements and design
+- **claude-code-flow:writing-plans** — Phase 2: implementation plan
+- **claude-code-flow:subagent-driven-development** — Phase 3: execute plan tasks
+- **claude-code-flow:finishing-a-development-branch** — Final phase: merge and cleanup
+- **claude-code-flow:using-git-worktrees** — Worktree creation and management
+- **claude-code-flow:requesting-code-review** — Code review template for reviewer subagents
+
+**Subagents use:**
+- **claude-code-flow:test-driven-development** — Subagents follow TDD for each task
