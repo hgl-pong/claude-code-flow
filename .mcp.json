@@ -7,6 +7,10 @@
     "codegraph": {
       "command": "npx",
       "args": ["@colbymchenry/codegraph", "serve", "--mcp"]
+    },
+    "gamecodex": {
+      "command": "npx",
+      "args": ["-y", "gamecodex"]
     }
   }
 }
