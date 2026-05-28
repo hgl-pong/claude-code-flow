@@ -24,7 +24,7 @@ Auto-mode activates via:
 5. `/auto --new <task>` — start fresh even if old state.json exists (old audit trail preserved)
 6. `/auto --list` — list all dangling auto-mode tasks with status, updated_at, task_name
 
-**Conflict detection:** If user says `/auto <new-task>` while `.claude/auto/*/state.json` files exist, print a warning listing the dangling task(s) and ask: resume old, start new anyway, or cancel.
+**Conflict detection:** If your human partner says `/auto <new-task>` while `.claude/auto/*/state.json` files exist, print a warning listing the dangling task(s) and ask: resume old, start new anyway, or cancel.
 
 **Multiple dangling tasks on auto-resume:** Glob `.claude/auto/*/state.json`, sort by `updated_at`, pick most recent. Print: "Resuming auto-mode task `<name>` from `<timestamp>`. Use `/auto --new <task>` to start fresh, `/auto --resume <task-name>` to resume a different one, or `/auto --list` to see all."
 
