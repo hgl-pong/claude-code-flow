@@ -184,3 +184,180 @@ Invoke `Skill("claude-code-flow:finishing-a-development-branch")`.
 | Gate | Normal Mode | Auto Mode |
 |------|-------------|-----------|
 | Present 4 options | Wait for user choice | **Default: Option 1 — Merge back to base branch.** Log decision to `decisions.md`. Proceed with merge. |
+
+## State Machine & Interruption Recovery
+
+Auto-mode writes `state.json` atomically before every state transition. This is the single source of truth for resuming after session interruption.
+
+### `state.json` Schema
+
+```json
+{
+  "task_name": "<sanitized task name slug>",
+  "phase": "<brainstorming|writing-plans|subagent-driven-development|completion-gates|finishing>",
+  "status": "<DECIDING|AWAITING_SUBAGENT|AWAITING_SHELL|EXECUTING_GATE|STOPPED_ASK_USER|FINISHING|DONE>",
+  "status_detail": {
+    "agent_id": "<subagent id, if AWAITING_SUBAGENT>",
+    "agent_name": "<implementer-task-N>",
+    "task_id": "<plan task id>",
+    "dispatched_at": "<ISO timestamp>",
+    "re_dispatched": false
+  },
+  "progress": {
+    "phase_order": ["brainstorming", "writing-plans", "subagent-driven-development", "completion-gates", "finishing"],
+    "completed": [],
+    "current": "brainstorming",
+    "pending": ["writing-plans", "subagent-driven-development", "completion-gates", "finishing"],
+    "tasks_total": 0,
+    "tasks_completed": 0,
+    "tasks_reviewed": 0
+  },
+  "spec_path": ".claude/specs/<spec-file>",
+  "plan_path": ".claude/plans/<plan-file>",
+  "decision_trail": ".claude/auto/<task-name>/decisions.md",
+  "worktree_path": "<path, if applicable>",
+  "stopped_question": null,
+  "last_command": null,
+  "current_step": "<legal current_step value>",
+  "gate_states": {
+    "gate_1_tasks_executed": false,
+    "gate_2_reviews_passed": false,
+    "gate_3_tests_pass": false,
+    "gate_4_spec_verified": false,
+    "gate_5_final_review": false,
+    "gate_6_git_clean": false
+  },
+  "reviewer_loop_iterations": {},
+  "updated_at": "<ISO timestamp>"
+}
+```
+
+### `current_step` Legal Values
+
+| Phase | `current_step` value |
+|---|---|
+| brainstorming | `explore-context` |
+| brainstorming | `offer-visual-companion` |
+| brainstorming | `clarifying-questions` |
+| brainstorming | `dispatch-researcher` |
+| brainstorming | `dispatch-designer` |
+| brainstorming | `propose-approaches` |
+| brainstorming | `present-design` |
+| brainstorming | `write-spec` |
+| brainstorming | `spec-review-loop` |
+| writing-plans | `scope-check` |
+| writing-plans | `technical-research` |
+| writing-plans | `write-plan` |
+| writing-plans | `plan-review-loop` |
+| subagent-driven-development | `dispatch-implementer` |
+| subagent-driven-development | `spec-review-loop` |
+| subagent-driven-development | `code-review-loop` |
+| completion-gates | `running-gates` |
+| finishing | `merging` |
+
+### Status Values and Resume Actions
+
+| `status` | Meaning | Resume Action |
+|---|---|---|
+| `DECIDING` | In a decision loop (clarifying, approaches, design) | Read `current_step`, `clarifications.md`, and `decisions.md`. Skip decisions already logged. Resume from the step indicated by `current_step`. |
+| `AWAITING_SUBAGENT` | Dispatched subagent, waiting for reply | (1) Run `git log --oneline -3` — if the task's expected commit message appears, the subagent finished before session ended; read code and proceed to review. (2) If no commit found, re-dispatch with same prompt and mark `re_dispatched: true` in state. |
+| `AWAITING_SHELL` | Running a shell command | Read `last_command` from state.json. If idempotent (test, lint, build, search) → re-run. If state-mutating (commit, merge, push, rm, install) → check whether intended state already exists (e.g., `git log --oneline -1` for commit). If already done → skip and proceed. If not done → re-run. |
+| `EXECUTING_GATE` | Running completion gate checks | Read `gate_states` from state.json. Resume from the first gate that is `false`. Do NOT re-check gates already `true` — they were verified on disk. |
+| `STOPPED_ASK_USER` | Auto-mode stopped to ask user a question | Do NOT auto-resume. Print the stored question (`stopped_question` in state.json) and wait. When user answers, update status to resume from where it stopped. |
+| `FINISHING` | In finishing phase (merge) | Re-check git state, continue merge. |
+| `DONE` | Pipeline complete | Nothing to do. Print summary. |
+
+### Write Timing for `state.json`
+
+Update `state.json` BEFORE every state transition. Key moments:
+- After creating audit directory → write initial state
+- Before dispatching subagent → set `AWAITING_SUBAGENT`
+- Before running shell command → set `AWAITING_SHELL` + `last_command`
+- Before entering a decision → set `DECIDING` + `current_step`
+- Between pipeline phases → update `phase`, `progress`
+- When stopped to ask user → set `STOPPED_ASK_USER` + `stopped_question`
+- After each completion gate → update `gate_states`
+
+### Resume Flow
+
+When resuming (`/auto --resume` or `CCF_AUTO_MODE=1` on startup):
+
+1. Read `.claude/auto/<task-name>/state.json`
+2. Read `status`
+3. Switch on status (see status table above for per-status actions)
+4. Set `status` to current pipeline phase → `current_step`
+5. Update `state.json` BEFORE every subsequent state change
+
+**Multiple dangling tasks on auto-resume:** Glob `.claude/auto/*/state.json`, sort by `updated_at`, pick most recent. Print: "Resuming auto-mode task `<name>` from `<timestamp>`. Use `/auto --new <task>` to start fresh, `/auto --resume <task-name>` to resume a different one, or `/auto --list` to see all."
+
+### What NOT to Do on Resume
+
+- Do NOT blindly "continue working" without reading state
+- Do NOT assume subagent results when session ended mid-wait
+- Do NOT re-run destructive commands without checking if they already succeeded
+- Do NOT skip phases because "we probably already did that"
+
+## Completion Gates (Hard Gates Before Finishing)
+
+These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mode fixes and retries. Do NOT proceed to finishing until ALL gates pass.
+
+### Gate 1: All Plan Tasks Executed
+
+**Check:** Count plan tasks vs completed tasks in `progress.tasks_total` / `progress.tasks_completed`. If mismatch → execute remaining tasks.
+**Timeout:** 10 fix iterations. Track in `gate_states`.
+**On failure:** Execute remaining tasks, re-check.
+
+### Gate 2: All Per-Task Reviews Passed
+
+**Scope:** Per-task reviews only (spec compliance + code quality for each task). Plan reviewer and final code reviewer are separate (Gate 5).
+
+**Check:** For each task, verify spec reviewer returned ✅ AND code reviewer returned ✅. If any task has open review issues → fix → re-review.
+**Reviewer loop:** 5-iteration limit per issue (see Reviewer Loop Limit in Phase 3).
+**On failure:** Fix issues, re-run review.
+
+### Gate 3: Test Suite Passes
+
+**Check:** Run the project's test command (`pytest` or equivalent). Zero failures required.
+**Timeout:** 10 fix iterations.
+**On failure:** Fix failures, re-run. Loop until clean.
+
+### Gate 4: Verification Against Spec
+
+**Check:** Read spec document line by line. Verify each requirement exists in the codebase.
+**Timeout:** 10 fix iterations.
+**On failure:** Implement missing requirements → re-verify.
+
+### Gate 5: Final Code Review Passed
+
+**Check:** Dispatch final code reviewer subagent on the full implementation diff. Must return approved.
+**Reviewer loop:** 5-iteration limit per issue.
+**On failure:** Fix issues → re-review.
+
+### Gate 6: Git Status Clean
+
+**Check:** `git status --porcelain` must be empty.
+**On failure:** Commit changes or clean up untracked files. Re-check.
+
+### Gate Order
+
+```
+Gate 1: Tasks executed? ──No──→ Execute remaining tasks
+    Yes ↓
+Gate 2: Reviews passed? ──No──→ Fix → re-review (5-iteration limit)
+    Yes ↓
+Gate 3: Tests pass? ──No──→ Fix → re-run (10-iteration timeout)
+    Yes ↓
+Gate 4: Spec covered? ──No──→ Implement missing → re-verify (10-iteration timeout)
+    Yes ↓
+Gate 5: Final review? ──No──→ Fix → re-review (5-iteration limit)
+    Yes ↓
+Gate 6: Git clean? ──No──→ Commit or clean up
+    Yes ↓
+ENTER FINISHING PHASE
+```
+
+### Gate Iteration Tracking
+
+- Gates 2 and 5 use reviewer loops → 5-iteration limit per issue (enforced by `reviewer_loop_iterations` in state.json)
+- Gates 1, 3, 4, 6 use 10-iteration gate timeout as backstop
+- If any gate exceeds its limit, auto-mode stops with: which gate is stuck, what was attempted, what the user can do
