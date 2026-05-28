@@ -182,6 +182,8 @@ create_test_plan() {
 
 ## Task 1: Create Hello Function
 
+**Depends on:** none (immediately dispatchable)
+
 Create a simple hello function that returns "Hello, World!".
 
 **File:** `src/hello.js`
@@ -198,6 +200,8 @@ export function hello() {
 **Verification:** `npm test`
 
 ## Task 2: Create Goodbye Function
+
+**Depends on:** none (immediately dispatchable)
 
 Create a goodbye function that takes a name and returns a goodbye message.
 

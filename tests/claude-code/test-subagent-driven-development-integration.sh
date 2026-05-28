@@ -52,6 +52,8 @@ This is a minimal plan to test the subagent-driven-development workflow.
 
 ## Task 1: Create Add Function
 
+**Depends on:** none (immediately dispatchable)
+
 Create a function that adds two numbers.
 
 **File:** `src/math.js`
@@ -77,6 +79,8 @@ export function add(a, b) {
 **Verification:** `npm test`
 
 ## Task 2: Create Multiply Function
+
+**Depends on:** Task 1 (modifies same file)
 
 Create a function that multiplies two numbers.
 

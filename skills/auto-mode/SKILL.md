@@ -66,11 +66,15 @@ Invoke `Skill("claude-code-flow:writing-plans")` with the completed spec.
 
 Invoke `Skill("claude-code-flow:subagent-driven-development")` with the plan.
 
+**Parallelism:** Read `CCF_MAX_PARALLEL_AGENTS` env var (default 5). Build dependency graph from `plan.tasks[].depends_on`. Independent tasks dispatch in parallel up to the pool limit. Review chain per task (spec → code quality) runs without blocking other tasks' implementers. Track active agents in `active_agents[]` and per-task progress in `task_states{}` within `state.json`.
+
 | Situation | Normal Mode | Auto Mode |
 |-----------|-------------|-----------|
+| Dispatch phase | Parallel pool (same as auto) — build dependency graph, fill pool to `CCF_MAX_PARALLEL_AGENTS` with dispatchable tasks | Same as normal + write `state.json` with `status: AWAITING_SUBAGENTS`, populate `active_agents[]` and `task_states{}`. |
 | Implementer DONE_WITH_CONCERNS | Read concerns, address if correctness/scope, proceed | Auto-read concerns. If correctness/scope issues: address, log, re-dispatch. If observations only: note and proceed to review. |
-| Implementer NEEDS_CONTEXT | Ask user | Auto-search codebase, infer context, re-dispatch with additional info. Log to `decisions.md`. |
-| Implementer BLOCKED | Escalate to user | Try in order: (1) re-dispatch with more capable model, (2) split task into smaller pieces, (3) provide additional context from codebase search. Log each attempt. Only stop if all 3 fail. |
+| Implementer NEEDS_CONTEXT | Search codebase, infer context, re-dispatch. Ask user if still ambiguous. | Auto-search codebase, infer context, re-dispatch with additional info. Log to `decisions.md`. |
+| Implementer BLOCKED | Try in order: (1) more capable model, (2) smaller task, (3) additional context. Escalate if all fail. | Same + log each attempt. Only stop if all 3 fail. |
+| Subagent completion | Fire next step for that task immediately (review chain). Fill vacant pool slots with dispatchable tasks. If pool empty and all agents done, proceed to completion gates. | Same as normal + update `active_agents[]` and `task_states{}` in state.json. |
 | Spec reviewer finds issues | Fix → re-review loop | Same loop, auto-continue until approved. Track iterations in `state.json` `reviewer_loop_iterations`. |
 | Code reviewer finds issues | Fix → re-review loop | Same loop, auto-continue until approved. Track iterations. |
 | Between tasks | Pause for user check-in | Continuous execution. No pauses. |
@@ -91,7 +95,7 @@ These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mo
 
 | # | Gate | Check | Timeout |
 |---|------|-------|---------|
-| 1 | All plan tasks executed | `progress.tasks_total == progress.tasks_completed` | 10 iterations |
+| 1 | All plan tasks executed | All `task_states` entries `done` (`task_states.*.status == "done"`) and `progress.tasks_total == progress.tasks_completed` | 10 iterations |
 | 2 | All per-task reviews passed | Spec reviewer ✅ + code reviewer ✅ for each task | 5 iterations/issue |
 | 3 | Test suite passes | Run project test command, zero failures | 10 iterations |
 | 4 | Verification against spec | Read spec line by line, verify each requirement in codebase | 10 iterations |

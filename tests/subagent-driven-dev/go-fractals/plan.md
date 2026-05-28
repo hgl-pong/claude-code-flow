@@ -10,6 +10,8 @@ Building a CLI tool that generates ASCII fractals. See `design.md` for full spec
 
 ### Task 1: Project Setup
 
+**Depends on:** none (immediately dispatchable)
+
 Create the Go module and directory structure.
 
 **Do:**
@@ -26,6 +28,8 @@ Create the Go module and directory structure.
 
 ### Task 2: CLI Framework with Help
 
+**Depends on:** Task 1
+
 Set up Cobra root command with help output.
 
 **Do:**
@@ -40,6 +44,8 @@ Set up Cobra root command with help output.
 ---
 
 ### Task 3: Sierpinski Algorithm
+
+**Depends on:** Task 1
 
 Implement the Sierpinski triangle generation algorithm.
 
@@ -59,6 +65,8 @@ Implement the Sierpinski triangle generation algorithm.
 
 ### Task 4: Sierpinski CLI Integration
 
+**Depends on:** Task 2, Task 3
+
 Wire the Sierpinski algorithm to a CLI subcommand.
 
 **Do:**
@@ -74,6 +82,8 @@ Wire the Sierpinski algorithm to a CLI subcommand.
 ---
 
 ### Task 5: Mandelbrot Algorithm
+
+**Depends on:** Task 1
 
 Implement the Mandelbrot set ASCII renderer.
 
@@ -94,6 +104,8 @@ Implement the Mandelbrot set ASCII renderer.
 
 ### Task 6: Mandelbrot CLI Integration
 
+**Depends on:** Task 2, Task 5
+
 Wire the Mandelbrot algorithm to a CLI subcommand.
 
 **Do:**
@@ -110,6 +122,8 @@ Wire the Mandelbrot algorithm to a CLI subcommand.
 
 ### Task 7: Character Set Configuration
 
+**Depends on:** Task 4, Task 6
+
 Ensure `--char` flag works consistently across both commands.
 
 **Do:**
@@ -125,6 +139,8 @@ Ensure `--char` flag works consistently across both commands.
 ---
 
 ### Task 8: Input Validation and Error Handling
+
+**Depends on:** Task 4, Task 6
 
 Add validation for invalid inputs.
 
@@ -143,6 +159,8 @@ Add validation for invalid inputs.
 
 ### Task 9: Integration Tests
 
+**Depends on:** Task 7, Task 8
+
 Add integration tests that invoke the CLI.
 
 **Do:**
@@ -157,6 +175,8 @@ Add integration tests that invoke the CLI.
 ---
 
 ### Task 10: README
+
+**Depends on:** none (immediately dispatchable with other tasks)
 
 Document usage and examples.
 

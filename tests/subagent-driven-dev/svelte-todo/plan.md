@@ -10,6 +10,8 @@ Building a todo list app with Svelte. See `design.md` for full specification.
 
 ### Task 1: Project Setup
 
+**Depends on:** none (immediately dispatchable)
+
 Create the Svelte project with Vite.
 
 **Do:**
@@ -27,6 +29,8 @@ Create the Svelte project with Vite.
 
 ### Task 2: Todo Store
 
+**Depends on:** Task 1
+
 Create the Svelte store for todo state management.
 
 **Do:**
@@ -42,6 +46,8 @@ Create the Svelte store for todo state management.
 ---
 
 ### Task 3: localStorage Persistence
+
+**Depends on:** Task 2
 
 Add persistence layer for todos.
 
@@ -59,6 +65,8 @@ Add persistence layer for todos.
 ---
 
 ### Task 4: TodoInput Component
+
+**Depends on:** Task 2
 
 Create the input component for adding todos.
 
@@ -78,6 +86,8 @@ Create the input component for adding todos.
 
 ### Task 5: TodoItem Component
 
+**Depends on:** Task 2
+
 Create the single todo item component.
 
 **Do:**
@@ -96,6 +106,8 @@ Create the single todo item component.
 
 ### Task 6: TodoList Component
 
+**Depends on:** Task 5
+
 Create the list container component.
 
 **Do:**
@@ -112,6 +124,8 @@ Create the list container component.
 ---
 
 ### Task 7: FilterBar Component
+
+**Depends on:** Task 2
 
 Create the filter and status bar component.
 
@@ -132,6 +146,8 @@ Create the filter and status bar component.
 
 ### Task 8: App Integration
 
+**Depends on:** Task 4, Task 6, Task 7
+
 Wire all components together in App.svelte.
 
 **Do:**
@@ -151,6 +167,8 @@ Wire all components together in App.svelte.
 
 ### Task 9: Filter Functionality
 
+**Depends on:** Task 8
+
 Ensure filtering works end-to-end.
 
 **Do:**
@@ -169,6 +187,8 @@ Ensure filtering works end-to-end.
 
 ### Task 10: Styling and Polish
 
+**Depends on:** Task 8
+
 Add CSS styling for usability.
 
 **Do:**
@@ -186,6 +206,8 @@ Add CSS styling for usability.
 ---
 
 ### Task 11: End-to-End Tests
+
+**Depends on:** Task 9
 
 Add Playwright tests for full user flows.
 
@@ -206,6 +228,8 @@ Add Playwright tests for full user flows.
 ---
 
 ### Task 12: README
+
+**Depends on:** none (immediately dispatchable with other tasks)
 
 Document the project.
 

@@ -43,7 +43,7 @@ digraph process {
     rankdir=TB;
 
     subgraph cluster_per_task {
-        label="Per Task";
+        label="Per Task (review chain runs independently per task; implementers run in parallel pool)";
         "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
         "Implementer subagent asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
@@ -54,15 +54,19 @@ digraph process {
         "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
         "Code quality reviewer subagent approves?" [shape=diamond];
         "Implementer subagent fixes quality issues" [shape=box];
-        "Mark task complete in TodoWrite" [shape=box];
+        "Mark task done in TodoWrite" [shape=box];
     }
 
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" [shape=box];
-    "More tasks remain?" [shape=diamond];
+    "Read plan, extract all tasks with full text, build dependency graph, create TodoWrite" [shape=box];
+    "Dispatchable tasks remain AND pool has free slots?" [shape=diamond];
+    "On any subagent completion: fire next step for that task, fill vacant pool slots" [shape=box style=filled fillcolor=lightblue];
+    "All tasks done?" [shape=diamond];
     "Dispatch final code reviewer subagent for entire implementation" [shape=box];
     "Use claude-code-flow:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-    "Read plan, extract all tasks with full text, note context, create TodoWrite" -> "Dispatch implementer subagent (./implementer-prompt.md)";
+    "Read plan, extract all tasks with full text, build dependency graph, create TodoWrite" -> "Dispatchable tasks remain AND pool has free slots?";
+    "Dispatchable tasks remain AND pool has free slots?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes (up to N max)"];
+    "Dispatchable tasks remain AND pool has free slots?" -> "All tasks done?" [label="no"];
     "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
     "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
@@ -75,13 +79,34 @@ digraph process {
     "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
     "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
     "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Mark task complete in TodoWrite" [label="yes"];
-    "Mark task complete in TodoWrite" -> "More tasks remain?";
-    "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
-    "More tasks remain?" -> "Dispatch final code reviewer subagent for entire implementation" [label="no"];
+    "Code quality reviewer subagent approves?" -> "Mark task done in TodoWrite" [label="yes"];
+    "Mark task done in TodoWrite" -> "On any subagent completion: fire next step for that task, fill vacant pool slots";
+    "On any subagent completion: fire next step for that task, fill vacant pool slots" -> "Dispatchable tasks remain AND pool has free slots?";
+    "All tasks done?" -> "Dispatch final code reviewer subagent for entire implementation" [label="yes"];
+    "All tasks done?" -> "On any subagent completion: fire next step for that task, fill vacant pool slots" [label="no"];
     "Dispatch final code reviewer subagent for entire implementation" -> "Use claude-code-flow:finishing-a-development-branch";
 }
 ```
+
+## Parallel Execution
+
+Tasks that share no files or dependencies can implement in parallel. Use a pool model: up to `CCF_MAX_PARALLEL_AGENTS` concurrent implementers (default 5). Reviews happen in-chain per task — when any implementer finishes, its spec and code reviewers fire immediately, overlapping with other implementers still running. The pool stays full until all tasks are dispatched.
+
+**Task dependency graph:** Each task may declare a `depends_on` field listing task IDs it requires to be `done` before it can be dispatched. A task is dispatchable when all its declared dependencies are `done`. Tasks with no `depends_on` field are dispatchable immediately.
+
+**Event-driven dispatch rules:**
+
+1. When a plan is loaded, extract all tasks and build the dependency graph
+2. Dispatch all immediately-dispatchable tasks, up to the pool limit
+3. On any subagent completion event, immediately:
+   a. Fire the next step for that specific task (implementer done → spec reviewer; spec reviewer passed → code reviewer; code reviewer passed → mark done)
+   b. While pool has free slots AND dispatchable tasks remain: dispatch the next implementer
+4. Review chains can overlap — spec reviewer for Task A runs while Task B's implementer is still coding
+5. Continue until all tasks are done and all reviews are complete
+
+**All subagents work in the same worktree.** This works because independent tasks are designed not to conflict — they touch different files or different parts of the same file with no logical overlap.
+
+**Cost/benefit tradeoff:** If `CCF_MAX_PARALLEL_AGENTS=1`, the process is identical to sequential execution. For plans with many independent tasks, higher concurrency dramatically reduces wall-clock time. Independent tasks by design don't interfere, so the risk of merge conflicts is minimal.
 
 ## Model Selection
 
@@ -149,73 +174,60 @@ You: I'm using Subagent-Driven Development to execute this plan.
 
 [Read plan file once: .claude/plans/feature-plan.md]
 [Extract all 5 tasks with full text and context]
+[Build dependency graph: Task 3 depends_on [Task 1]; Tasks 2,4,5 independent]
 [Create TodoWrite with all tasks]
+[CCF_MAX_PARALLEL_AGENTS=3. Dispatchable now: Task 1, Task 2, Task 4 → dispatch all 3]
 
-Task 1: Hook installation script
+=== Pool: [Task 1 implementing, Task 2 implementing, Task 4 implementing] ===
 
-[Get Task 1 text and context (already extracted)]
-[Dispatch implementation subagent with full task text + context]
-
-Implementer: "Before I begin - should the hook be installed at user or system level?"
-
-You: "User level (~/.config/claude-code-flow/hooks/)"
-
-Implementer: "Got it. Implementing now..."
-[Later] Implementer:
-  - Implemented install-hook command
-  - Added tests, 5/5 passing
-  - Self-review: Found I missed --force flag, added it
-  - Committed
-
-[Dispatch spec compliance reviewer]
-Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
-
-[Get git SHAs, dispatch code quality reviewer]
-Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
-
-[Mark Task 1 complete]
-
-Task 2: Recovery modes
-
-[Get Task 2 text and context (already extracted)]
-[Dispatch implementation subagent with full task text + context]
-
-Implementer: [No questions, proceeds]
-Implementer:
+[Task 2 implementer finishes first]
+Implementer (Task 2):
   - Added verify/repair modes
   - 8/8 tests passing
   - Self-review: All good
   - Committed
 
-[Dispatch spec compliance reviewer]
-Spec reviewer: ❌ Issues:
-  - Missing: Progress reporting (spec says "report every 100 items")
-  - Extra: Added --json flag (not requested)
+[Dispatch Task 2 spec reviewer]  ← fires immediately, Task 1 & 4 still implementing
+[Pool slot free: dispatch Task 5 (dispatchable, independent)]
+=== Pool: [Task 1 implementing, Task 4 implementing, Task 5 implementing] ===
 
-[Implementer fixes issues]
-Implementer: Removed --json flag, added progress reporting
+[Task 2 spec reviewer completes] Spec reviewer: ✅ Spec compliant
 
-[Spec reviewer reviews again]
-Spec reviewer: ✅ Spec compliant now
-
-[Dispatch code quality reviewer]
+[Dispatch Task 2 code quality reviewer]  ← still overlapping with implementers
 Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
 
-[Implementer fixes]
-Implementer: Extracted PROGRESS_INTERVAL constant
+[Task 2 implementer fixes → re-review → ✅ Approved]
+[Mark Task 2 done]  ← Task 3 now dispatchable (depends_on Task 1 still in progress, not Task 2 → waits)
 
-[Code reviewer reviews again]
-Code reviewer: ✅ Approved
+[Task 1 implementer finishes with question]
+Implementer (Task 1): "Should the hook be installed at user or system level?"
+You: "User level (~/.config/claude-code-flow/hooks/)"
 
-[Mark Task 2 complete]
+Implementer (Task 1): [Proceeds, implements, commits]
+[Dispatch Task 1 spec reviewer]  ← Task 4 & 5 still implementing
 
-...
+Spec reviewer (Task 1): ✅ Spec compliant
+[Dispatch Task 1 code quality reviewer]
+Code reviewer (Task 1): ✅ Approved
+[Mark Task 1 done]  ← Task 3 NOW dispatchable (Task 1 done)
+[Pool slot free: dispatch Task 3]
+=== Pool: [Task 4 implementing, Task 5 implementing, Task 3 implementing] ===
 
-[After all tasks]
+[Task 4 implementer finishes → spec review → code review → approved]
+[Mark Task 4 done]
+[Pool slot free, no more dispatchable tasks]
+
+[Task 5 implementer finishes → spec review finds issues → fix → re-review → approved]
+[Mark Task 5 done]
+
+[Task 3 implementer finishes → spec review → code review → approved]
+[Mark Task 3 done]
+
+[All tasks done]
 [Dispatch final code-reviewer]
 Final reviewer: All requirements met, ready to merge
 
-Done!
+Done! Wall-clock: ~3 concurrent streams instead of 5 sequential rounds.
 ```
 
 ## Advantages
@@ -236,6 +248,8 @@ Done!
 - Controller curates exactly what context is needed
 - Subagent gets complete information upfront
 - Questions surfaced before work begins (not after)
+- Independent tasks implement in parallel (wall-clock reduction up to Nx)
+- Reviews overlap with implementation (no idle time between tasks)
 
 **Quality gates:**
 - Self-review catches issues before handoff
@@ -256,7 +270,6 @@ Done!
 - Start implementation on main/master branch without explicit user consent
 - Skip reviews (spec compliance OR code quality)
 - Proceed with unfixed issues
-- Dispatch multiple implementation subagents in parallel (conflicts)
 - Make subagent read plan file (provide full text instead)
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
@@ -268,7 +281,14 @@ Done!
 - Use a `DESIGN.md` summary or spec summary instead of reading the source `DESIGN.md`
 - Let spec review substitute for design review when reviewing against `DESIGN.md`
 - Treat researcher/designer summaries as enough when saved research files are required
-- Move to next task while either review has open issues
+- Mark a task done while either review has open issues for that task
+- Dispatch tasks that share files or dependencies in parallel
+- Dispatch tasks whose `depends_on` are not all `done`
+
+**Always:**
+- Respect task dependency graph — don't dispatch tasks whose `depends_on` aren't `done`
+- Build dependency graph from plan before dispatching any subagent
+- Fill pool to capacity with dispatchable tasks on every completion event
 
 **If subagent asks questions:**
 - Answer clearly and completely

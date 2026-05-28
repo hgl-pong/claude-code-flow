@@ -22,6 +22,7 @@ Task tool (general-purpose):
     | Completeness | TODOs, placeholders, incomplete tasks, missing steps |
     | Spec Alignment | Plan covers spec requirements, no major scope creep |
     | Task Decomposition | Tasks have clear boundaries, steps are actionable |
+| Dependencies | `**Depends on:**` is correct: only on earlier tasks, based on actual file/data sharing. No missing deps (shared files undeclared). No unnecessary deps (independent tasks marked dependent). |
     | Buildability | Could an engineer follow this plan without getting stuck? |
 
     ## Calibration

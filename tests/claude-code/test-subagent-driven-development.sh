@@ -117,5 +117,58 @@ assert_contains "$output" "approved\|read\|consume\|binding\|tokens\|component s
 
 echo ""
 
+# ===== Parallel Execution Tests =====
+
+# Test 12: Parallel execution section exists
+echo "Test 12: Parallel execution support..."
+output=$(run_claude "Does the subagent-driven-development skill support running multiple tasks in parallel? How does it decide which tasks can run concurrently?" )
+assert_contains "$output" "CCF_MAX_PARALLEL_AGENTS\|pool\|parallel\|concurrent" "Parallel execution documented" || true
+assert_contains "$output" "depends_on\|dependency.*graph\|dependenc" "Dependency graph documented" || true
+echo ""
+
+# Test 13: CCF_MAX_PARALLEL_AGENTS env var
+echo "Test 13: CCF_MAX_PARALLEL_AGENTS environment variable..."
+output=$(run_claude "What is the purpose of CCF_MAX_PARALLEL_AGENTS in subagent-driven-development? What is the default value?" )
+assert_contains "$output" "CCF_MAX_PARALLEL_AGENTS\|max.*parallel.*agent" "Env var mentioned" || true
+assert_contains "$output" "5\|five\|default.*5" "Default value 5" || true
+echo ""
+
+# Test 14: Event-driven dispatch — review fires immediately
+echo "Test 14: Event-driven dispatch — review fires on completion..."
+output=$(run_claude "In the parallel execution model of subagent-driven-development, what happens immediately when an implementer subagent finishes? Does other work continue while reviews run?" )
+assert_contains "$output" "immediately\|right away\|as soon as\|fire.*next" "Review fires immediately" || true
+assert_contains "$output" "overlap\|while.*still.*run\|other.*continue\|parallel\|concurrent" "Review overlaps with implementation" || true
+echo ""
+
+# Test 15: Pool slot filling
+echo "Test 15: Pool slot filling on completion..."
+output=$(run_claude "When a subagent completes and its review chain finishes, what does the pool do with the vacant slot?" )
+assert_contains "$output" "fill.*slot\|fill.*pool\|dispatch.*next\|refill\|vacant\|available.*slot" "Vacant slots are filled" || true
+echo ""
+
+# Test 16: Shared-file parallel safety
+echo "Test 16: Shared-file parallel safety red flag..."
+output=$(run_claude "According to subagent-driven-development, is it allowed to dispatch tasks that share files or dependencies in parallel?" )
+assert_contains "$output" "not.*dispatch\|don't.*dispatch\|never.*dispatch\|should not.*dispatch\|not.*parallel\|avoid.*parallel" "Tasks sharing files NOT dispatched in parallel" || true
+echo ""
+
+# Test 17: Dependency-gated dispatch
+echo "Test 17: Dependency-gated dispatch..."
+output=$(run_claude "Can subagent-driven-development dispatch a task whose depends_on tasks are not yet done?" )
+assert_contains "$output" "not.*dispatch\|don't.*dispatch\|cannot\|should not\|never\|not.*until\|wait" "Tasks with unmet deps not dispatched" || true
+echo ""
+
+# Test 18: Always rules — dependency graph + fill pool
+echo "Test 18: Always rules for parallel execution..."
+output=$(run_claude "What does subagent-driven-development say you must ALWAYS do regarding the dependency graph and pool capacity?" )
+assert_contains "$output" "build.*dependency.*graph\|respect.*dependency\|fill.*pool\|fill.*capacity" "Always rules exist" || true
+echo ""
+
+# Test 19: Old sequential-only red flag is gone
+echo "Test 19: Old sequential-only constraint removed..."
+output=$(run_claude "Does subagent-driven-development still forbid dispatching multiple implementation subagents in parallel? Is there a 'Never' rule that says dispatch multiple implementation subagents in parallel conflicts?" )
+assert_not_contains "$output" "Never.*Dispatch multiple implementation subagents in parallel" "Old parallel ban removed" || true
+echo ""
+
 report_failures
 exit $?

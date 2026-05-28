@@ -57,6 +57,15 @@ Before defining tasks, map out which files will be created or modified and what 
 
 This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
 
+## Task Dependencies
+
+Declare `**Depends on:**` in each task header to enable parallel dispatch. When subagent-driven-development executes the plan, tasks with no dependencies run concurrently (up to `CCF_MAX_PARALLEL_AGENTS`). Tasks wait until all their `depends_on` tasks are `done`.
+
+- If Task B creates a file that Task C imports → Task C depends on Task B
+- If tasks touch completely independent files → no dependency needed
+- Omit `**Depends on:**` line entirely if no dependencies (task is immediately dispatchable)
+- Only depend on earlier task numbers (Task N can only depend on Task < N)
+
 ## Bite-Sized Task Granularity
 
 **Each step is one action (2-5 minutes):**
@@ -93,6 +102,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ````markdown
 ### Task N: [Component Name]
 
+**Depends on:** Task X, Task Y (omit if none — task is immediately dispatchable)
 **Files:**
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
