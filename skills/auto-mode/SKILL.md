@@ -7,7 +7,7 @@ description: Fully automatic development pipeline — brainstorming to merge, no
 
 ## Overview
 
-Run the full Claude Code Flow pipeline — brainstorming → writing-plans → subagent-driven-development → completion-gates → finishing — without user interaction. At every gate where normal mode would ask the user, auto-mode makes the decision, logs it, and continues. Only stops when genuinely blocked by irreplaceable missing information.
+Run the full Claude Code Flow pipeline — brainstorming → writing-plans → subagent-driven-development → finishing — without user interaction. Completion gates run between subagent-driven-development and finishing (tracked as a separate state-machine phase for recovery).
 
 **Core principle:** Automate every decision. Log everything. Never stop unless truly stuck.
 
@@ -285,10 +285,10 @@ When resuming (`/auto --resume` or `CCF_AUTO_MODE=1` on startup):
 1. Read `.claude/auto/<task-name>/state.json`
 2. Read `status`
 3. Switch on status (see status table above for per-status actions)
-4. Set `phase` to the current pipeline phase, and set `current_step` to the appropriate step for that phase
+4. Set `phase` to the current pipeline phase from `state.json`. Set `current_step` to the first step of that phase (see `current_step` Legal Values table for the first step per phase)
 5. Update `state.json` BEFORE every subsequent state change
 
-**Multiple dangling tasks on auto-resume:** Glob `.claude/auto/*/state.json`, sort by `updated_at`, pick most recent. Print: "Resuming auto-mode task `<name>` from `<timestamp>`. Use `/auto --new <task>` to start fresh, `/auto --resume <task-name>` to resume a different one, or `/auto --list` to see all."
+If `.claude/auto/*/state.json` files exist but no specific task was specified for resume: Glob, sort by `updated_at`, pick most recent. Print: "Resuming auto-mode task `<name>` from `<timestamp>`. Use `/auto --new <task>` to start fresh, `/auto --resume <task-name>` to resume a different one, or `/auto --list` to see all."
 
 ### What NOT to Do on Resume
 
@@ -318,13 +318,13 @@ These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mo
 ### Gate 3: Test Suite Passes
 
 **Check:** Run the project's test command (`pytest` or equivalent). Zero failures required.
-**Timeout:** 10 fix iterations.
+**Timeout:** 10 fix iterations. Increment `gate_states.gate_3_tests_pass.iterations` on each attempt.
 **On failure:** Fix failures, re-run. Loop until clean.
 
 ### Gate 4: Verification Against Spec
 
 **Check:** Read spec document line by line. Verify each requirement exists in the codebase.
-**Timeout:** 10 fix iterations.
+**Timeout:** 10 fix iterations. Increment `gate_states.gate_4_spec_verified.iterations` on each attempt.
 **On failure:** Implement missing requirements → re-verify.
 
 ### Gate 5: Final Code Review Passed
@@ -336,6 +336,7 @@ These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mo
 ### Gate 6: Git Status Clean
 
 **Check:** `git status --porcelain` must be empty.
+**Timeout:** 10 fix iterations. Increment `gate_states.gate_6_git_clean.iterations` on each attempt.
 **On failure:** Commit changes or clean up untracked files. Re-check.
 
 ### Gate Order
