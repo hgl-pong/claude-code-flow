@@ -123,3 +123,60 @@ Auto-mode complete. Decision trail at .claude/auto/<task-name>/
 Review: cat .claude/auto/<task-name>/decisions.md
 Revert: git revert <merge-commit>
 ```
+
+## Pipeline with Auto Decisions
+
+Auto-mode orchestrates the existing pipeline, invoking each phase's skill via `Skill("skill-name")`. At every user-interaction gate, auto-mode makes the decision instead of asking.
+
+### Phase 1: Brainstorming
+
+Invoke `Skill("claude-code-flow:brainstorming")` with the task description.
+
+| Gate | Normal Mode | Auto Mode |
+|------|-------------|-----------|
+| Clarifying questions | Ask user one at a time | Infer reasonable defaults from task description + project context. Log each answer to `clarifications.md`. Proceed. |
+| Visual companion offer | Ask user | Skip. Proceed text-only. Log decision to `decisions.md`. |
+| Propose 2-3 approaches | Present options, wait for choice | Evaluate approaches. Pick the simplest that fits. Decision rule: existing project patterns > community standard > minimal viable approach. Log to `approaches.md`. Proceed with selected approach. |
+| Present design sections | Get approval per section | Auto-approve all sections. Log each to `design-approval.md`. Proceed. |
+| User reviews spec | Wait for user to read spec | Skip gate. Log decision to `decisions.md`. Proceed to writing-plans. |
+
+**Decision principles for auto-answering clarifying questions:**
+- Scope: YAGNI — cut everything not essential to the stated goal
+- Tech choices: follow project existing patterns, otherwise community defaults
+- Architecture: simplest decomposition that satisfies the goal
+- Style: match existing project conventions
+
+**Subagent dispatches still run:**
+Researcher, designer, spec reviewer — these are pipeline components, not user gates. Auto-mode dispatches them exactly as brainstorming would. The difference: when review finds issues, auto-fix without user confirmation. When artifacts are saved, user is not prompted to review them.
+
+### Phase 2: Writing Plans
+
+Invoke `Skill("claude-code-flow:writing-plans")` with the completed spec.
+
+| Gate | Normal Mode | Auto Mode |
+|------|-------------|-----------|
+| Scope check / subsystem split | Ask user | Auto-split if clearly independent subsystems. Otherwise proceed as single plan. Log decision. |
+| Technical research ambiguity | Stop and ask | Auto-resolve with best-guess based on research findings. Log to `decisions.md`. |
+| Plan reviewer loop | Fix → re-review until approved, then ask user | Same fix → re-review loop. When reviewer approves, proceed without asking user. |
+
+### Phase 3: Subagent-Driven Development
+
+Invoke `Skill("claude-code-flow:subagent-driven-development")` with the plan.
+
+| Situation | Normal Mode | Auto Mode |
+|-----------|-------------|-----------|
+| Implementer NEEDS_CONTEXT | Ask user | Auto-search codebase, infer context, re-dispatch with additional info. Log to `decisions.md`. |
+| Implementer BLOCKED | Escalate to user | Try in order: (1) re-dispatch with more capable model, (2) split task into smaller pieces, (3) provide additional context from codebase search. Log each attempt. Only stop if all 3 fail. |
+| Spec reviewer finds issues | Fix → re-review loop | Same loop, auto-continue until approved. Track iterations in `state.json` `reviewer_loop_iterations`. |
+| Code reviewer finds issues | Fix → re-review loop | Same loop, auto-continue until approved. Track iterations. |
+| Between tasks | Pause for user check-in | Continuous execution. No pauses. |
+
+**Reviewer Loop Limit:** If the fix → re-review cycle for any single reviewer issue exceeds 5 iterations, auto-mode stops and asks the user. This applies to: plan reviewer, spec reviewer (per-task), code quality reviewer (per-task), and final code reviewer. Track iteration count in `state.json` → `reviewer_loop_iterations` keyed by reviewer type and task/issue.
+
+### Phase 4: Finishing
+
+Invoke `Skill("claude-code-flow:finishing-a-development-branch")`.
+
+| Gate | Normal Mode | Auto Mode |
+|------|-------------|-----------|
+| Present 4 options | Wait for user choice | **Default: Option 1 — Merge back to base branch.** Log decision. Proceed with merge. |
