@@ -46,16 +46,26 @@ For many independent images:
 4. Do not parallelize jobs that depend on earlier generated images.
 5. Merge the returned manifests into one final summary.
 
-## Provider neutrality
+## Provider
 
-Do not assume a provider. The artist should use whatever image path is explicitly available in the session, such as:
+Use **9Router** with model `cx/gpt-5.5-image` exclusively.
 
-- 9Router-compatible image generation via `NINEROUTER_URL` and optional `NINEROUTER_KEY`
-- GPT Image / OpenAI tooling via `OPENAI_API_KEY` or an installed `gpt-image` CLI
-- a user-configured MCP image tool
-- a local image service such as SDWebUI or ComfyUI, if the user configured it
+- Endpoint: `POST $NINEROUTER_URL/v1/images/generations`
+- Auth: `Authorization: Bearer $NINEROUTER_KEY`
+- Required fields: `model` (`cx/gpt-5.5-image`), `prompt`
+- Optional fields: `n`, `size`, `quality`, `response_format`
 
-If no image tool is configured, return `BLOCKED` with the exact missing configuration and one concise setup example. Do not pretend an image was generated.
+Example curl:
+
+```bash
+curl -X POST "$NINEROUTER_URL/v1/images/generations?response_format=binary" \
+  -H "Authorization: Bearer $NINEROUTER_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"cx/gpt-5.5-image","prompt":"watercolor mountains at sunrise","size":"1024x1024"}' \
+  --output out.png
+```
+
+If `NINEROUTER_URL` or `NINEROUTER_KEY` is not set, return `BLOCKED` with the exact missing configuration. Do not fall back to other providers or pretend an image was generated.
 
 ## Artist output contract
 

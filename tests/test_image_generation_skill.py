@@ -41,6 +41,9 @@ def test_image_generation_skill_frontmatter_and_routing_contract():
     assert "CCF_MAX_PARALLEL_AGENTS" in skill
     assert "manifest" in skill.lower()
     assert "BLOCKED" in skill
+    assert "cx/gpt-5.5-image" in skill
+    assert "NINEROUTER_URL" in skill
+    assert "NINEROUTER_KEY" in skill
 
 
 def test_artist_prompt_status_protocol_and_manifest_contract():
@@ -51,8 +54,9 @@ def test_artist_prompt_status_protocol_and_manifest_contract():
 
     assert "manifest" in prompt.lower()
     assert "output path" in prompt.lower() or "output paths" in prompt.lower()
+    assert "cx/gpt-5.5-image" in prompt
     assert "NINEROUTER_URL" in prompt
-    assert "OPENAI_API_KEY" in prompt
+    assert "NINEROUTER_KEY" in prompt
     assert "rate limit" in prompt.lower()
 
 
