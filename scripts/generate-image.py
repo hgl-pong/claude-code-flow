@@ -30,15 +30,8 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=1, help="Number of images (default: 1)")
     args = parser.parse_args()
 
-    url = os.environ.get("NINEROUTER_URL", "").strip()
-    key = os.environ.get("NINEROUTER_KEY", "").strip()
-
-    if not url:
-        print("Error: NINEROUTER_URL env var is not set", file=sys.stderr)
-        sys.exit(2)
-    if not key:
-        print("Error: NINEROUTER_KEY env var is not set", file=sys.stderr)
-        sys.exit(2)
+    url = os.environ.get("NINEROUTER_URL", "").strip() or "http://localhost:20128"
+    key = os.environ.get("NINEROUTER_KEY", "").strip() or os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip()
 
     endpoint = f"{url.rstrip('/')}/v1/images/generations?response_format=binary"
     body = json.dumps({
