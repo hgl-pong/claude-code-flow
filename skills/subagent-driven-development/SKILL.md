@@ -108,6 +108,12 @@ Tasks that share no files or dependencies can implement in parallel. Use a pool 
 
 **Cost/benefit tradeoff:** If `CCF_MAX_PARALLEL_AGENTS=1`, the process is identical to sequential execution. For plans with many independent tasks, higher concurrency dramatically reduces wall-clock time. Independent tasks by design don't interfere, so the risk of merge conflicts is minimal.
 
+## Image Generation Tasks
+
+For tasks that generate or edit images, dispatch `./artist-prompt.md` instead of a general implementer. Independent image jobs can run in parallel because image generation is slow, but still respect the same pool rules: cap concurrency at `CCF_MAX_PARALLEL_AGENTS`, lower it for provider rate limits or cost concerns, and do not parallelize jobs that depend on previous generated outputs.
+
+Artist subagents must return output paths plus a manifest. Do not mark an image task done when files are missing, the provider was not configured, or the artist returned `BLOCKED`.
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
@@ -118,6 +124,8 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 **prism** (Sonnet) — testing, builds, acceptance verification. Use `./prism-verifier-prompt.md`.
 
+**artist** (Sonnet) — image generation, image editing, visual asset rendering, and multi-image batches. Use `./artist-prompt.md`.
+
 **Default implementer** — for straightforward mechanical tasks (1-2 files, complete spec). Use `./implementer-prompt.md`.
 
 **Task complexity signals:**
@@ -125,6 +133,7 @@ Use the least powerful model that can handle each role to conserve cost and incr
 - Full-stack, UI, multi-file coordination → forge (Sonnet)
 - Requires plan creation or architecture → oracle (Opus)
 - Requires test engineering or acceptance gate → prism (Sonnet)
+- Image generation, image editing, or visual asset rendering → artist (Sonnet)
 
 ## UI Implementation Constraint
 
@@ -170,6 +179,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 **Specialized:**
 - `./researcher-prompt.md` - Researcher (writes `.claude/research/<task-name>/<research-type>-research.md`)
 - `./designer-prompt.md` - Designer (UI/UX research, `.claude/research/<task-name>/ui-research.md`, root `DESIGN.md` output)
+- `./artist-prompt.md` - Artist (image generation/editing, visual asset batches, output manifests)
 
 ## Example Workflow
 
