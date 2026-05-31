@@ -130,6 +130,10 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 For tasks involving visible UI, read the approved root `DESIGN.md` before dispatching the implementer. Include the relevant tokens, layout rules, component states, accessibility requirements, and path to `.claude/research/<task-name>/ui-research.md` in the implementer prompt. UI implementation that ignores approved `DESIGN.md` is not spec compliant. Spec review verifies the task matches the plan; design review verifies UI work matches `DESIGN.md`. Do not let spec review substitute for design review when `DESIGN.md` exists.
 
+## Runtime Evidence Completion
+
+For runnable deliverables, completion requires runtime evidence and the deliverables artifact layout from `prism-verifier-prompt.md`. Do not mark a runnable task done until the verifier has recorded the real runtime path, exit code, crash/hang status, and evidence files.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:

@@ -25,7 +25,7 @@ INPUT=""
 # ── Parse JSON fields (jq preferred, python3 fallback) ───
 MODEL=""; DIR="$(pwd)"; CTX_RAW=0; COST_USD=0
 FIVE_H=""; WEEK=""; EFFORT=""; THINKING="false"
-WORKTREE=""; AGENT_NAME=""; VIM_MODE=""
+WORKTREE=""; AGENT_NAME=""; VIM_MODE=""; RUNTIME_STATUS=""; SMOKE_STATUS=""; CRASH_DETECTED="false"; HANG_DETECTED="false"; EVIDENCE_DIR=""
 
 if [ -n "$INPUT" ]; then
   if command -v jq &>/dev/null; then
@@ -41,6 +41,18 @@ if [ -n "$INPUT" ]; then
     WORKTREE=$(_jq '.workspace.git_worktree')
     AGENT_NAME=$(_jq '.agent.name')
     VIM_MODE=$(_jq '.vim.mode')
+    RUNTIME_STATUS=$(_jq '.runtime_verification.status')
+    SMOKE_STATUS=$(_jq '.runtime_verification.smoke')
+    CRASH_DETECTED=$(_jq '.runtime_verification.crash_detected')
+    HANG_DETECTED=$(_jq '.runtime_verification.hang_detected')
+    EVIDENCE_DIR=$(_jq '.runtime_verification.evidence_dir')
+    if [ -z "$RUNTIME_STATUS" ] && [ -f ".claude/auto/state.json" ]; then
+      RUNTIME_STATUS=$(jq -r '.runtime_verification.status // empty' .claude/auto/state.json 2>/dev/null)
+      SMOKE_STATUS=$(jq -r '.runtime_verification.smoke // empty' .claude/auto/state.json 2>/dev/null)
+      CRASH_DETECTED=$(jq -r '.runtime_verification.crash_detected // false' .claude/auto/state.json 2>/dev/null)
+      HANG_DETECTED=$(jq -r '.runtime_verification.hang_detected // false' .claude/auto/state.json 2>/dev/null)
+      EVIDENCE_DIR=$(jq -r '.runtime_verification.evidence_dir // empty' .claude/auto/state.json 2>/dev/null)
+    fi
   elif command -v python3 &>/dev/null; then
     eval "$(echo "$INPUT" | python3 -c "
 import sys, json, shlex
@@ -57,6 +69,7 @@ try:
     th = (d.get('thinking') or {})
     vi = (d.get('vim') or {})
     ag = (d.get('agent') or {})
+    rv = (d.get('runtime_verification') or {})
     fh_p = fh.get('used_percentage')
     sd_p = sd.get('used_percentage')
     print('MODEL=' + shlex.quote(str(m.get('display_name') or '')))
@@ -70,9 +83,21 @@ try:
     print('WORKTREE=' + shlex.quote(str(w.get('git_worktree') or '')))
     print('AGENT_NAME=' + shlex.quote(str(ag.get('name') or '')))
     print('VIM_MODE=' + shlex.quote(str(vi.get('mode') or '')))
+    print('RUNTIME_STATUS=' + shlex.quote(str(rv.get('status') or '')))
+    print('SMOKE_STATUS=' + shlex.quote(str(rv.get('smoke') or '')))
+    print('CRASH_DETECTED=' + shlex.quote(str(rv.get('crash_detected', False)).lower()))
+    print('HANG_DETECTED=' + shlex.quote(str(rv.get('hang_detected', False)).lower()))
+    print('EVIDENCE_DIR=' + shlex.quote(str(rv.get('evidence_dir') or '')))
 except Exception:
     pass
 " 2>/dev/null)"
+    if [ -z "$RUNTIME_STATUS" ] && [ -f ".claude/auto/state.json" ]; then
+      RUNTIME_STATUS=$(jq -r '.runtime_verification.status // empty' .claude/auto/state.json 2>/dev/null)
+      SMOKE_STATUS=$(jq -r '.runtime_verification.smoke // empty' .claude/auto/state.json 2>/dev/null)
+      CRASH_DETECTED=$(jq -r '.runtime_verification.crash_detected // false' .claude/auto/state.json 2>/dev/null)
+      HANG_DETECTED=$(jq -r '.runtime_verification.hang_detected // false' .claude/auto/state.json 2>/dev/null)
+      EVIDENCE_DIR=$(jq -r '.runtime_verification.evidence_dir // empty' .claude/auto/state.json 2>/dev/null)
+    fi
   fi
 fi
 
@@ -162,6 +187,14 @@ VIM_PART=""
 AGENT_PART=""
 [ -n "$AGENT_NAME" ] && AGENT_PART="${SEP}${DIM}@${AGENT_NAME}${R}"
 
+RUNTIME_PART=""
+if [ -n "$RUNTIME_STATUS" ]; then
+  RUNTIME_PART="${SEP}${DIM}rt:${RUNTIME_STATUS}${RUNTIME_PART}"
+  [ -n "$SMOKE_STATUS" ] && RUNTIME_PART="${RUNTIME_PART} smoke:${SMOKE_STATUS}"
+  [ "$CRASH_DETECTED" = "true" ] && RUNTIME_PART="${RUNTIME_PART} crash"
+  [ "$HANG_DETECTED" = "true" ] && RUNTIME_PART="${RUNTIME_PART} hang"
+fi
+
 # ── Build line ────────────────────────────────────────────
 build_line1() {
   local out=""
@@ -172,6 +205,7 @@ build_line1() {
   [ -n "$COST_PART" ] && out="${out}${SEP}${DIM}${COST_PART}${R}"
   [ -n "$LIMITS" ] && out="${out}${SEP}${LIMITS}"
   [ -n "$AGENT_PART" ] && out="${out}${AGENT_PART}"
+  [ -n "$RUNTIME_PART" ] && out="${out}${RUNTIME_PART}"
   [ -n "$VIM_PART" ] && out="${out}${VIM_PART}"
   printf "%s" "$out"
 }

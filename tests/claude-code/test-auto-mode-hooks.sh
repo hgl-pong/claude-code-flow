@@ -44,13 +44,23 @@ cat > .claude/auto/active-task/state.json << 'JSONEOF'
     "task-3": { "status": "code-reviewing", "agent_id": "agent-review-3", "attempts": 1 }
   },
   "max_parallel_agents": 5,
+  "runtime_verification": {
+    "status": "failed",
+    "build": "passed",
+    "tests": "passed",
+    "smoke": "failed",
+    "crash_detected": false,
+    "hang_detected": true,
+    "evidence_dir": ".claude/deliverables/active-task"
+  },
   "gate_states": {
     "gate_1_tasks_executed": { "passed": false, "iterations": 0 },
     "gate_2_reviews_passed": { "passed": false, "iterations": 0 },
     "gate_3_tests_pass": { "passed": false, "iterations": 0 },
-    "gate_4_spec_verified": { "passed": false, "iterations": 0 },
-    "gate_5_final_review": { "passed": false, "iterations": 0 },
-    "gate_6_git_clean": { "passed": false, "iterations": 0 }
+    "gate_4_runtime_evidence": { "passed": false, "iterations": 0 },
+    "gate_5_spec_verified": { "passed": false, "iterations": 0 },
+    "gate_6_final_review": { "passed": false, "iterations": 0 },
+    "gate_7_git_clean": { "passed": false, "iterations": 0 }
   },
   "updated_at": "2026-05-28T12:00:00Z"
 }
@@ -130,6 +140,12 @@ if echo "$STOP_OUT" | grep -q "active-task"; then
     pass "Stop: reason references task name"
 else
     fail "Stop: reason missing task name"
+fi
+
+if echo "$STOP_OUT" | grep -q "Runtime evidence: failed" && echo "$STOP_OUT" | grep -q "Evidence dir: .claude/deliverables/active-task"; then
+    pass "Stop: reason includes runtime evidence summary"
+else
+    fail "Stop: reason missing runtime evidence summary"
 fi
 
 # ============ Test 2: Stop hook with only DONE+STOPPED ============
@@ -246,6 +262,11 @@ if [[ -f "$SNAPSHOT" ]]; then
         pass "PreCompact: recovery instructions present"
     else
         fail "PreCompact: missing recovery instructions"
+    fi
+    if grep -q "Runtime Verification" "$SNAPSHOT" && grep -q "Evidence dir: .claude/deliverables/active-task" "$SNAPSHOT"; then
+        pass "PreCompact: snapshot has runtime verification"
+    else
+        fail "PreCompact: snapshot missing runtime verification"
     fi
 else
     fail "PreCompact: no snapshot file"

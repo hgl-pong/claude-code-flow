@@ -80,7 +80,17 @@ Task tool (general-purpose):
     - Verify each acceptance criterion (checklist format)
     - Files exist at expected paths
     - APIs callable, components render
+    - For runnable deliverables, verify a real runtime path, not just tests
+    - Record the command, exit code, crash/hang detection, and a brief stdout/stderr summary
+    - Require the deliverables artifact layout for runnable work:
+      - `.claude/deliverables/<task-name>/runbook.md`
+      - `.claude/deliverables/<task-name>/evidence.md`
+      - `.claude/deliverables/<task-name>/acceptance.md`
+      - `.claude/deliverables/<task-name>/known-limitations.md`
+      - `.claude/deliverables/<task-name>/raw/`
+    - Do not mark the task ready for completion if runtime evidence is missing
     - Each AC explicitly verified with evidence
+    - Non-runnable tasks still use build/test/acceptance checks but do not need a smoke command
 
     ### 5. Integration Check
     - No orphaned modules or broken imports

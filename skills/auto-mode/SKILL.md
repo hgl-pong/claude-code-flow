@@ -98,13 +98,35 @@ These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mo
 | 1 | All plan tasks executed | All `task_states` entries `done` (`task_states.*.status == "done"`) and `progress.tasks_total == progress.tasks_completed` | 10 iterations |
 | 2 | All per-task reviews passed | Spec reviewer ✅ + code reviewer ✅ for each task | 5 iterations/issue |
 | 3 | Test suite passes | Run project test command, zero failures | 10 iterations |
-| 4 | Verification against spec | Read spec line by line, verify each requirement in codebase | 10 iterations |
-| 5 | Final code review passed | Dispatch final reviewer on full diff, must return approved | 5 iterations/issue |
-| 6 | Git status clean | `git status --porcelain` empty | 10 iterations |
+| 4 | Runtime evidence passes | For runnable deliverables: build/run smoke path succeeds, exit code is zero, no crash/hang detected, evidence artifacts exist, acceptance items are checked or explicitly marked unverified, and no blocking runtime risk remains. For non-runnable deliverables: auto-pass. | 10 iterations |
+| 5 | Verification against spec | Read spec line by line, verify each requirement in codebase | 10 iterations |
+| 6 | Final code review passed | Dispatch final reviewer on full diff, must return approved | 5 iterations/issue |
+| 7 | Git status clean | `git status --porcelain` empty | 10 iterations |
 
-**Gate order:** 1 → 2 → 3 → 4 → 5 → 6 → enter finishing. Each gate must pass before the next begins.
+Tasks are not complete until they have:
+- passing tests where applicable
+- at least one real runtime smoke result where applicable
+- evidence artifacts on disk at `.claude/deliverables/<task-name>/` for runnable deliverables
+- acceptance items either checked or explicitly marked unverified
+- known limitations explicitly recorded if anything remains unverified
+- no blocking runtime risk remaining
 
-Gates 2 and 5 use reviewer loops (5-iteration limit per issue, tracked in `reviewer_loop_iterations`). Gates 1, 3, 4, 6 track iterations in `gate_states` entries (10-iteration timeout as backstop). If any gate exceeds its limit, auto-mode stops with: which gate is stuck, what was attempted, what the user can do.
+**Gate order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → enter finishing. Each gate must pass before the next begins.
+
+Gates 2 and 6 use reviewer loops (5-iteration limit per issue, tracked in `reviewer_loop_iterations`). Gates 1, 3, 4, 5, 7 track iterations in `gate_states` entries (10-iteration timeout as backstop). If any gate exceeds its limit, auto-mode stops with: which gate is stuck, what was attempted, what the user can do.
+
+Runtime verification state:
+
+```yaml
+runtime_verification:
+  status: pending | running | passed | failed | unverifiable
+  build: passed | failed | skipped
+  tests: passed | failed | skipped
+  smoke: passed | failed | skipped
+  crash_detected: boolean
+  hang_detected: boolean
+  evidence_dir: string
+```
 
 ## State Machine & Interruption Recovery
 

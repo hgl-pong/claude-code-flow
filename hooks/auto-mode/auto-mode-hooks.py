@@ -64,6 +64,13 @@ def generate_resume_prompt(state_file: str) -> str:
     tasks_total = progress.get("tasks_total", 0)
     tasks_completed = progress.get("tasks_completed", 0)
 
+    runtime = data.get("runtime_verification", {})
+    runtime_status = runtime.get("status", "unknown")
+    smoke_status = runtime.get("smoke", "unknown")
+    crash_detected = runtime.get("crash_detected", False)
+    hang_detected = runtime.get("hang_detected", False)
+    evidence_dir = runtime.get("evidence_dir", "")
+
     # Task states summary
     task_states = data.get("task_states", {})
     ts_summary = ", ".join(
@@ -94,11 +101,13 @@ Current state summary:
 - Task states: {ts_summary}
 - Active agents: {aa_summary}
 - Failing gates: {failing}
+- Runtime evidence: {runtime_status} | smoke: {smoke_status} | crash: {crash_detected} | hang: {hang_detected}
+- Evidence dir: {evidence_dir or 'none'}
 
 Instructions by phase:
 - brainstorming / writing-plans: Continue from current_step={step}. Auto-decide everything. Log to audit trail. Proceed to next phase when done.
 - subagent-driven-development: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter completion-gates.
-- completion-gates: Run gates in order ({failing}). Do NOT re-check passed gates. After all 6 pass, enter finishing.
+- completion-gates: Run gates in order ({failing}). Do NOT re-check passed gates. After all 7 pass, enter finishing.
 - finishing: Complete the merge, set status to DONE.
 
 CRITICAL RULES:
@@ -297,6 +306,13 @@ def hook_pre_compact():
     tc = progress.get("tasks_completed", 0)
     tt = progress.get("tasks_total", 0)
 
+    runtime = data.get("runtime_verification", {})
+    runtime_status = runtime.get("status", "unknown")
+    smoke_status = runtime.get("smoke", "unknown")
+    crash_detected = runtime.get("crash_detected", False)
+    hang_detected = runtime.get("hang_detected", False)
+    evidence_dir = runtime.get("evidence_dir", "")
+
     task_states = data.get("task_states", {})
     ts_lines = "\n".join(
         f"- **{k}**: status={v.get('status', '?')}, attempts={v.get('attempts', 0)}"
@@ -337,6 +353,14 @@ def hook_pre_compact():
 
 {gs_lines}
 
+## Runtime Verification
+
+- Status: {runtime_status}
+- Smoke: {smoke_status}
+- Crash detected: {crash_detected}
+- Hang detected: {hang_detected}
+- Evidence dir: {evidence_dir}
+
 ## Active Agents at Compaction Time
 
 {aa_lines}
@@ -355,9 +379,10 @@ After compaction, read this file to restore your mental model:
 2. Tasks done: {tc} / {tt}
 3. Re-queue only tasks with status "failed" or "queued" in task_states
 4. Re-run only gates with passed=false in gate_states
-5. Check git log for active_agents above before re-dispatching
-6. Main state file: {sf}
-7. Continue. Do NOT redo completed work.
+5. Check runtime_verification before re-dispatching smoke tests
+6. Check git log for active_agents above before re-dispatching
+7. Main state file: {sf}
+8. Continue. Do NOT redo completed work.
 """
 
     with open(snapshot_file, "w", encoding="utf-8") as f:
