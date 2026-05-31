@@ -8,39 +8,25 @@ Produce the requested image output using the configured image generation path. S
 
 ## Provider
 
-Use **9Router** with model `cx/gpt-5.5-image` exclusively. Do not use other models or providers.
+Use the `generate-image.py` script exclusively. It calls 9Router with model `cx/gpt-5.5-image`. Do not call the API directly or use other models/providers.
 
-- Endpoint: `POST $NINEROUTER_URL/v1/images/generations`
-- Auth: `Authorization: Bearer $NINEROUTER_KEY`
-- Model: `cx/gpt-5.5-image`
-- Required env: `NINEROUTER_URL` and `NINEROUTER_KEY`
-
-If either env var is missing, return `BLOCKED` and name the missing config. Do not fall back to other providers.
-
-### Calling the API
-
-Use curl or equivalent HTTP client:
+### Calling the script
 
 ```bash
-curl -X POST "$NINEROUTER_URL/v1/images/generations?response_format=binary" \
-  -H "Authorization: Bearer $NINEROUTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"cx/gpt-5.5-image","prompt":"<your prompt>","size":"1024x1024"}' \
-  --output <output_path>
+python scripts/generate-image.py \
+  --prompt "<your prompt>" \
+  --output <output_path> \
+  [--size 1024x1024] \
+  [--quality high] \
+  [--n 1]
 ```
 
-For JSON response (URL or base64), omit `?response_format=binary` and parse the `data` array.
+- Model is hardcoded in the script (`cx/gpt-5.5-image`).
+- Required env: `NINEROUTER_URL` and `NINEROUTER_KEY`.
+- Exit 0 = success, stdout prints JSON manifest. Exit 1 = API error (details on stderr). Exit 2 = missing env/args.
+- Output directory is created automatically.
 
-### Response format
-
-Binary (`?response_format=binary`): raw image bytes saved directly to file.
-
-JSON (default):
-```json
-{ "created": 1735000000, "data": [{ "url": "https://..." }] }
-```
-
-Download the URL and save to the requested output path.
+If the script exits non-zero, check stderr. If env vars are missing, return `BLOCKED`.
 
 ## Prompt work
 

@@ -48,24 +48,15 @@ For many independent images:
 
 ## Provider
 
-Use **9Router** with model `cx/gpt-5.5-image` exclusively.
-
-- Endpoint: `POST $NINEROUTER_URL/v1/images/generations`
-- Auth: `Authorization: Bearer $NINEROUTER_KEY`
-- Required fields: `model` (`cx/gpt-5.5-image`), `prompt`
-- Optional fields: `n`, `size`, `quality`, `response_format`
-
-Example curl:
+Use the `generate-image.py` script which calls 9Router with model `cx/gpt-5.5-image` (hardcoded).
 
 ```bash
-curl -X POST "$NINEROUTER_URL/v1/images/generations?response_format=binary" \
-  -H "Authorization: Bearer $NINEROUTER_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"cx/gpt-5.5-image","prompt":"watercolor mountains at sunrise","size":"1024x1024"}' \
-  --output out.png
+python scripts/generate-image.py --prompt "watercolor mountains at sunrise" --output out.png
 ```
 
-If `NINEROUTER_URL` or `NINEROUTER_KEY` is not set, return `BLOCKED` with the exact missing configuration. Do not fall back to other providers or pretend an image was generated.
+Required env: `NINEROUTER_URL` and `NINEROUTER_KEY`. The script creates output directories, saves the image, and prints a JSON manifest to stdout.
+
+If env vars are missing, the script exits with code 2. Artist should return `BLOCKED`.
 
 ## Artist output contract
 
