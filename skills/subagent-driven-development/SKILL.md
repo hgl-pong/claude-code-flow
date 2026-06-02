@@ -13,6 +13,88 @@ Execute plan by dispatching fresh subagent per task, with two-stage review after
 
 **Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
+## Execution Mode Selection
+
+Before dispatching any subagents, check whether the `Workflow` tool is available in your tool list. If it is, use **Workflow-Driven Mode** (preferred). If not, or if you are unsure, fall back to **Subagent-Driven Mode** below.
+
+### Workflow-Driven Mode
+
+When the Workflow tool is available, use it to deterministically orchestrate the implement → spec review → code review pipeline. The Workflow runtime handles parallel dispatch, review chains, retry loops, and progress tracking — you don't manage pools or review triggers manually.
+
+**Pre-flight checklist:**
+
+1. Verify hooks don't interfere: if your project has PreToolUse hooks that block or auto-deny Bash/Edit/Write calls, confirm they exempt subagents by checking for `agent_id` in the hook input. Workflow agents run the same tools as regular subagents.
+
+2. Pre-approve shell commands: workflow agents run in `acceptEdits` mode for file edits, but shell commands not in your tool allowlist still prompt. Add your project's test/build commands to the allowlist before launching.
+
+3. Check your model: all workflow agents default to your session model. Check `/model` before a large run and set `model_tasks` in the args if you want to use a different model for implementers.
+
+**Step-by-step instructions:**
+
+**1. Prepare context (in your session):**
+
+Read the plan file once. Extract every task: `id`, `description`, `depends_on` (array of task IDs this task must wait for), and `complexity` (simple/full-stack/ui/design/research). Hold the full task descriptions in memory — workflow scripts can't read files.
+
+Build the dependency graph. Group tasks by topological level:
+- Level 0: tasks with empty `depends_on`
+- Level 1: tasks that depend only on Level 0 tasks
+- Level N: tasks that depend only on earlier levels
+
+Read these prompt templates:
+- `./implementer-prompt-wf.md` — contains `{{TASK_ID}}`, `{{TASK_DESCRIPTION}}`, `{{WORKTREE}}`
+- `./spec-reviewer-prompt-wf.md` — contains `{{TASK_DESCRIPTION}}`, `{{IMPLEMENTER_SUMMARY}}`, `{{FILES_MODIFIED}}`
+- `./code-quality-reviewer-prompt-wf.md` — contains `{{TASK_SUMMARY}}`, `{{COMMIT_SHA}}`, `{{FILES_MODIFIED}}`
+- `./fix-prompt-wf.md` — contains `{{ISSUES}}`, `{{FILES_MODIFIED}}`
+
+If any task involves UI, read the root `DESIGN.md`. Include relevant tokens, layout rules, and component states in that task's description.
+
+Read `./execute-plan.workflow.js` — this is the workflow script you'll pass to the Workflow tool.
+
+**2. Build the args:**
+
+Construct the `args` object:
+
+| Key | Value |
+|-----|-------|
+| `groups` | Array of arrays. `groups[0]` = Level 0 task IDs, `groups[1]` = Level 1, etc. |
+| `tasks` | Object keyed by task ID. Each: `{id, description}` |
+| `prompts.implement` | Full text of `implementer-prompt-wf.md` with placeholders intact |
+| `prompts.specReview` | Full text of `spec-reviewer-prompt-wf.md` with placeholders intact |
+| `prompts.codeReview` | Full text of `code-quality-reviewer-prompt-wf.md` with placeholders intact |
+| `prompts.fix` | Full text of `fix-prompt-wf.md` with placeholders intact |
+| `worktree` | Absolute path to current worktree |
+| `model_tasks` | `null` (use session model) or a model name string |
+
+**3. Launch the workflow:**
+
+```
+Workflow({
+  script: <contents of execute-plan.workflow.js>,
+  args: { groups, tasks, prompts, worktree, model_tasks }
+})
+```
+
+Announce: "Using workflow-driven development: N tasks in M dependency groups."
+
+The workflow runs in the background. Use `/workflows` to watch progress. Your session stays responsive.
+
+**4. Handle results:**
+
+When the workflow completes, inspect the returned `results` object:
+
+- `results.completed[]` — tasks that passed all reviews. Each has `id`, `spec_passed`, `code_passed`, `code_review`, `files`. Mark them done.
+- `results.blocked[]` — tasks the workflow couldn't complete. Each has `id`, `reason`, `impl`. Handle blocked tasks individually:
+  1. Dispatch with a more capable model
+  2. Split into smaller sub-tasks
+  3. Escalate to your human partner (stop condition met)
+- `results.final_review` — cross-task code review (present if all tasks passed). If it has Critical issues, fix them before proceeding.
+
+If all tasks are in `results.completed` and `results.final_review` has no Critical issues, proceed to **claude-code-flow:finishing-a-development-branch**.
+
+### Subagent-Driven Mode (fallback)
+
+When the Workflow tool is NOT available, follow the process below.
+
 ## When to Use
 
 ```dot

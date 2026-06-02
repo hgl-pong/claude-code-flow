@@ -13,6 +13,51 @@ Run the full Claude Code Flow pipeline — brainstorming → writing-plans → s
 
 **Announce at start:** "I'm using the auto-mode skill to run the full development pipeline autonomously. All decisions will be logged to `.claude/auto/<task-name>/`. Ctrl+C to interrupt at any time."
 
+## Execution Mode Selection
+
+Before entering the pipeline, check whether the `Workflow` tool is available.
+
+### Workflow-Driven Mode (preferred, when available)
+
+When the Workflow tool is available, replace all 4 phases with a single workflow call.
+The workflow handles brainstorming, writing-plans, subagent-driven-development,
+and completion gates in one deterministic run. Your job shrinks to:
+
+1. Create or enter a worktree via `Skill("claude-code-flow:using-git-worktrees")`
+2. Create `.claude/auto/<task-name>/` and write initial `state.json`
+3. Read the workflow scripts and prompt templates:
+   - `skills/subagent-driven-development/full-auto-pipeline.workflow.js`
+   - `skills/subagent-driven-development/execute-plan.workflow.js`
+   - `skills/subagent-driven-development/implementer-prompt-wf.md`
+   - `skills/subagent-driven-development/spec-reviewer-prompt-wf.md`
+   - `skills/subagent-driven-development/code-quality-reviewer-prompt-wf.md`
+   - `skills/subagent-driven-development/fix-prompt-wf.md`
+4. Build the args:
+   - `task` — the user's task description
+   - `worktree` — absolute path to worktree
+   - `specs_dir` — `".claude/specs"`
+   - `plans_dir` — `".claude/plans"`
+   - `auto_dir` — `".claude/auto/<task-name>"`
+   - `execute_plan_script_path` — absolute path to `execute-plan.workflow.js`
+   - `prompts` — `{implement, specReview, codeReview, fix}` with full template text
+   - `model_tasks` — `null` or model name
+   - `max_retries` — `5`
+5. Launch:
+   ```
+   Workflow({ script: <full-auto-pipeline.workflow.js>, args: {...} })
+   ```
+6. When complete, inspect `result.all_passed`:
+   - `true` → proceed to **Phase 4: Finishing** below
+   - `false` → check `result.gates` for which gate failed, handle individually
+7. Write final `state.json` with status `DONE`
+
+The state machine simplifies to three states: `WORKFLOW_RUNNING` → `FINISHING` → `DONE`.
+No more per-phase state tracking, no manual pool management, no gate loops.
+
+### Manual Mode (fallback)
+
+When the Workflow tool is NOT available, use the manual pipeline below.
+
 ## Trigger Mechanism
 
 1. `/auto <task description>` — start a new auto-mode pipeline
