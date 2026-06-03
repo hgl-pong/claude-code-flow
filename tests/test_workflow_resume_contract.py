@@ -422,12 +422,18 @@ class TestFullAutoGateCursorTracking:
             assert f"gateCursor = {i}" in self.script, f"Missing gateCursor = {i}"
 
     def test_gate_state_written_after_each_gate(self):
-        count = self.script.count("gate_states: gates")
-        assert count >= 7, f"Expected at least 7 gate_states updates, got {count}"
+        # Gate states are now written centrally via the recordGate function
+        # which builds a gates array from gateStates map
+        assert "gate_states: gates" in self.script or "gate_states:" in self.script
+        # The centralized recordGate function writes state for every gate
+        assert "GATE_NAMES.map" in self.script
 
     def test_resume_cursor_written_after_each_gate(self):
-        count = self.script.count("gate_cursor: gateCursor")
-        assert count >= 7, f"Expected at least 7 gate_cursor updates, got {count}"
+        # Resume cursor is written in the centralized recordGate function
+        # and in the finalResumeCursor
+        assert "gate_cursor: gateCursor" in self.script
+        # recordGate is called for each of the 7 gates
+        assert self.script.count("recordGate(") >= 7, "Expected at least 7 recordGate calls"
 
 
 class TestFullAutoEnrichedFinalReturn:

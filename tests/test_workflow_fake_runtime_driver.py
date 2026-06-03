@@ -4,15 +4,20 @@ Validates the result partition classification logic, evidence propagation,
 blocker classification, escalation ladder structure, review threshold
 enforcement, and the Final Review guard — all using pure-Python
 simulations of the workflow's decision logic (no real agent calls).
+
+Also validates gate enrichment, runtime manifest structure, and
+gate resume semantics for the full-auto pipeline.
 """
 
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow-driven-development"
 EXECUTE_PLAN = SKILLS_DIR / "execute-plan.workflow.js"
+FULL_AUTO = SKILLS_DIR / "full-auto-pipeline.workflow.js"
 
 RESULT_PARTITIONS = ["passed", "completed", "blocked", "stalled", "failed_review", "needs_escalation"]
 
@@ -57,9 +62,9 @@ REVIEW_THRESHOLD = {
 }
 
 
-def _read_script() -> str:
-    assert EXECUTE_PLAN.exists(), f"Script not found: {EXECUTE_PLAN}"
-    return EXECUTE_PLAN.read_text(encoding="utf-8")
+def _read_script(path: Path) -> str:
+    assert path.exists(), f"Script not found: {path}"
+    return path.read_text(encoding="utf-8")
 
 
 # ── Pure-Python reimplementation of classifyTaskResult ────────────────
@@ -154,6 +159,40 @@ def classify_task_result(task_id, ctx, risk="medium"):
     }
 
 
+# ── Runtime manifest simulation ───────────────────────────────────────
+
+def make_runtime_manifest(passed, detail="", crash=False, hang=False):
+    return {
+        "commands": detail or "N/A",
+        "exit_codes": [0] if passed else [1],
+        "logs": [],
+        "screenshots": [],
+        "artifacts": [],
+        "crash": crash,
+        "hang": hang,
+        "unverified_acceptance_items": [],
+        "blocking_risks": [] if passed else [detail],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def make_gate_record(name, passed, detail, extra=None):
+    extra = extra or {}
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "name": name,
+        "passed": passed,
+        "detail": detail or "",
+        "iterations": extra.get("iterations", 1),
+        "last_failure": extra.get("last_failure") or None,
+        "last_fix": extra.get("last_fix") or None,
+        "evidence_paths": extra.get("evidence_paths") or [],
+        "updated_at": now,
+        "next_action": "proceed" if passed else extra.get("next_action", "retry"),
+        "fix_applied": extra.get("fix_applied", ""),
+    }
+
+
 # ── Script structural tests ──────────────────────────────────────────
 
 
@@ -162,7 +201,7 @@ class TestExecutePlanSchemaExtensions:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_schema_has_verification_commands(self):
         assert "verification_commands" in self.script
@@ -192,7 +231,7 @@ class TestReviewResultSeverityEnum:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_review_result_has_high_severity(self):
         assert "'High'" in self.script or '"High"' in self.script
@@ -209,7 +248,7 @@ class TestClassifyBlockerFunction:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_classify_blocker_function_exists(self):
         assert "function classifyBlocker" in self.script
@@ -225,7 +264,7 @@ class TestEscalationLadderFunction:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_escalation_function_exists(self):
         assert "function runEscalationLadder" in self.script
@@ -249,7 +288,7 @@ class TestSchemaRetry:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_schema_retry_function_exists(self):
         assert "function agentWithSchemaRetry" in self.script
@@ -265,7 +304,7 @@ class TestFinalReviewGuard:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_final_review_guard_exists(self):
         assert "allOtherPartitionsEmpty" in self.script
@@ -285,7 +324,7 @@ class TestStatePatch:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_state_patch_in_return(self):
         assert "state_patch" in self.script
@@ -305,7 +344,7 @@ class TestCompletedEqualsPassed:
 
     @pytest.fixture(autouse=True)
     def _load(self):
-        self.script = _read_script()
+        self.script = _read_script(EXECUTE_PLAN)
 
     def test_completed_copies_passed(self):
         """completed must be populated from passed entries."""
@@ -649,3 +688,148 @@ class TestBlockerClassification:
 
     def test_unknown_defaults_to_invalid(self):
         assert classify_blocker("something weird happened") == "agent_output_invalid"
+
+
+# ── Runtime manifest contract tests ───────────────────────────────────
+
+
+class TestRuntimeManifestStructure:
+    """Contract: runtime manifest has all required fields."""
+
+    def test_manifest_on_pass(self):
+        m = make_runtime_manifest(True, "npm start exited 0")
+        assert m["exit_codes"] == [0]
+        assert m["crash"] is False
+        assert m["hang"] is False
+        assert m["blocking_risks"] == []
+        assert m["unverified_acceptance_items"] == []
+        assert "T" in m["generated_at"]
+
+    def test_manifest_on_crash(self):
+        m = make_runtime_manifest(False, "Process crashed with SIGSEGV", crash=True)
+        assert m["exit_codes"] == [1]
+        assert m["crash"] is True
+        assert m["blocking_risks"] == ["Process crashed with SIGSEGV"]
+
+    def test_manifest_on_hang(self):
+        m = make_runtime_manifest(False, "Process hung for 60s", hang=True)
+        assert m["hang"] is True
+        assert m["blocking_risks"] == ["Process hung for 60s"]
+
+    def test_manifest_all_fields_present(self):
+        m = make_runtime_manifest(True, "OK")
+        required = [
+            "commands", "exit_codes", "logs", "screenshots", "artifacts",
+            "crash", "hang", "unverified_acceptance_items", "blocking_risks",
+            "generated_at",
+        ]
+        for field in required:
+            assert field in m, f"Missing manifest field: {field}"
+
+
+# ── Gate enrichment in full-auto-pipeline ─────────────────────────────
+
+
+class TestFullAutoGateEnrichment:
+    """Contract: gate records are enriched with metadata."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script(FULL_AUTO)
+
+    def test_make_gate_record_function(self):
+        assert "function makeGateRecord" in self.script
+
+    def test_gate_record_has_name_field(self):
+        # The makeGateRecord must set name
+        assert "name," in self.script
+
+    def test_gate_record_has_iterations(self):
+        # Inside makeGateRecord
+        func_start = self.script.index("function makeGateRecord")
+        func_end = self.script.index("}", func_start) + 1
+        func_body = self.script[func_start:func_end]
+        assert "iterations" in func_body
+
+    def test_gate_record_has_last_failure(self):
+        func_start = self.script.index("function makeGateRecord")
+        func_end = self.script.index("}", func_start) + 1
+        func_body = self.script[func_start:func_end]
+        assert "last_failure" in func_body
+
+    def test_gate_record_has_last_fix(self):
+        func_start = self.script.index("function makeGateRecord")
+        func_end = self.script.index("}", func_start) + 1
+        func_body = self.script[func_start:func_end]
+        assert "last_fix" in func_body
+
+    def test_gate_record_has_evidence_paths(self):
+        func_start = self.script.index("function makeGateRecord")
+        func_end = self.script.index("}", func_start) + 1
+        func_body = self.script[func_start:func_end]
+        assert "evidence_paths" in func_body
+
+    def test_gate_record_has_updated_at(self):
+        func_start = self.script.index("function makeGateRecord")
+        func_end = self.script.index("}", func_start) + 1
+        func_body = self.script[func_start:func_end]
+        assert "updated_at" in func_body
+
+    def test_gate_record_has_next_action(self):
+        func_start = self.script.index("function makeGateRecord")
+        func_end = self.script.index("}", func_start) + 1
+        func_body = self.script[func_start:func_end]
+        assert "next_action" in func_body
+
+    def test_gate_4_manifest_in_record(self):
+        # Gate 4 should embed manifest in the gate record
+        assert "manifest" in self.script
+        # Should be in the gate 4 section (look for the gate 4 header comment)
+        gate4_section_marker = "// ── Gate 4: runtime_evidence"
+        if gate4_section_marker in self.script:
+            gate4_idx = self.script.index(gate4_section_marker)
+            section = self.script[gate4_idx:gate4_idx + 3000]
+            assert "manifest" in section
+        else:
+            # Fallback: just verify manifest is used near GATE_RUNTIME_EVIDENCE
+            # in the gates phase (after "Phase 9:")
+            phase9_idx = self.script.index("Phase 9:")
+            gates_section = self.script[phase9_idx:]
+            runtime_idx = gates_section.index("GATE_RUNTIME_EVIDENCE")
+            section = gates_section[runtime_idx:runtime_idx + 3000]
+            assert "manifest" in section
+
+
+class TestFullAutoRetryCap:
+    """Contract: gates use GATE_RETRIES cap (default 10)."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script(FULL_AUTO)
+
+    def test_gate_retry_cap_default(self):
+        assert "GATE_RETRY_CAP_DEFAULT" in self.script
+
+    def test_gate_retries_used_in_loops(self):
+        count = self.script.count("GATE_RETRIES")
+        assert count >= 3, f"Expected GATE_RETRIES used at least 3 times, got {count}"
+
+
+class TestFullAutoResumeSupport:
+    """Contract: resume support skips already-passed gates."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script(FULL_AUTO)
+
+    def test_is_gate_already_passed_function(self):
+        assert "function isGateAlreadyPassed" in self.script
+
+    def test_resume_gate_cursor_read(self):
+        assert "resume_gate_cursor" in self.script or "resumeGateCursor" in self.script
+
+    def test_resume_gate_states_read(self):
+        assert "resume_gate_states" in self.script or "resumeGateStates" in self.script
+
+    def test_gate_states_tracked_in_map(self):
+        assert "gateStates" in self.script

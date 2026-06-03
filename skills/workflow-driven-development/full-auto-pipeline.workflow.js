@@ -142,6 +142,21 @@ const TASK_RISKS = ['low', 'medium', 'high', 'critical']
 const REVIEW_RETRY_CAP_DEFAULT = 5
 const GATE_RETRY_CAP_DEFAULT = 10
 
+// Gate name constants matching CANONICAL_GATES order
+const GATE_TASKS_EXECUTED = 'tasks_executed'
+const GATE_REVIEWS_PASSED = 'reviews_passed'
+const GATE_TESTS_PASS = 'tests_pass'
+const GATE_RUNTIME_EVIDENCE = 'runtime_evidence'
+const GATE_SPEC_VERIFIED = 'spec_verified'
+const GATE_FINAL_REVIEW = 'final_review'
+const GATE_GIT_CLEAN = 'git_clean'
+
+const GATE_NAMES = [
+  GATE_TASKS_EXECUTED, GATE_REVIEWS_PASSED, GATE_TESTS_PASS,
+  GATE_RUNTIME_EVIDENCE, GATE_SPEC_VERIFIED, GATE_FINAL_REVIEW,
+  GATE_GIT_CLEAN,
+]
+
 const TASK_METADATA_DEFAULTS = {
   risk: 'medium',
   subsystem: 'unknown',
@@ -196,9 +211,25 @@ function isIssueBlocking(reviewStage, taskRisk, severity, explicitFlag) {
 
 function validateGateSet(gateStates) {
   const reported = Object.keys(gateStates)
-  const canonical = CANONICAL_GATES.map(g => 'gate_' + (CANONICAL_GATES.indexOf(g) + 1) + '_' + g)
-  const missing = canonical.filter(g => !reported.includes(g))
+  const missing = CANONICAL_GATES.filter(g => !reported.includes(g))
   return { valid: missing.length === 0, missing }
+}
+
+function makeGateRecord(name, passed, detail, extra) {
+  const now = new Date().toISOString()
+  return {
+    name,
+    passed,
+    detail: detail || '',
+    iterations: (extra && extra.iterations) || 1,
+    last_failure: (extra && extra.last_failure) || null,
+    last_fix: (extra && extra.last_fix) || null,
+    evidence_paths: (extra && extra.evidence_paths) || [],
+    updated_at: now,
+    next_action: passed ? 'proceed' : ((extra && extra.next_action) || 'retry'),
+    fix_applied: (extra && extra.fix_applied) || '',
+    ...(extra && extra.manifest ? { manifest: extra.manifest } : {}),
+  }
 }
 
 function agentOpts(label, phase, schema) {
@@ -905,11 +936,7 @@ if (!planValidation.valid) {
     spec: { path: spec.spec_path, review_passed: specReview.passed },
     plan: { path: planResult.plan_path, review_passed: planReview.passed, task_count: planResult.task_count },
     execute: { completed: [], blocked: [] },
-    gates: CANONICAL_GATES.map((_, i) => ({
-      gate: i + 1, passed: false,
-      detail: 'Skipped — plan validation failed',
-      fix_applied: '',
-    })),
+    gates: CANONICAL_GATES.map(name => makeGateRecord(name, false, 'Skipped — plan validation failed')),
     all_passed: false,
     validation_errors: planValidation.errors,
   }
@@ -943,37 +970,85 @@ auditEvents.push({ phase: 'execute', event: 'phase_complete',
 
 phase('Gates')
 await flowState('event', { type: 'phase_start', phase: 'gates' })
-const gates = []
+
+// Gate states: map from canonical name -> gate record
+const gateStates = {}
 let gateCursor = 0
 
-function priorPassed() { return gates.length === 0 || gates[gates.length - 1].passed }
+// Resume support: skip already-passed gates unless invalidated
+const resumeGateCursor = (resume_from && resume_from.cursor && resume_from.cursor.gate_cursor) || 0
+const resumeGateStates = (resume_from && resume_from.cursor && resume_from.cursor.gate_states) || {}
 
-// Gates 1 & 2: verified by execute phase results — no agent needed
-const g1Passed = executeResult.blocked.length === 0
-gates.push({
-  gate: 1,
-  passed: g1Passed,
-  detail: `${executeResult.completed.length} completed, ${executeResult.blocked.length} blocked`,
-  fix_applied: '',
-})
-gateCursor = 1
-await flowState('update', { gate_states: gates, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
+function isGateAlreadyPassed(gateName, index) {
+  return index < resumeGateCursor && resumeGateStates[gateName] && resumeGateStates[gateName].passed
+}
 
-const g2Passed = executeResult.completed.length > 0 &&
-  executeResult.completed.every(r => r.code_passed)
-gates.push({
-  gate: 2,
-  passed: g2Passed,
-  detail: g2Passed ? 'All reviews passed' : 'Some reviews have unresolved issues',
-  fix_applied: '',
-})
-gateCursor = 2
-await flowState('update', { gate_states: gates, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
+function priorGatePassed() {
+  return gateCursor === 0 || (gateStates[GATE_NAMES[gateCursor - 1]] && gateStates[GATE_NAMES[gateCursor - 1]].passed)
+}
 
-// Gate 3: test suite passes
-if (priorPassed()) {
+function recordGate(gateName, passed, detail, extra) {
+  const record = makeGateRecord(gateName, passed, detail, extra)
+  gateStates[gateName] = record
+  gateCursor = GATE_NAMES.indexOf(gateName) + 1
+  const gatesArray = GATE_NAMES.map(n => gateStates[n] || makeGateRecord(n, false, 'Pending'))
+  const passedCount = gatesArray.filter(g => g.passed).length
+  flowState('update', {
+    gate_states: gatesArray,
+    progress: { gates_passed: passedCount, gates_total: 7 },
+    resume_cursor: { phase: 'gates', gate_cursor: gateCursor, gate_states: gateStates },
+  })
+  return record
+}
+
+// ── Gate 1: tasks_executed ──────────────────────────────────────────
+if (isGateAlreadyPassed(GATE_TASKS_EXECUTED, 0)) {
+  gateStates[GATE_TASKS_EXECUTED] = resumeGateStates[GATE_TASKS_EXECUTED]
+  gateCursor = 1
+  log('Gate 1 (tasks_executed): SKIPPED — already passed')
+} else {
+  const g1Passed = executeResult.blocked.length === 0
+  const g1Detail = `${executeResult.completed.length} completed, ${executeResult.blocked.length} blocked`
+  const g1Extra = {
+    iterations: 1,
+    last_failure: g1Passed ? null : g1Detail,
+    next_action: g1Passed ? 'proceed' : 'retry_tasks',
+  }
+  recordGate(GATE_TASKS_EXECUTED, g1Passed, g1Detail, g1Extra)
+  log(`Gate 1 (tasks_executed): ${g1Passed ? 'PASSED' : 'FAILED'}`)
+}
+
+// ── Gate 2: reviews_passed ──────────────────────────────────────────
+if (isGateAlreadyPassed(GATE_REVIEWS_PASSED, 1)) {
+  gateStates[GATE_REVIEWS_PASSED] = resumeGateStates[GATE_REVIEWS_PASSED]
+  gateCursor = 2
+  log('Gate 2 (reviews_passed): SKIPPED — already passed')
+} else if (priorGatePassed()) {
+  const g2Passed = executeResult.completed.length > 0 &&
+    executeResult.completed.every(r => r.code_passed)
+  const g2Detail = g2Passed ? 'All reviews passed' : 'Some reviews have unresolved issues'
+  const g2Extra = {
+    iterations: 1,
+    last_failure: g2Passed ? null : g2Detail,
+    next_action: g2Passed ? 'proceed' : 'fix_reviews',
+  }
+  recordGate(GATE_REVIEWS_PASSED, g2Passed, g2Detail, g2Extra)
+  log(`Gate 2 (reviews_passed): ${g2Passed ? 'PASSED' : 'FAILED'}`)
+} else {
+  recordGate(GATE_REVIEWS_PASSED, false, 'Skipped — tasks_executed not passed', { iterations: 0, next_action: 'unblock_gate_1' })
+  log('Gate 2 (reviews_passed): SKIPPED — gate 1 not passed')
+}
+
+// ── Gate 3: tests_pass ──────────────────────────────────────────────
+if (isGateAlreadyPassed(GATE_TESTS_PASS, 2)) {
+  gateStates[GATE_TESTS_PASS] = resumeGateStates[GATE_TESTS_PASS]
+  gateCursor = 3
+  log('Gate 3 (tests_pass): SKIPPED — already passed')
+} else if (priorGatePassed()) {
   let passed = false
   let detail = ''
+  let lastFailure = null
+  let lastFix = null
   let iters = 0
 
   while (!passed && iters < GATE_RETRIES) {
@@ -986,104 +1061,243 @@ Report: passed (all green) or failed.`,
     )
     passed = r.passed
     detail = r.detail
+    if (!passed) {
+      lastFailure = detail
+      lastFix = r.fix_applied || ''
+    }
     iters++
   }
 
-  gates.push({ gate: 3, passed, detail, fix_applied: iters > 1 ? `${iters} attempts` : '' })
-  gateCursor = 3
-  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
+  recordGate(GATE_TESTS_PASS, passed, detail, {
+    iterations: iters,
+    last_failure: lastFailure,
+    last_fix: lastFix,
+    next_action: passed ? 'proceed' : 'fix_tests_or_escalate',
+    fix_applied: iters > 1 ? `${iters} attempts` : '',
+  })
+  log(`Gate 3 (tests_pass): ${passed ? 'PASSED' : `FAILED after ${iters} attempts`}`)
+} else {
+  recordGate(GATE_TESTS_PASS, false, 'Skipped — reviews_passed not passed', { iterations: 0, next_action: 'unblock_gate_2' })
+  log('Gate 3 (tests_pass): SKIPPED — gate 2 not passed')
 }
 
-// Gate 4: runtime evidence
-if (priorPassed()) {
-  const r = await agent(
-    `Verify the implementation works at runtime.
+// ── Gate 4: runtime_evidence (writes manifest) ─────────────────────
+if (isGateAlreadyPassed(GATE_RUNTIME_EVIDENCE, 3)) {
+  gateStates[GATE_RUNTIME_EVIDENCE] = resumeGateStates[GATE_RUNTIME_EVIDENCE]
+  gateCursor = 4
+  log('Gate 4 (runtime_evidence): SKIPPED — already passed')
+} else if (priorGatePassed()) {
+  let passed = false
+  let detail = ''
+  let lastFailure = null
+  let lastFix = null
+  let iters = 0
+  let manifest = null
+
+  while (!passed && iters < GATE_RETRIES) {
+    const r = await agent(
+      `Verify the implementation works at runtime.
 1. If this is a runnable project: build and run a smoke test
    (start server, run CLI, etc.), capture exit code/output/crashes
 2. If library/config-only: report as unverifiable (auto-pass)
 Report what you observed.`,
-    agentOpts('gate-4-runtime', 'Gates', GATE_RESULT),
-  )
-  gates.push(r)
-  gateCursor = 4
-  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
-}
-
-// Gate 5: verify against spec
-if (priorPassed()) {
-  const r = await agent(
-    `Verify the implementation against the spec at ${specPath}.
-Read the spec line by line. For each requirement, find the code that satisfies it.
-Report: passed (every requirement verified) or failed with specific gaps.`,
-    agentOpts('gate-5-spec-verify', 'Gates', GATE_RESULT),
-  )
-  gates.push(r)
-  gateCursor = 5
-  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
-}
-
-// Gate 6: final code review
-if (priorPassed()) {
-  let passed = false
-  let iters = 0
-
-  const review = await agent(
-    `Final code review of all changes on this branch.
-Run \`git diff main...HEAD\` (or the base branch) to see the diff.
-Review for: correctness bugs, dead code, missing error handling, security issues.`,
-    agentOpts('gate-6-final-review', 'Gates', GATE_RESULT),
-  )
-  passed = review.passed
-
-  while (!passed && iters < RETRIES) {
-    await agent(
-      `Fix these final review issues: ${review.detail}
-Minimal fixes — do not refactor.`,
-      agentOpts(`fix-final-r${iters + 1}`, 'Gates', { type: 'object' }),
+      agentOpts('gate-4-runtime', 'Gates', GATE_RESULT),
     )
-    const re = await agent(
-      'Re-review: verify previous issues fixed. No new issues.',
-      agentOpts(`gate-6-r${iters + 1}`, 'Gates', GATE_RESULT),
-    )
-    passed = re.passed
+    passed = r.passed
+    detail = r.detail
+    if (!passed) {
+      lastFailure = detail
+      lastFix = r.fix_applied || ''
+    }
     iters++
   }
 
-  gates.push({
-    gate: 6, passed,
-    detail: passed ? 'Final review passed' : `Issues remain after ${iters} fixes`,
+  // Build runtime manifest
+  manifest = {
+    commands: detail || 'N/A',
+    exit_codes: passed ? [0] : [1],
+    logs: [],
+    screenshots: [],
+    artifacts: [],
+    crash: !passed && (detail && detail.toLowerCase().includes('crash')),
+    hang: !passed && (detail && detail.toLowerCase().includes('hang')),
+    unverified_acceptance_items: [],
+    blocking_risks: passed ? [] : [detail],
+    generated_at: new Date().toISOString(),
+  }
+
+  recordGate(GATE_RUNTIME_EVIDENCE, passed, detail, {
+    iterations: iters,
+    last_failure: lastFailure,
+    last_fix: lastFix,
+    evidence_paths: evidence_dir ? [evidence_dir] : [],
+    next_action: passed ? 'proceed' : 'fix_runtime_or_escalate',
+    fix_applied: iters > 1 ? `${iters} attempts` : '',
+    manifest,
+  })
+  log(`Gate 4 (runtime_evidence): ${passed ? 'PASSED' : `FAILED after ${iters} attempts`}`)
+} else {
+  recordGate(GATE_RUNTIME_EVIDENCE, false, 'Skipped — tests_pass not passed', { iterations: 0, next_action: 'unblock_gate_3' })
+  log('Gate 4 (runtime_evidence): SKIPPED — gate 3 not passed')
+}
+
+// ── Gate 5: spec_verified ───────────────────────────────────────────
+if (isGateAlreadyPassed(GATE_SPEC_VERIFIED, 4)) {
+  gateStates[GATE_SPEC_VERIFIED] = resumeGateStates[GATE_SPEC_VERIFIED]
+  gateCursor = 5
+  log('Gate 5 (spec_verified): SKIPPED — already passed')
+} else if (priorGatePassed()) {
+  let passed = false
+  let detail = ''
+  let lastFailure = null
+  let lastFix = null
+  let iters = 0
+
+  while (!passed && iters < GATE_RETRIES) {
+    const r = await agent(
+      `Verify the implementation against the spec at ${specPath}.
+Read the spec line by line. For each requirement, find the code that satisfies it.
+Report: passed (every requirement verified) or failed with specific gaps.`,
+      agentOpts('gate-5-spec-verify', 'Gates', GATE_RESULT),
+    )
+    passed = r.passed
+    detail = r.detail
+    if (!passed) {
+      lastFailure = detail
+      lastFix = r.fix_applied || ''
+    }
+    iters++
+  }
+
+  recordGate(GATE_SPEC_VERIFIED, passed, detail, {
+    iterations: iters,
+    last_failure: lastFailure,
+    last_fix: lastFix,
+    evidence_paths: [specPath],
+    next_action: passed ? 'proceed' : 'fix_spec_gaps',
+    fix_applied: iters > 1 ? `${iters} attempts` : '',
+  })
+  log(`Gate 5 (spec_verified): ${passed ? 'PASSED' : `FAILED after ${iters} attempts`}`)
+} else {
+  recordGate(GATE_SPEC_VERIFIED, false, 'Skipped — runtime_evidence not passed', { iterations: 0, next_action: 'unblock_gate_4' })
+  log('Gate 5 (spec_verified): SKIPPED — gate 4 not passed')
+}
+
+// ── Gate 6: final_review (requires latest cross-task review) ────────
+if (isGateAlreadyPassed(GATE_FINAL_REVIEW, 5)) {
+  gateStates[GATE_FINAL_REVIEW] = resumeGateStates[GATE_FINAL_REVIEW]
+  gateCursor = 6
+  log('Gate 6 (final_review): SKIPPED — already passed')
+} else if (priorGatePassed()) {
+  // Must verify cross-task Final Review ran AFTER all tasks passed
+  const executeHadFinalReview = executeResult.final_review &&
+    executeResult.final_review.passed === true &&
+    executeResult.completed.length > 0 &&
+    executeResult.completed.every(r => r.code_passed)
+
+  let passed = false
+  let detail = ''
+  let lastFailure = null
+  let lastFix = null
+  let iters = 0
+
+  // If execute phase already had a valid final review, use it
+  if (executeHadFinalReview) {
+    passed = true
+    detail = 'Final review from execute phase confirmed (all tasks passed before review)'
+  } else {
+    // Run a fresh cross-task final review
+    const review = await agent(
+      `Final code review of ALL changes on this branch.
+Run \`git diff main...HEAD\` (or the base branch) to see the full diff.
+Review for: correctness bugs, dead code, missing error handling, security issues.
+This review covers ALL tasks collectively.`,
+      agentOpts('gate-6-final-review', 'Gates', GATE_RESULT),
+    )
+    passed = review.passed
+    detail = review.detail || ''
+
+    while (!passed && iters < GATE_RETRIES) {
+      await agent(
+        `Fix these final review issues: ${detail}
+Minimal fixes — do not refactor.`,
+        agentOpts(`fix-final-r${iters + 1}`, 'Gates', { type: 'object' }),
+      )
+      const re = await agent(
+        'Re-review: verify previous issues fixed. No new issues.',
+        agentOpts(`gate-6-r${iters + 1}`, 'Gates', GATE_RESULT),
+      )
+      passed = re.passed
+      if (!passed) {
+        lastFailure = re.detail
+        lastFix = re.fix_applied || ''
+      }
+      detail = passed ? 'Final review passed' : (re.detail || detail)
+      iters++
+    }
+  }
+
+  recordGate(GATE_FINAL_REVIEW, passed, detail, {
+    iterations: iters + (executeHadFinalReview ? 1 : 0),
+    last_failure: lastFailure,
+    last_fix: lastFix,
+    next_action: passed ? 'proceed' : 'fix_final_review_issues',
     fix_applied: iters > 0 ? `${iters} fix rounds` : '',
   })
-  gateCursor = 6
-  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
+  log(`Gate 6 (final_review): ${passed ? 'PASSED' : `FAILED after ${iters} fix rounds`}`)
+} else {
+  recordGate(GATE_FINAL_REVIEW, false, 'Skipped — spec_verified not passed', { iterations: 0, next_action: 'unblock_gate_5' })
+  log('Gate 6 (final_review): SKIPPED — gate 5 not passed')
 }
 
-// Gate 7: git clean
-if (priorPassed()) {
+// ── Gate 7: git_clean (workflow-owned temp cleanup only) ────────────
+if (isGateAlreadyPassed(GATE_GIT_CLEAN, 6)) {
+  gateStates[GATE_GIT_CLEAN] = resumeGateStates[GATE_GIT_CLEAN]
+  gateCursor = 7
+  log('Gate 7 (git_clean): SKIPPED — already passed')
+} else if (priorGatePassed()) {
+  let passed = false
+  let detail = ''
+  let iters = 0
+
+  // Clean workflow-owned temp files only (evidence_dir, audit_dir temp files)
+  const cleanedPaths = []
+  if (evidence_dir) {
+    cleanedPaths.push(evidence_dir)
+  }
+
   const r = await agent(
-    `Run \`git status --porcelain\`. If dirty: commit changes with appropriate messages.
-If clean: report passed.`,
+    `Run \`git status --porcelain\` to check working tree cleanliness.
+This is a validation-only check for the pipeline — do NOT commit anything.
+If there are uncommitted changes, report them but do NOT commit.
+If clean: report passed.
+If dirty: list the dirty files. The pipeline does not require commits.`,
     agentOpts('gate-7-git-clean', 'Gates', GATE_RESULT),
   )
-  gates.push(r)
-  gateCursor = 7
-  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
-}
+  passed = r.passed
+  detail = r.detail
 
-// Fill remaining gates as skipped
-while (gates.length < 7) {
-  gates.push({
-    gate: gates.length + 1,
-    passed: false,
-    detail: 'Skipped — earlier gate not passed',
+  recordGate(GATE_GIT_CLEAN, passed, detail, {
+    iterations: 1,
+    last_failure: passed ? null : detail,
+    evidence_paths: cleanedPaths,
+    next_action: passed ? 'done' : 'resolve_dirty_files',
     fix_applied: '',
   })
+  log(`Gate 7 (git_clean): ${passed ? 'PASSED' : 'FAILED'}`)
+} else {
+  recordGate(GATE_GIT_CLEAN, false, 'Skipped — final_review not passed', { iterations: 0, next_action: 'unblock_gate_6' })
+  log('Gate 7 (git_clean): SKIPPED — gate 6 not passed')
 }
+
+// Build the gates array from gateStates
+const gates = GATE_NAMES.map(name => gateStates[name] || makeGateRecord(name, false, 'Skipped'))
 
 // ── Finalize state and return ───────────────────────────────────────────────────────────────────────────────\n
 const finalResumeCursor = {
   phase: gates.every(g => g.passed) ? 'finalize' : 'gates',
   gate_cursor: gateCursor,
+  gate_states: gateStates,
   spec_path: spec.spec_path,
   plan_path: planResult.plan_path,
 }
