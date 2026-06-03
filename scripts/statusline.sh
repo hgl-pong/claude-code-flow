@@ -189,10 +189,126 @@ AGENT_PART=""
 
 RUNTIME_PART=""
 if [ -n "$RUNTIME_STATUS" ]; then
-  RUNTIME_PART="${SEP}${DIM}rt:${RUNTIME_STATUS}${RUNTIME_PART}"
+  RUNTIME_PART="${SEP}${DIM}rt:${RUNTIME_STATUS}"
   [ -n "$SMOKE_STATUS" ] && RUNTIME_PART="${RUNTIME_PART} smoke:${SMOKE_STATUS}"
   [ "$CRASH_DETECTED" = "true" ] && RUNTIME_PART="${RUNTIME_PART} crash"
   [ "$HANG_DETECTED" = "true" ] && RUNTIME_PART="${RUNTIME_PART} hang"
+fi
+
+# ── Auto-run discovery: scan .claude/auto/*/state.json ─────
+AUTO_PART=""
+_auto_is_error="false"
+
+if [ -d ".claude/auto" ]; then
+  # Use python3 to discover active state files (portable across jq/no-jq)
+  if command -v python3 &>/dev/null; then
+    _auto_result=$(python3 -c "
+import json, os, sys, shlex
+from pathlib import Path
+
+ACTIVE = {'ACTIVE', 'PAUSED_COMPACTING', 'BLOCKED_ESCALATING', 'STOPPED_ASK_USER', 'RUNNING'}
+auto_dir = Path('.claude/auto')
+candidates = []
+has_any = False
+has_error = False
+
+for sf in sorted(auto_dir.glob('*/state.json')):
+    has_any = True
+    try:
+        data = json.loads(sf.read_text(encoding='utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        has_error = True
+        continue
+    if not isinstance(data, dict):
+        has_error = True
+        continue
+    if 'task_name' not in data or 'status' not in data or 'updated_at' not in data:
+        continue
+    status = data.get('status', '')
+    if status not in ACTIVE:
+        continue
+    ts = data.get('updated_at', '')
+    dirname = sf.parent.name
+    candidates.append((ts, dirname, str(sf)))
+
+# Sort by updated_at desc, dirname desc for tie-breaking
+candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+
+# Pick the first valid one; if newest is corrupt, note error
+chosen = None
+for ts, dn, sf in candidates:
+    try:
+        data = json.loads(Path(sf).read_text(encoding='utf-8'))
+        chosen = data
+        break
+    except Exception:
+        has_error = True
+        continue
+
+if chosen:
+    task = str(chosen.get('task_name', ''))[:20]
+    status = str(chosen.get('status', ''))
+    phase = str(chosen.get('phase', '') or (chosen.get('progress') or {}).get('phase', '') or 'unknown')
+    prog = chosen.get('progress') or {}
+    t_total = prog.get('tasks_total', 0)
+    t_done = prog.get('tasks_completed', prog.get('tasks_passed', 0))
+    gates = prog.get('gates_passed', 0)
+    ts = chosen.get('task_states') or {}
+    blocked = sum(1 for v in ts.values() if isinstance(v, dict) and v.get('status') == 'blocked')
+    rv = chosen.get('runtime_verification') or {}
+    rt = rv.get('status', '')
+    smoke = rv.get('smoke', '')
+    parts = [f'AUTO_TASK={shlex.quote(task)}']
+    parts.append(f'AUTO_STATUS={shlex.quote(status)}')
+    parts.append(f'AUTO_PHASE={shlex.quote(phase)}')
+    parts.append(f'AUTO_TTOTAL={shlex.quote(str(t_total))}')
+    parts.append(f'AUTO_TDONE={shlex.quote(str(t_done))}')
+    parts.append(f'AUTO_GATES={shlex.quote(str(gates))}')
+    parts.append(f'AUTO_BLOCKED={shlex.quote(str(blocked))}')
+    parts.append(f'AUTO_RT={shlex.quote(str(rt))}')
+    parts.append(f'AUTO_SMOKE={shlex.quote(str(smoke))}')
+    sys.stdout.write('\n'.join(parts))
+elif has_error and has_any:
+    sys.stdout.write('AUTO_ERROR=1')
+" 2>/dev/null | tr -d '\r')
+
+    if [ -n "$_auto_result" ]; then
+      # Parse the output
+      _auto_task=""; _auto_status=""; _auto_phase=""
+      _auto_ttotal="0"; _auto_tdone="0"; _auto_gates="0"; _auto_blocked="0"
+      _auto_rt=""; _auto_smoke=""
+      while IFS='=' read -r _key _val; do
+        [ -z "$_key" ] && continue
+        # Strip surrounding quotes from shlex.quote
+        _val="${_val#\'}"; _val="${_val%\'}"
+        case "$_key" in
+          AUTO_TASK)     _auto_task="$_val" ;;
+          AUTO_STATUS)   _auto_status="$_val" ;;
+          AUTO_PHASE)    _auto_phase="$_val" ;;
+          AUTO_TTOTAL)   _auto_ttotal="$_val" ;;
+          AUTO_TDONE)    _auto_tdone="$_val" ;;
+          AUTO_GATES)    _auto_gates="$_val" ;;
+          AUTO_BLOCKED)  _auto_blocked="$_val" ;;
+          AUTO_RT)       _auto_rt="$_val" ;;
+          AUTO_SMOKE)    _auto_smoke="$_val" ;;
+          AUTO_ERROR)    _auto_is_error="true" ;;
+        esac
+      done <<< "$_auto_result"
+
+      if [ -n "$_auto_task" ]; then
+        AUTO_PART="${SEP}${CYN}auto:${_auto_task}${R} ${DIM}${_auto_phase}/${_auto_status}${R} tasks:${_auto_tdone}/${_auto_ttotal} gates:${_auto_gates}/7 blocked:${_auto_blocked}"
+        [ -n "$_auto_rt" ] && AUTO_PART="${AUTO_PART} rt:${_auto_rt}"
+        [ -n "$_auto_smoke" ] && AUTO_PART="${AUTO_PART} smoke:${_auto_smoke}"
+      fi
+    fi
+  fi
+
+  # Reset error flag if we found a valid state
+  [ -n "$AUTO_PART" ] && _auto_is_error="false"
+
+  if [ "$_auto_is_error" = "true" ] && [ -z "$AUTO_PART" ]; then
+    AUTO_PART="${SEP}${RED}auto:state-error${R}"
+  fi
 fi
 
 # ── Build line ────────────────────────────────────────────
@@ -206,6 +322,7 @@ build_line1() {
   [ -n "$LIMITS" ] && out="${out}${SEP}${LIMITS}"
   [ -n "$AGENT_PART" ] && out="${out}${AGENT_PART}"
   [ -n "$RUNTIME_PART" ] && out="${out}${RUNTIME_PART}"
+  [ -n "$AUTO_PART" ] && out="${out}${AUTO_PART}"
   [ -n "$VIM_PART" ] && out="${out}${VIM_PART}"
   printf "%s" "$out"
 }
