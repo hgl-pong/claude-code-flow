@@ -74,6 +74,31 @@ const RETRIES = max_retries || 5
 const REVIEW_RETRY_CAP = (retry_policy && retry_policy.review_cap) || REVIEW_RETRY_CAP_DEFAULT
 const GATE_RETRIES = (retry_policy && retry_policy.gate_retries) || GATE_RETRY_CAP_DEFAULT
 
+// ── Resume from state ─────────────────────────────────────────────────
+// When resume_from is provided, determine which phases to skip based on cursor.
+// The resume_cursor.phase tells us the last active phase. Phases before it
+// are already complete and should be skipped. result_replay lists task IDs
+// that were already passed and should not be re-run.
+
+const resumePhase = (resume_from && resume_from.cursor && resume_from.cursor.phase) || null
+const resumePhaseIndex = resumePhase ? PHASE_ORDER.indexOf(resumePhase) : -1
+const resumeTaskReplay = (resume_from && resume_from.result_replay) || []
+
+function shouldSkipPhase(phaseName) {
+  if (!resumePhase) return false
+  const phaseIdx = PHASE_ORDER.indexOf(phaseName)
+  return phaseIdx >= 0 && phaseIdx < resumePhaseIndex
+}
+
+function isResumeForPhase(phaseName) {
+  return resumePhase === phaseName
+}
+
+// Replay helper: check if a task was already passed in prior run
+function isTaskReplayed(taskId) {
+  return resumeTaskReplay.includes(taskId)
+}
+
 // ── State writer integration ──────────────────────────────────────────
 
 let currentRevision = (resume_from && resume_from.revision) || 0
@@ -542,7 +567,12 @@ const specPath = `${specs_dir}/${specId}.md`
 const planPath = `${plans_dir}/${specId}-plan.md`
 
 // ── Phase 1: Scope ───────────────────────────────────────────────────
+// Resume: if scope already completed, skip entirely.
 
+if (shouldSkipPhase('scope')) {
+  log('Phase: Scope — SKIPPED (resume)')
+  auditEvents.push({ phase: 'scope', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Scope')
 await flowState('event', { type: 'phase_start', phase: 'scope' })
 const scope = await agent(
@@ -580,9 +610,15 @@ log(`Strategy: ${scope.strategy}`)
 log(`Angles: ${scope.angles.map(a => a.key).join(', ')}`)
 await flowState('update', { phase: 'scope', progress: { tasks_total: 0 } })
 auditEvents.push({ phase: 'scope', event: 'phase_complete', angles: scope.angles.length })
+} // end scope skip guard
 
 // ── Phase 2: Research ────────────────────────────────────────────────
+// Resume: if research already completed, skip entirely.
 
+if (shouldSkipPhase('research')) {
+  log('Phase: Research — SKIPPED (resume)')
+  auditEvents.push({ phase: 'research', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Research')
 await flowState('event', { type: 'phase_start', phase: 'research' })
 const researchResults = await parallel(
@@ -614,9 +650,15 @@ const allFindings = researchResults.filter(Boolean)
 log(`Research done: ${allFindings.length}/${scope.angles.length} angles`)
 await flowState('update', { phase: 'research' })
 auditEvents.push({ phase: 'research', event: 'phase_complete', findings: allFindings.length })
+} // end research skip guard
 
 // ── Phase 3: Synthesize Spec ─────────────────────────────────────────
+// Resume: if synthesize_spec already completed, skip entirely.
 
+if (shouldSkipPhase('synthesize_spec')) {
+  log('Phase: Synthesize Spec — SKIPPED (resume)')
+  auditEvents.push({ phase: 'synthesize_spec', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Synthesize Spec')
 await flowState('event', { type: 'phase_start', phase: 'synthesize_spec' })
 const researchText = allFindings.map(r =>
@@ -679,9 +721,15 @@ Use the Write tool to save the file. Return the path and summary.`,
 log(`Spec: ${spec.spec_path}`)
 await flowState('update', { phase: 'synthesize_spec', spec_path: spec.spec_path })
 auditEvents.push({ phase: 'synthesize_spec', event: 'phase_complete', spec_path: spec.spec_path })
+} // end synthesize_spec skip guard
 
 // ── Phase 4: Review Spec ─────────────────────────────────────────────
+// Resume: if review_spec already completed, skip entirely.
 
+if (shouldSkipPhase('review_spec')) {
+  log('Phase: Review Spec — SKIPPED (resume)')
+  auditEvents.push({ phase: 'review_spec', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Review Spec')
 await flowState('event', { type: 'phase_start', phase: 'review_spec' })
 let specReview = await agent(
@@ -740,9 +788,15 @@ if (!specReview.passed && specIterations >= REVIEW_RETRY_CAP) {
 }
 await flowState('update', { phase: 'review_spec' })
 auditEvents.push({ phase: 'review_spec', event: 'phase_complete', passed: specReview.passed })
+} // end review_spec skip guard
 
 // ── Phase 5: Write Plan ──────────────────────────────────────────────
+// Resume: if write_plan already completed, skip entirely.
 
+if (shouldSkipPhase('write_plan')) {
+  log('Phase: Write Plan — SKIPPED (resume)')
+  auditEvents.push({ phase: 'write_plan', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Write Plan')
 await flowState('event', { type: 'phase_start', phase: 'write_plan' })
 const planResult = await agent(
@@ -778,9 +832,15 @@ await flowState('update', { phase: 'write_plan', plan_path: planResult.plan_path
   progress: { tasks_total: planResult.task_count } })
 auditEvents.push({ phase: 'write_plan', event: 'phase_complete',
   plan_path: planResult.plan_path, task_count: planResult.task_count })
+} // end write_plan skip guard
 
 // ── Phase 6: Review Plan ─────────────────────────────────────────────
+// Resume: if review_plan already completed, skip entirely.
 
+if (shouldSkipPhase('review_plan')) {
+  log('Phase: Review Plan — SKIPPED (resume)')
+  auditEvents.push({ phase: 'review_plan', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Review Plan')
 await flowState('event', { type: 'phase_start', phase: 'review_plan' })
 let planReview = await agent(
@@ -834,9 +894,15 @@ if (!planReview.passed && planIterations >= REVIEW_RETRY_CAP) {
 }
 await flowState('update', { phase: 'review_plan' })
 auditEvents.push({ phase: 'review_plan', event: 'phase_complete', passed: planReview.passed })
+} // end review_plan skip guard
 
 // ── Phase 7: Parse Plan — extract structured tasks ────────────────────
+// Resume: if parse_plan already completed, skip entirely.
 
+if (shouldSkipPhase('parse_plan')) {
+  log('Phase: Parse Plan — SKIPPED (resume)')
+  auditEvents.push({ phase: 'parse_plan', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Parse Plan')
 await flowState('event', { type: 'phase_start', phase: 'parse_plan' })
 const parsed = await agent(
@@ -912,6 +978,7 @@ await flowState('update', { phase: 'parse_plan', groups: parsed.groups,
   task_states: Object.fromEntries(Object.keys(parsed.tasks).map(k => [k, 'queued'])) })
 auditEvents.push({ phase: 'parse_plan', event: 'phase_complete',
   groups: parsed.groups.length, tasks: Object.keys(parsed.tasks).length })
+} // end parse_plan skip guard
 
 // ── Validate parsed plan ──────────────────────────────────────────────
 
@@ -944,7 +1011,13 @@ if (!planValidation.valid) {
 log('Plan validation passed')
 
 // ── Phase 8: Execute ─────────────────────────────────────────────────
+// Resume: if execute already completed, skip entirely. Otherwise, pass
+// result_replay so execute-plan can skip already-passed tasks.
 
+if (shouldSkipPhase('execute')) {
+  log('Phase: Execute — SKIPPED (resume)')
+  auditEvents.push({ phase: 'execute', event: 'phase_skipped', reason: 'resume' })
+} else {
 phase('Execute')
 await flowState('event', { type: 'phase_start', phase: 'execute' })
 log('Delegating to execute-plan workflow...')
@@ -956,6 +1029,7 @@ const executeResult = await workflow(
     tasks: parsed.tasks,
     worktree: worktree,
     model_tasks: model_tasks,
+    result_replay: resumeTaskReplay,
   },
 )
 
@@ -965,6 +1039,7 @@ await flowState('update', { phase: 'execute',
     tasks_total: executeResult.completed.length + executeResult.blocked.length } })
 auditEvents.push({ phase: 'execute', event: 'phase_complete',
   completed: executeResult.completed.length, blocked: executeResult.blocked.length })
+} // end execute skip guard
 
 // ── Phase 9: Gates ───────────────────────────────────────────────────
 

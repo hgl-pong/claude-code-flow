@@ -20,6 +20,7 @@ export const meta = {
 }
 
 const { groups, tasks, worktree, model_tasks } = args
+const result_replay = args.result_replay || []
 const MAX_RETRIES = 5
 
 // ── Contract constants (shared with full-auto-pipeline) ────────────────
@@ -569,6 +570,23 @@ for (const [gi, group] of groups.entries()) {
     group.map(taskId => () => {
       const task = tasks[taskId]
       const risk = task.risk || taskRisk
+
+      // Resume: skip already-passed tasks (result_replay from state)
+      if (result_replay.includes(taskId)) {
+        log(taskId + ': REPLAYED — already passed in prior run, skipping')
+        return {
+          ...task,
+          id: taskId,
+          impl: { status: 'DONE', summary: 'Replayed from prior run', files_modified: task.files || [], commit_sha: '', test_results: '', concerns: [], evidence_paths: [], verification_commands: task.verification || [] },
+          spec_review: { passed: true, issues: [], summary: 'Replayed' },
+          code_review: { passed: true, issues: [], summary: 'Replayed' },
+          spec_passed: true,
+          code_passed: true,
+          _iterations_spec: 0,
+          _iterations_code: 0,
+          _replayed: true,
+        }
+      }
 
       return pipeline(
         [task],

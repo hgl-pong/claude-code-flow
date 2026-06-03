@@ -51,7 +51,15 @@ def auto_mode_active() -> Optional[str]:
 
 
 def generate_resume_prompt(state_file: str) -> str:
-    """Generate a state-aware resume prompt for the Stop hook."""
+    """Generate a state-aware resume prompt for the Stop hook.
+
+    Uses flow-state.py resume command when available for enriched data
+    including stale artifact invalidation and result_replay information.
+    Falls back to direct JSON parsing if flow-state.py is unavailable.
+    """
+    # Try flow-state.py resume for enriched data
+    resume_data = _call_flow_state_resume(state_file)
+
     data = load_json(state_file)
     if not data:
         return "AUTO-MODE CONTINUATION: State file unreadable."
@@ -83,11 +91,31 @@ def generate_resume_prompt(state_file: str) -> str:
         f"{a.get('task_id', '?')}({a.get('role', '?')})" for a in active_agents
     ) or "none"
 
-    # Failing gates
+    # Failing gates (supports both dict and list format)
     gate_states = data.get("gate_states", {})
-    failing = ", ".join(
-        k for k, v in gate_states.items() if not v.get("passed", False)
-    ) or "none"
+    if isinstance(gate_states, list):
+        failing = ", ".join(
+            g.get("gate", g.get("name", "?")) for g in gate_states
+            if isinstance(g, dict) and not g.get("passed", False)
+        ) or "none"
+    else:
+        failing = ", ".join(
+            k for k, v in gate_states.items() if not v.get("passed", False)
+        ) or "none"
+
+    # Resume enrichment from flow-state.py
+    resume_section = ""
+    if resume_data:
+        entrypoint = resume_data.get("next_entrypoint", "")
+        invalidated_tasks = resume_data.get("invalidated_tasks", {})
+        result_replay = resume_data.get("result_replay", [])
+
+        resume_section = f"""
+Resume data from flow-state.py:
+- Next entrypoint: {entrypoint}
+- Result replay (skip these tasks): {', '.join(result_replay) or 'none'}
+- Invalidated tasks: {', '.join(f'{k}: {v}' for k, v in invalidated_tasks.items()) or 'none'}
+"""
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -103,7 +131,7 @@ Current state summary:
 - Failing gates: {failing}
 - Runtime evidence: {runtime_status} | smoke: {smoke_status} | crash: {crash_detected} | hang: {hang_detected}
 - Evidence dir: {evidence_dir or 'none'}
-
+{resume_section}
 Instructions by phase:
 - brainstorming / writing-plans: Continue from current_step={step}. Auto-decide everything. Log to audit trail. Proceed to next phase when done.
 - workflow-driven-development: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter completion-gates.
@@ -153,6 +181,32 @@ def has_pending_tasks(state_file: str) -> bool:
 def emit_json(obj: dict) -> None:
     """Print JSON to stdout for hook decision."""
     print(json.dumps(obj))
+
+
+def _call_flow_state_resume(state_file: str) -> Optional[dict]:
+    """Call flow-state.py resume to get enriched resume data.
+
+    Returns parsed JSON output or None on failure.
+    """
+    flow_state_script = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "scripts", "flow-state.py",
+    )
+    if not os.path.isfile(flow_state_script):
+        return None
+
+    try:
+        result = subprocess.run(
+            [sys.executable, flow_state_script, "resume", "--state-file", state_file],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            data = json.loads(result.stdout)
+            if data.get("ok"):
+                return data
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+        pass
+    return None
 
 
 def emit_context_json(context: str, event_name: str) -> None:

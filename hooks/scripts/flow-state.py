@@ -584,12 +584,166 @@ def cmd_snapshot(args):
     return 0
 
 
+def _check_stale_artifacts(state, state_file):
+    """Check for stale artifacts in task_states and gate_states.
+
+    Returns a dict:
+      invalidated_tasks: {task_id: reason}
+      invalidated_gates: [gate_index]
+      warnings: [str]
+    """
+    invalidated_tasks = {}
+    invalidated_gates = []
+    warnings = []
+    run_dir = state_file.parent
+    worktree = state.get("worktree_path", "")
+
+    # Check task_states
+    task_states = state.get("task_states", {})
+    if isinstance(task_states, dict):
+        for tid, ts in task_states.items():
+            if not isinstance(ts, dict):
+                continue
+            # Skip tasks already in terminal states
+            status = ts.get("status", "")
+            if status in ("passed", "done", "failed"):
+                # Check recorded files exist
+                for fpath in ts.get("files_modified", []):
+                    resolved = _resolve_artifact_path(fpath, run_dir, worktree)
+                    if resolved and not resolved.exists():
+                        invalidated_tasks[tid] = f"file_modified not found: {fpath}"
+                        break
+
+                # Check evidence_paths exist
+                for epath in ts.get("evidence_paths", []):
+                    resolved = _resolve_artifact_path(epath, run_dir, worktree)
+                    if resolved and not resolved.exists():
+                        invalidated_tasks[tid] = f"evidence_path not found: {epath}"
+                        break
+
+                # Check commit_sha is reachable (if non-null)
+                commit_sha = ts.get("commit_sha", "")
+                if commit_sha and not _is_commit_reachable(commit_sha):
+                    warnings.append(f"{tid}: commit {commit_sha} not reachable")
+                    invalidated_tasks[tid] = f"commit_sha not reachable: {commit_sha}"
+
+    # Check gate_states
+    gate_states = state.get("gate_states", [])
+    if isinstance(gate_states, list):
+        for i, gs in enumerate(gate_states):
+            if not isinstance(gs, dict):
+                continue
+            if not gs.get("passed", False):
+                continue
+            for epath in gs.get("evidence_paths", []):
+                resolved = _resolve_artifact_path(epath, run_dir, worktree)
+                if resolved and not resolved.exists():
+                    invalidated_gates.append(i)
+                    break
+    elif isinstance(gate_states, dict):
+        for gname, gs in gate_states.items():
+            if not isinstance(gs, dict):
+                continue
+            if not gs.get("passed", False):
+                continue
+            for epath in gs.get("evidence_paths", []):
+                resolved = _resolve_artifact_path(epath, run_dir, worktree)
+                if resolved and not resolved.exists():
+                    invalidated_gates.append(gname)
+                    break
+
+    return {
+        "invalidated_tasks": invalidated_tasks,
+        "invalidated_gates": invalidated_gates,
+        "warnings": warnings,
+    }
+
+
+def _resolve_artifact_path(path_str, run_dir, worktree):
+    """Resolve an artifact path to an absolute Path, or None if unsafe."""
+    p = Path(path_str)
+    if p.is_absolute():
+        return p if p.parent.exists() else None
+    # Try relative to worktree first
+    if worktree:
+        candidate = Path(worktree) / path_str
+        if candidate.parent.exists():
+            return candidate
+    # Try relative to run_dir
+    candidate = run_dir / path_str
+    if candidate.parent.exists():
+        return candidate
+    return Path(path_str)  # Return as-is; existence check will handle it
+
+
+def _is_commit_reachable(sha):
+    """Check if a commit SHA is reachable in the current git repo."""
+    if not sha:
+        return True
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["git", "cat-file", "-t", sha],
+            capture_output=True, text=True, timeout=5,
+        )
+        return result.returncode == 0 and "commit" in result.stdout
+    except Exception:
+        # If git is not available, assume reachable to avoid false invalidation
+        return True
+
+
+def _find_newest_valid_snapshot(state_file):
+    """Find the newest snapshot with valid state for recovery."""
+    run_dir = state_file.parent
+    snapshots_dir = run_dir / SNAPSHOTS_DIR
+    if not snapshots_dir.is_dir():
+        return None
+
+    snapshots = sorted(snapshots_dir.glob("snapshot-*.json"), reverse=True)
+    for snap_path in snapshots:
+        result = _load_json(snap_path)
+        if isinstance(result, tuple):
+            continue
+        snap = result
+        snap_state = snap.get("state", {})
+        schema_errors = _validate_state_schema(snap_state)
+        if not schema_errors:
+            return snap
+    return None
+
+
 def cmd_resume(args):
-    """Validate, return cursor + summary + next entrypoint."""
+    """Validate, check stale artifacts, return cursor + summary + next entrypoint.
+
+    Enhanced resume algorithm:
+    1. Validate state schema
+    2. Check for stale artifacts (files, commit SHAs, evidence paths)
+    3. Invalidate only affected task/gate (not entire state)
+    4. Recover from newest valid snapshot when state is corrupt
+    5. Map cursor to correct full-auto phase entrypoint
+    """
     state_file = Path(args.state_file)
 
     result = _load_json(state_file)
     if isinstance(result, tuple):
+        # State corrupt — try snapshot recovery
+        snap = _find_newest_valid_snapshot(state_file)
+        if snap:
+            recovered_state = snap.get("state", {})
+            _output(False, state_file=str(state_file),
+                    errors=[f"State corrupt: {result[1]}", "Recovered from snapshot"],
+                    recovered_from_snapshot=snap.get("seq"),
+                    cursor=recovered_state.get("resume_cursor", {}),
+                    summary={
+                        "phase": recovered_state.get("phase", "scope"),
+                        "status": recovered_state.get("status", "ACTIVE"),
+                        "revision": recovered_state.get("revision", 0),
+                        "progress": recovered_state.get("progress", {}),
+                        "groups": recovered_state.get("groups", []),
+                        "task_states": recovered_state.get("task_states", {}),
+                        "gate_states": recovered_state.get("gate_states", []),
+                    })
+            return 5
         _output(False, state_file=str(state_file), errors=[result[1]])
         return 5
     state = result
@@ -598,6 +752,9 @@ def cmd_resume(args):
     if schema_errors:
         _output(False, state_file=str(state_file), errors=["State validation failed"] + schema_errors)
         return 2
+
+    # Stale artifact checking
+    stale_report = _check_stale_artifacts(state, state_file)
 
     cursor = state.get("resume_cursor", {})
     summary = {
@@ -626,8 +783,25 @@ def cmd_resume(args):
     else:
         entrypoint = f"resume_{phase}"
 
+    # Identify passed tasks for replay (result_replay)
+    task_states = state.get("task_states", {})
+    replay_tasks = []
+    for tid, ts in task_states.items():
+        if isinstance(ts, dict) and ts.get("status") in ("passed", "done"):
+            replay_tasks.append(tid)
+
+    extra = {}
+    if stale_report["invalidated_tasks"]:
+        extra["invalidated_tasks"] = stale_report["invalidated_tasks"]
+    if stale_report["invalidated_gates"]:
+        extra["invalidated_gates"] = stale_report["invalidated_gates"]
+    if stale_report["warnings"]:
+        extra["warnings"] = stale_report["warnings"]
+    if replay_tasks:
+        extra["result_replay"] = replay_tasks
+
     _output(True, state_file=str(state_file), revision=state.get("revision"),
-            cursor=cursor, summary=summary, next_entrypoint=entrypoint)
+            cursor=cursor, summary=summary, next_entrypoint=entrypoint, **extra)
     return 0
 
 
@@ -740,8 +914,10 @@ def build_parser():
     p_snapshot.add_argument("--reason", default="manual")
 
     # resume
-    p_resume = sub.add_parser("resume", help="Get resume cursor")
+    p_resume = sub.add_parser("resume", help="Get resume cursor with stale artifact checking")
     p_resume.add_argument("--state-file", required=True)
+    p_resume.add_argument("--check-stale", action="store_true", default=True,
+                          help="Check for stale artifacts (default: True)")
 
     # validate
     p_validate = sub.add_parser("validate", help="Validate state")
