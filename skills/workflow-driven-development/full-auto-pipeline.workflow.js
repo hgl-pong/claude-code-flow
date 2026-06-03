@@ -9,6 +9,35 @@ export const meta = {
   name: 'full-auto-pipeline',
   description:
     'Full auto-mode pipeline: research → spec → plan review → parse plan → execute → gates',
+  args_schema: {
+    state_file: { type: 'string', description: 'Path to state.json for this run' },
+    audit_dir: { type: 'string', description: 'Directory for audit event logs' },
+    evidence_dir: { type: 'string', description: 'Directory for runtime evidence artifacts' },
+    resume_from: {
+      type: 'object',
+      properties: {
+        revision: { type: 'number' },
+        cursor: { type: 'object' },
+        next_entrypoint: { type: 'string' },
+      },
+    },
+    retry_policy: {
+      type: 'object',
+      properties: {
+        review_cap: { type: 'number' },
+        gate_retries: { type: 'number' },
+      },
+    },
+    allowed_escalation_models: { type: 'array', items: { type: 'string' } },
+    allow_commit: { type: 'boolean' },
+    flow_state_script_path: { type: 'string', description: 'Path to flow-state.py CLI' },
+  },
+  result_schema: {
+    state_file: { type: 'string' },
+    audit_events: { type: 'array' },
+    evidence_dir: { type: 'string' },
+    resume_cursor: { type: 'object' },
+  },
   phases: [
     { title: 'Scope', detail: 'Determine research angles' },
     { title: 'Research', detail: 'Parallel research per angle' },
@@ -30,10 +59,41 @@ const {
   execute_plan_script_path,
   model_tasks,
   max_retries,
+  // State-writer integration
+  state_file,
+  audit_dir,
+  evidence_dir,
+  resume_from,
+  retry_policy,
+  allowed_escalation_models,
+  allow_commit,
+  flow_state_script_path,
 } = args
 
 const RETRIES = max_retries || 5
-const GATE_RETRIES = 10
+const REVIEW_RETRY_CAP = (retry_policy && retry_policy.review_cap) || REVIEW_RETRY_CAP_DEFAULT
+const GATE_RETRIES = (retry_policy && retry_policy.gate_retries) || GATE_RETRY_CAP_DEFAULT
+
+// ── State writer integration ──────────────────────────────────────────
+
+let currentRevision = (resume_from && resume_from.revision) || 0
+const flowStateScriptPath = flow_state_script_path || null
+
+async function flowState(cmd, payload) {
+  if (!flowStateScriptPath) return { ok: true }
+  const result = await workflow({ scriptPath: flowStateScriptPath }, {
+    command: cmd,
+    state_file: state_file,
+    payload_json: JSON.stringify(payload),
+    expected_revision: currentRevision,
+  })
+  if (result && result.ok && typeof result.revision === 'number') {
+    currentRevision = result.revision
+  }
+  return result || { ok: false, errors: ['flowState returned no result'] }
+}
+
+const auditEvents = []
 
 // ── Contract constants ────────────────────────────────────────────────
 
@@ -453,6 +513,7 @@ const planPath = `${plans_dir}/${specId}-plan.md`
 // ── Phase 1: Scope ───────────────────────────────────────────────────
 
 phase('Scope')
+await flowState('event', { type: 'phase_start', phase: 'scope' })
 const scope = await agent(
   `Explore the codebase to understand existing architecture, then define research
 angles for this task.
@@ -486,10 +547,13 @@ implementable spec.`,
 
 log(`Strategy: ${scope.strategy}`)
 log(`Angles: ${scope.angles.map(a => a.key).join(', ')}`)
+await flowState('update', { phase: 'scope', progress: { tasks_total: 0 } })
+auditEvents.push({ phase: 'scope', event: 'phase_complete', angles: scope.angles.length })
 
 // ── Phase 2: Research ────────────────────────────────────────────────
 
 phase('Research')
+await flowState('event', { type: 'phase_start', phase: 'research' })
 const researchResults = await parallel(
   scope.angles.map(angle => () =>
     agent(
@@ -517,10 +581,13 @@ feed directly into the specification.`,
 
 const allFindings = researchResults.filter(Boolean)
 log(`Research done: ${allFindings.length}/${scope.angles.length} angles`)
+await flowState('update', { phase: 'research' })
+auditEvents.push({ phase: 'research', event: 'phase_complete', findings: allFindings.length })
 
 // ── Phase 3: Synthesize Spec ─────────────────────────────────────────
 
 phase('Synthesize Spec')
+await flowState('event', { type: 'phase_start', phase: 'synthesize_spec' })
 const researchText = allFindings.map(r =>
   `## ${r.angle}\n\n${r.findings}\n\nKey insights:\n${r.key_insights.map(i => `- ${i}`).join('\n')}`
 ).join('\n\n---\n\n')
@@ -579,10 +646,13 @@ Use the Write tool to save the file. Return the path and summary.`,
 )
 
 log(`Spec: ${spec.spec_path}`)
+await flowState('update', { phase: 'synthesize_spec', spec_path: spec.spec_path })
+auditEvents.push({ phase: 'synthesize_spec', event: 'phase_complete', spec_path: spec.spec_path })
 
 // ── Phase 4: Review Spec ─────────────────────────────────────────────
 
 phase('Review Spec')
+await flowState('event', { type: 'phase_start', phase: 'review_spec' })
 let specReview = await agent(
   `Adversarially review the spec. Read ${spec.spec_path} and find every gap.
 
@@ -597,7 +667,7 @@ Minor: wording or clarity.`,
 )
 
 let specIterations = 0
-while (!specReview.passed && specIterations < RETRIES) {
+while (!specReview.passed && specIterations < RETRIES && specIterations < REVIEW_RETRY_CAP) {
   log(`Spec issues: ${specReview.issues.length} — revising`)
 
   spec = await agent(
@@ -619,9 +689,31 @@ Read the file independently. Do not trust that they were fixed.`,
 }
 log(`Spec review: ${specReview.passed ? 'PASSED' : `STALLED (${specIterations} iters)`}`)
 
+// STOPPED_ASK_USER: review cap exhausted, cannot resolve spec issues
+if (!specReview.passed && specIterations >= REVIEW_RETRY_CAP) {
+  await flowState('update', { status: 'STOPPED_ASK_USER', phase: 'review_spec',
+    resume_cursor: { phase: 'review_spec', iteration: specIterations, spec_path: spec.spec_path } })
+  auditEvents.push({ phase: 'review_spec', event: 'stopped_ask_user', iterations: specIterations })
+  return {
+    status: 'STOPPED_ASK_USER',
+    spec: { path: spec.spec_path, review_passed: false },
+    plan: { path: null, review_passed: false, task_count: 0 },
+    execute: { completed: [], blocked: [] },
+    gates: [],
+    all_passed: false,
+    state_file: state_file || null,
+    audit_events: auditEvents,
+    evidence_dir: evidence_dir || null,
+    resume_cursor: { phase: 'review_spec', iteration: specIterations, spec_path: spec.spec_path },
+  }
+}
+await flowState('update', { phase: 'review_spec' })
+auditEvents.push({ phase: 'review_spec', event: 'phase_complete', passed: specReview.passed })
+
 // ── Phase 5: Write Plan ──────────────────────────────────────────────
 
 phase('Write Plan')
+await flowState('event', { type: 'phase_start', phase: 'write_plan' })
 const planResult = await agent(
   `Decompose the spec into an implementation plan. Write to ${planPath}.
 
@@ -651,10 +743,15 @@ Return the plan path, task count, and number of topological levels.`,
 )
 
 log(`Plan: ${planResult.plan_path} (${planResult.task_count} tasks)`)
+await flowState('update', { phase: 'write_plan', plan_path: planResult.plan_path,
+  progress: { tasks_total: planResult.task_count } })
+auditEvents.push({ phase: 'write_plan', event: 'phase_complete',
+  plan_path: planResult.plan_path, task_count: planResult.task_count })
 
 // ── Phase 6: Review Plan ─────────────────────────────────────────────
 
 phase('Review Plan')
+await flowState('event', { type: 'phase_start', phase: 'review_plan' })
 let planReview = await agent(
   `Review the plan at ${planResult.plan_path} against the spec at ${specPath}.
 
@@ -668,7 +765,7 @@ Minor: wording.`,
 )
 
 let planIterations = 0
-while (!planReview.passed && planIterations < RETRIES) {
+while (!planReview.passed && planIterations < RETRIES && planIterations < REVIEW_RETRY_CAP) {
   log(`Plan issues: ${planReview.issues.length} — revising`)
   await agent(
     `Fix the plan at ${planResult.plan_path}:
@@ -684,11 +781,33 @@ Read the plan file independently.`,
   )
   planIterations++
 }
-log(`Plan review: ${planReview.passed ? 'PASSED' : `STALLED (${planIterations} iters)`}`)
+log(`Plan review: ${planReview.passed ? 'PASSED' : `STALLED (${planIterations} itrs)`}`)
+
+// STOPPED_ASK_USER: plan review cap exhausted
+if (!planReview.passed && planIterations >= REVIEW_RETRY_CAP) {
+  await flowState('update', { status: 'STOPPED_ASK_USER', phase: 'review_plan',
+    resume_cursor: { phase: 'review_plan', iteration: planIterations, plan_path: planResult.plan_path } })
+  auditEvents.push({ phase: 'review_plan', event: 'stopped_ask_user', iterations: planIterations })
+  return {
+    status: 'STOPPED_ASK_USER',
+    spec: { path: spec.spec_path, review_passed: specReview.passed },
+    plan: { path: planResult.plan_path, review_passed: false, task_count: planResult.task_count },
+    execute: { completed: [], blocked: [] },
+    gates: [],
+    all_passed: false,
+    state_file: state_file || null,
+    audit_events: auditEvents,
+    evidence_dir: evidence_dir || null,
+    resume_cursor: { phase: 'review_plan', iteration: planIterations, plan_path: planResult.plan_path },
+  }
+}
+await flowState('update', { phase: 'review_plan' })
+auditEvents.push({ phase: 'review_plan', event: 'phase_complete', passed: planReview.passed })
 
 // ── Phase 7: Parse Plan — extract structured tasks ────────────────────
 
 phase('Parse Plan')
+await flowState('event', { type: 'phase_start', phase: 'parse_plan' })
 const parsed = await agent(
   `Read the plan at ${planResult.plan_path} and extract its tasks into structured form.
 
@@ -758,6 +877,10 @@ Example output for a 3-task plan where task-3 depends on task-1:
 )
 
 log(`Parsed: ${parsed.groups.length} groups, ${Object.keys(parsed.tasks).length} tasks`)
+await flowState('update', { phase: 'parse_plan', groups: parsed.groups,
+  task_states: Object.fromEntries(Object.keys(parsed.tasks).map(k => [k, 'queued'])) })
+auditEvents.push({ phase: 'parse_plan', event: 'phase_complete',
+  groups: parsed.groups.length, tasks: Object.keys(parsed.tasks).length })
 
 // ── Validate parsed plan ──────────────────────────────────────────────
 
@@ -796,6 +919,7 @@ log('Plan validation passed')
 // ── Phase 8: Execute ─────────────────────────────────────────────────
 
 phase('Execute')
+await flowState('event', { type: 'phase_start', phase: 'execute' })
 log('Delegating to execute-plan workflow...')
 
 const executeResult = await workflow(
@@ -809,11 +933,18 @@ const executeResult = await workflow(
 )
 
 log(`Execute: ${executeResult.completed.length} completed, ${executeResult.blocked.length} blocked`)
+await flowState('update', { phase: 'execute',
+  progress: { tasks_passed: executeResult.completed.length,
+    tasks_total: executeResult.completed.length + executeResult.blocked.length } })
+auditEvents.push({ phase: 'execute', event: 'phase_complete',
+  completed: executeResult.completed.length, blocked: executeResult.blocked.length })
 
 // ── Phase 9: Gates ───────────────────────────────────────────────────
 
 phase('Gates')
+await flowState('event', { type: 'phase_start', phase: 'gates' })
 const gates = []
+let gateCursor = 0
 
 function priorPassed() { return gates.length === 0 || gates[gates.length - 1].passed }
 
@@ -825,6 +956,8 @@ gates.push({
   detail: `${executeResult.completed.length} completed, ${executeResult.blocked.length} blocked`,
   fix_applied: '',
 })
+gateCursor = 1
+await flowState('update', { gate_states: gates, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 
 const g2Passed = executeResult.completed.length > 0 &&
   executeResult.completed.every(r => r.code_passed)
@@ -834,6 +967,8 @@ gates.push({
   detail: g2Passed ? 'All reviews passed' : 'Some reviews have unresolved issues',
   fix_applied: '',
 })
+gateCursor = 2
+await flowState('update', { gate_states: gates, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 
 // Gate 3: test suite passes
 if (priorPassed()) {
@@ -855,6 +990,8 @@ Report: passed (all green) or failed.`,
   }
 
   gates.push({ gate: 3, passed, detail, fix_applied: iters > 1 ? `${iters} attempts` : '' })
+  gateCursor = 3
+  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 }
 
 // Gate 4: runtime evidence
@@ -868,6 +1005,8 @@ Report what you observed.`,
     agentOpts('gate-4-runtime', 'Gates', GATE_RESULT),
   )
   gates.push(r)
+  gateCursor = 4
+  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 }
 
 // Gate 5: verify against spec
@@ -879,6 +1018,8 @@ Report: passed (every requirement verified) or failed with specific gaps.`,
     agentOpts('gate-5-spec-verify', 'Gates', GATE_RESULT),
   )
   gates.push(r)
+  gateCursor = 5
+  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 }
 
 // Gate 6: final code review
@@ -913,6 +1054,8 @@ Minimal fixes — do not refactor.`,
     detail: passed ? 'Final review passed' : `Issues remain after ${iters} fixes`,
     fix_applied: iters > 0 ? `${iters} fix rounds` : '',
   })
+  gateCursor = 6
+  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 }
 
 // Gate 7: git clean
@@ -923,6 +1066,8 @@ If clean: report passed.`,
     agentOpts('gate-7-git-clean', 'Gates', GATE_RESULT),
   )
   gates.push(r)
+  gateCursor = 7
+  await flowState('update', { gate_states: gates, progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 }, resume_cursor: { phase: 'gates', gate_cursor: gateCursor } })
 }
 
 // Fill remaining gates as skipped
@@ -935,7 +1080,22 @@ while (gates.length < 7) {
   })
 }
 
-// ── Return complete results ──────────────────────────────────────────
+// ── Finalize state and return ───────────────────────────────────────────────────────────────────────────────\n
+const finalResumeCursor = {
+  phase: gates.every(g => g.passed) ? 'finalize' : 'gates',
+  gate_cursor: gateCursor,
+  spec_path: spec.spec_path,
+  plan_path: planResult.plan_path,
+}
+
+await flowState('update', {
+  phase: 'finalize',
+  status: gates.every(g => g.passed) ? 'DONE' : 'BLOCKED_ESCALATING',
+  resume_cursor: finalResumeCursor,
+  progress: { gates_passed: gates.filter(g => g.passed).length, gates_total: 7 },
+})
+await flowState('event', { type: 'run_complete', all_passed: gates.every(g => g.passed) })
+auditEvents.push({ phase: 'finalize', event: 'run_complete', all_passed: gates.every(g => g.passed) })
 
 return {
   spec: { path: spec.spec_path, review_passed: specReview.passed },
@@ -943,4 +1103,8 @@ return {
   execute: executeResult,
   gates,
   all_passed: gates.every(g => g.passed),
+  state_file: state_file || null,
+  audit_events: auditEvents,
+  evidence_dir: evidence_dir || null,
+  resume_cursor: finalResumeCursor,
 }
