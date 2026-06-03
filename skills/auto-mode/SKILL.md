@@ -53,6 +53,24 @@ No more per-phase state tracking, no manual pool management, no gate loops.
 
 When the Workflow tool is NOT available, use the manual pipeline below.
 
+## State Writer Handoff
+
+When running in workflow-driven mode, the full-auto-pipeline delegates state management to `flow-state.py` via the `flowState` helper:
+
+```
+flowState(cmd, payload) → workflow({ scriptPath: flowStateScriptPath }, { command, state_file, payload_json, expected_revision })
+```
+
+- `cmd='event'` — record a phase or audit event (e.g., `phase_start`, `run_complete`)
+- `cmd='update'` — write a state update with optimistic concurrency via `expected_revision`
+- The helper returns `{ ok: true, revision: N }` on success
+- If `flow_state_script_path` is not provided, the helper is a no-op
+- Revision tracking prevents lost updates: if `expected_revision` does not match the current state file revision, the write fails
+
+The state file path (`state_file` arg) is `.claude/auto/<task-name>/state.json`. The audit directory (`audit_dir` arg) is `.claude/auto/<task-name>/`.
+
+Full state schema, phase enums, and status values: see `references/state-machine.md`.
+
 ## Trigger Mechanism
 
 1. `/auto <task description>` — start a new auto-mode pipeline
@@ -62,7 +80,13 @@ When the Workflow tool is NOT available, use the manual pipeline below.
 5. `/auto --new <task>` — start fresh even if old state.json exists (old audit trail preserved)
 6. `/auto --list` — list all dangling auto-mode tasks with status, updated_at, task_name
 
+**Slash parsing is harness-owned:** The `/auto` commands above are convention-level triggers documented here for hook-level awareness. Actual slash parsing depends on the harness (Claude Code CLI, IDE, etc.). When the harness does not support slash commands, use the environment variable trigger or natural language instead.
+
 **Conflict detection:** If your human partner says `/auto <new-task>` while `.claude/auto/*/state.json` files exist, print a warning listing the dangling task(s) and ask: resume old, start new anyway, or cancel.
+
+## One Active Run Per Worktree
+
+Only one auto-mode run may be active in a given worktree at a time. If a state file exists at `.claude/auto/<task-name>/state.json` with a non-terminal status (`ACTIVE`, `PAUSED_COMPACTING`, `BLOCKED_ESCALATING`, `DECIDING`, `AWAITING_SUBAGENTS`, `AWAITING_SHELL`, `EXECUTING_GATE`, `FINISHING`), a new `/auto` invocation must print a warning and offer to resume or cancel. Terminal statuses (`DONE`, `STOPPED_ASK_USER`, `FAILED_FATAL`, `CANCELLED`) do not block new runs.
 
 ## Decision Audit Trail
 
@@ -131,17 +155,17 @@ Invoke `Skill("claude-code-flow:finishing-a-development-branch")`.
 
 ## Completion Gates (Hard Gates Before Finishing)
 
-These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mode fixes and retries. Do NOT proceed to finishing until ALL gates pass.
+These gates fire BEFORE entering the finishing phase. If any gate fails, auto-mode fixes and retries. Do NOT proceed to finishing until ALL gates pass. Gates use the canonical names from the implementation (not numbered).
 
-| # | Gate | Check | Timeout |
-|---|------|-------|---------|
-| 1 | All plan tasks executed | All `task_states` entries `done` (`task_states.*.status == "done"`) and `progress.tasks_total == progress.tasks_completed` | 10 iterations |
-| 2 | All per-task reviews passed | Spec reviewer ✅ + code reviewer ✅ for each task | 5 iterations/issue |
-| 3 | Test suite passes | Run project test command, zero failures | 10 iterations |
-| 4 | Runtime evidence passes | For runnable deliverables: build/run smoke path succeeds, exit code is zero, no crash/hang detected, evidence artifacts exist, acceptance items are checked or explicitly marked unverified, and no blocking runtime risk remains. For non-runnable deliverables: auto-pass. | 10 iterations |
-| 5 | Verification against spec | Read spec line by line, verify each requirement in codebase | 10 iterations |
-| 6 | Final code review passed | Dispatch final reviewer on full diff, must return approved | 5 iterations/issue |
-| 7 | Git status clean | `git status --porcelain` empty | 10 iterations |
+| # | Gate Name | Predicate | Retry Cap |
+|---|-----------|-----------|-----------|
+| 1 | `tasks_executed` | All tasks completed, zero blocked (`blocked.length === 0`) | 10 iterations |
+| 2 | `reviews_passed` | Spec reviewer and code reviewer passed for every completed task | 5 iterations/issue |
+| 3 | `tests_pass` | Project test command exits with zero failures | 10 iterations |
+| 4 | `runtime_evidence` | For runnable deliverables: build/run smoke path succeeds, exit code is zero, no crash/hang detected, evidence manifest generated, acceptance items checked or recorded, no blocking runtime risk. For non-runnable: auto-pass. | 10 iterations |
+| 5 | `spec_verified` | Read spec line by line, verify each requirement in codebase | 10 iterations |
+| 6 | `final_review` | Dispatch final reviewer on full diff, must return approved. If execute phase already produced a valid final review, reuse it. | 5 iterations/issue |
+| 7 | `git_clean` | `git status --porcelain` empty (validation-only, does NOT instruct commit) | 10 iterations |
 
 Tasks are not complete until they have:
 - passing tests where applicable
@@ -155,18 +179,62 @@ Tasks are not complete until they have:
 
 Gates 2 and 6 use reviewer loops (5-iteration limit per issue, tracked in `reviewer_loop_iterations`). Gates 1, 3, 4, 5, 7 track iterations in `gate_states` entries (10-iteration timeout as backstop). If any gate exceeds its limit, auto-mode stops with: which gate is stuck, what was attempted, what the user can do.
 
-Runtime verification state:
+Runtime verification produces a structured manifest for Gate 4:
 
-```yaml
-runtime_verification:
-  status: pending | running | passed | failed | unverifiable
-  build: passed | failed | skipped
-  tests: passed | failed | skipped
-  smoke: passed | failed | skipped
-  crash_detected: boolean
-  hang_detected: boolean
-  evidence_dir: string
+```json
+{
+  "commands": "<commands that were run>",
+  "exit_codes": [0],
+  "logs": [],
+  "screenshots": [],
+  "artifacts": [],
+  "crash": false,
+  "hang": false,
+  "unverified_acceptance_items": [],
+  "blocking_risks": [],
+  "generated_at": "<ISO 8601>"
+}
 ```
+
+## Resume Cursor Mapping
+
+When resuming a run, the `resume_cursor` from the previous run's result determines where to continue:
+
+| Cursor Field | Maps To | Resume Behavior |
+|-------------|---------|-----------------|
+| `phase` | `PHASE_ORDER` index | Skip all phases with index less than `phase_index` |
+| `phase_index` | Integer | Fast comparison for phase skip |
+| `gate_cursor` | 0-7 | Skip gates 0 through `gate_cursor - 1`. Gate records from `gate_states` are preserved. |
+| `gate_states` | Map of gate name to `{passed: bool}` | Used to validate that previously-passed gates are still valid (git log check) |
+| `spec_path` | File path | Skip research and synthesize phases if spec exists on disk |
+| `plan_path` | File path | Skip plan writing if plan exists on disk |
+| `result_replay` | Task ID array | Skip re-execution of tasks that already passed. These tasks appear in `results.passed` directly. |
+
+Resume flow:
+1. Read `state.json` from `.claude/auto/<task-name>/`
+2. Check `status` — if terminal, nothing to do
+3. Use `resume_cursor` to determine skip points
+4. Set `current_phase` and `current_step` from cursor
+5. Do NOT re-check gates where `gate_cursor` indicates they passed
+6. Do NOT re-execute tasks in `result_replay`
+7. Write `state.json` before every subsequent state change
+
+## Runtime Unverifiable Rules
+
+Not all deliverables can be verified at runtime. The pipeline handles unverifiable cases:
+
+- **Non-runnable deliverables** (documentation, config, static assets): Gate 4 auto-passes. `runtime_verification.status` is set to `unverifiable` rather than `passed`.
+- **Tasks with `runtime_evidence_required: "not_needed"`**: The runtime evidence gate is skipped for these tasks. They still pass through all other gates.
+- **Partially verifiable deliverables**: If some acceptance items cannot be verified at runtime, they are recorded in `unverified_acceptance_items` in the evidence manifest. These are non-blocking as long as no `blocking_risks` remain.
+- **Smoke test timeout**: If a smoke test times out, `hang` is set to `true` in the manifest and the gate fails with `next_action: "fix_runtime"`.
+
+A task is not complete until it has:
+- passing tests where applicable
+- at least one real runtime smoke result where applicable (or `runtime_evidence_required: "not_needed"`)
+- evidence artifacts on disk at `.claude/auto/<task-name>/evidence/` for runnable deliverables
+- acceptance items either checked or explicitly recorded in `unverified_acceptance_items`
+- known limitations explicitly recorded if anything remains unverified
+- no blocking runtime risk remaining
 
 ## State Machine & Interruption Recovery
 
@@ -190,6 +258,33 @@ Everything else is auto-decided: naming, file structure, library choices, UI lay
 1. **Before implementation:** Create or enter worktree via `Skill("claude-code-flow:using-git-worktrees")` unless already in one. Record `worktree_path` in `state.json`.
 2. **During finishing (merge back):** After successful merge, clean up the worktree if auto-mode created it.
 3. **On interruption:** Worktree persists. On resume, `state.json` tells auto-mode where the worktree is. `cd` into it before continuing.
+
+## Final Summary Disclosure
+
+When auto-mode finishes, it discloses:
+
+```
+Auto-mode complete. Decision trail at .claude/auto/<task-name>/
+  Phase: <final phase>
+  Status: <DONE | STOPPED_ASK_USER | FAILED_FATAL | CANCELLED>
+  Tasks: N total, M passed, X blocked, Y failed_review, Z needs_escalation
+  Gates: <gate_cursor>/7 passed
+  Clarifying questions auto-answered: N
+  Approaches evaluated: M
+  User interruptions: 0
+  Audit events: K
+
+  State file: .claude/auto/<task-name>/state.json
+  Evidence dir: .claude/auto/<task-name>/evidence/
+  Review: cat .claude/auto/<task-name>/decisions.md
+  Revert: git revert <merge-commit>
+```
+
+The final return from `full-auto-pipeline.workflow.js` includes these fields:
+- `state_file` — path to the state file
+- `audit_events` — array of all recorded events
+- `evidence_dir` — path to evidence directory
+- `resume_cursor` — cursor for mid-pipeline resumption (contains `phase`, `gate_cursor`, `gate_states`, `spec_path`, `plan_path`, `result_replay`)
 
 ## Risk Mitigation
 
