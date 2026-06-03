@@ -19,6 +19,7 @@ Covers:
 """
 
 import importlib.util
+import io
 import json
 import os
 import sys
@@ -1114,6 +1115,7 @@ class TestSubagentStartAdapter:
         _update_state(state_file, {"phase": "execute"})
 
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr('sys.stdin', io.StringIO('{}'))
 
         with patch.object(hooks, "auto_mode_active", return_value=state_file), \
              pytest.raises(SystemExit) as exc_info:
