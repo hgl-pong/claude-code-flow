@@ -1,0 +1,36 @@
+{
+  "state_schema_version": 1,
+  "revision": 6,
+  "task_name": "stopped-ask-user",
+  "safe_task_name": "stopped-ask-user",
+  "workflow_run_id": "5",
+  "phase": "execute",
+  "status": "STOPPED_ASK_USER",
+  "progress": {
+    "tasks_passed": 1,
+    "tasks_total": 3,
+    "gates_passed": 0,
+    "gates_total": 7
+  },
+  "groups": [["task-1"], ["task-2", "task-3"]],
+  "task_states": {
+    "task-1": {"status": "passed", "attempts": 1},
+    "task-2": {"status": "failed_review", "attempts": 5, "stage": "spec_review"},
+    "task-3": {"status": "queued", "attempts": 0}
+  },
+  "gate_states": [],
+  "runtime_verification": {},
+  "git_state": {"branch": "feature/ask-user"},
+  "resume_cursor": {
+    "phase": "execute",
+    "group_index": 1,
+    "completed_groups": 0,
+    "task_cursor": "task-2"
+  },
+  "audit_log": "audit/events.jsonl",
+  "evidence_dir": "evidence",
+  "worktree_path": "/tmp/test-project",
+  "base_ref": "main",
+  "created_at": "2026-06-01T00:00:00Z",
+  "updated_at": "2026-06-01T05:00:00Z"
+}

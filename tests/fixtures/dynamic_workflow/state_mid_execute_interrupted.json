@@ -1,0 +1,38 @@
+{
+  "state_schema_version": 1,
+  "revision": 5,
+  "task_name": "mid-execute-interrupt",
+  "safe_task_name": "mid-execute-interrupt",
+  "workflow_run_id": "1",
+  "phase": "execute",
+  "status": "ACTIVE",
+  "progress": {
+    "tasks_passed": 2,
+    "tasks_total": 5,
+    "gates_passed": 0,
+    "gates_total": 7
+  },
+  "groups": [["task-1", "task-2"], ["task-3", "task-4", "task-5"]],
+  "task_states": {
+    "task-1": {"status": "passed", "attempts": 1},
+    "task-2": {"status": "passed", "attempts": 1},
+    "task-3": {"status": "implementing", "attempts": 1},
+    "task-4": {"status": "queued", "attempts": 0},
+    "task-5": {"status": "queued", "attempts": 0}
+  },
+  "gate_states": [],
+  "runtime_verification": {},
+  "git_state": {"branch": "feature/mid-execute"},
+  "resume_cursor": {
+    "phase": "execute",
+    "group_index": 1,
+    "completed_groups": 1,
+    "task_cursor": "task-3"
+  },
+  "audit_log": "audit/events.jsonl",
+  "evidence_dir": "evidence",
+  "worktree_path": "/tmp/test-project",
+  "base_ref": "main",
+  "created_at": "2026-06-01T00:00:00Z",
+  "updated_at": "2026-06-01T01:30:00Z"
+}

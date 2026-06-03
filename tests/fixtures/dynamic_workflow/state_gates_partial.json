@@ -1,0 +1,43 @@
+{
+  "state_schema_version": 1,
+  "revision": 12,
+  "task_name": "gates-partial-pass",
+  "safe_task_name": "gates-partial-pass",
+  "workflow_run_id": "3",
+  "phase": "gates",
+  "status": "ACTIVE",
+  "progress": {
+    "tasks_passed": 4,
+    "tasks_total": 4,
+    "gates_passed": 3,
+    "gates_total": 7
+  },
+  "groups": [["task-1", "task-2"], ["task-3", "task-4"]],
+  "task_states": {
+    "task-1": {"status": "passed", "attempts": 1},
+    "task-2": {"status": "passed", "attempts": 1},
+    "task-3": {"status": "passed", "attempts": 1},
+    "task-4": {"status": "passed", "attempts": 1}
+  },
+  "gate_states": [
+    {"gate": "gate_1_tasks_executed", "passed": true, "iterations": 1},
+    {"gate": "gate_2_reviews_passed", "passed": true, "iterations": 1},
+    {"gate": "gate_3_tests_pass", "passed": true, "iterations": 1},
+    {"gate": "gate_4_runtime_evidence", "passed": false, "iterations": 2},
+    {"gate": "gate_5_spec_verified", "passed": false, "iterations": 0},
+    {"gate": "gate_6_final_review", "passed": false, "iterations": 0},
+    {"gate": "gate_7_git_clean", "passed": false, "iterations": 0}
+  ],
+  "runtime_verification": {"status": "partial", "smoke": "failed", "crash_detected": false, "hang_detected": false},
+  "git_state": {"branch": "feature/gates"},
+  "resume_cursor": {
+    "phase": "gates",
+    "gate_cursor": 3
+  },
+  "audit_log": "audit/events.jsonl",
+  "evidence_dir": "evidence",
+  "worktree_path": "/tmp/test-project",
+  "base_ref": "main",
+  "created_at": "2026-06-01T00:00:00Z",
+  "updated_at": "2026-06-01T03:00:00Z"
+}

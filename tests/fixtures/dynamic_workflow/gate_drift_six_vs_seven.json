@@ -1,0 +1,15 @@
+{
+  "task_name": "gate-drift-fixture",
+  "phase": "completion-gates",
+  "status": "EXECUTING_GATE",
+  "gate_states": {
+    "gate_1_tasks_executed": { "passed": true, "iterations": 1 },
+    "gate_2_reviews_passed": { "passed": true, "iterations": 1 },
+    "gate_3_tests_pass": { "passed": true, "iterations": 1 },
+    "gate_4_spec_verified": { "passed": true, "iterations": 1 },
+    "gate_5_final_review": { "passed": true, "iterations": 1 },
+    "gate_6_git_clean": { "passed": true, "iterations": 1 }
+  },
+  "all_passed": true,
+  "updated_at": "2026-06-03T12:00:00Z"
+}
