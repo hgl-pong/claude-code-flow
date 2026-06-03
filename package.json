@@ -1,6 +1,0 @@
-{
-  "name": "claude-code-flow",
-  "version": "1.7.0",
-  "type": "module",
-  "main": ".opencode/plugins/claude-code-flow.js"
-}

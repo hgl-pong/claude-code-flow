@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Integration Test: Auto-Mode Hook Lifecycle (Python)
 # Verifies all 6 auto-mode hooks via auto-mode-hooks.py
 set -euo pipefail
@@ -26,14 +26,14 @@ cd "$TEST_PROJECT"
 
 mkdir -p .claude/auto/active-task .claude/auto/done-task .claude/auto/stopped-task
 
-# Active task — subagent-driven-development phase with 2 active agents
+# Active task — workflow-driven-development phase with 2 active agents
 cat > .claude/auto/active-task/state.json << 'JSONEOF'
 {
   "task_name": "active-task",
-  "phase": "subagent-driven-development",
+  "phase": "workflow-driven-development",
   "status": "AWAITING_SUBAGENTS",
   "current_step": "dispatch-parallel",
-  "progress": { "phase_order": [], "completed": ["brainstorming","writing-plans"], "current": "subagent-driven-development", "pending": ["completion-gates","finishing"], "tasks_total": 3, "tasks_completed": 1, "tasks_reviewed": 0 },
+  "progress": { "phase_order": [], "completed": ["brainstorming","writing-plans"], "current": "workflow-driven-development", "pending": ["completion-gates","finishing"], "tasks_total": 3, "tasks_completed": 1, "tasks_reviewed": 0 },
   "active_agents": [
     { "agent_id": "agent-impl-2", "task_id": "task-2", "role": "implementer", "dispatched_at": "2026-05-28T12:00:00Z" },
     { "agent_id": "agent-review-3", "task_id": "task-3", "role": "code-reviewer", "dispatched_at": "2026-05-28T12:01:00Z" }
@@ -91,7 +91,7 @@ JSONEOF
 cat > .claude/auto/stopped-task/state.json << 'JSONEOF'
 {
   "task_name": "stopped-task",
-  "phase": "subagent-driven-development",
+  "phase": "workflow-driven-development",
   "status": "STOPPED_ASK_USER",
   "stopped_question": "Which library should we use?",
   "progress": { "tasks_total": 3, "tasks_completed": 0 },
@@ -253,7 +253,7 @@ run_hook "pre-compact" "$PC_IN" >/dev/null 2>/dev/null || true
 SNAPSHOT=".claude/auto/active-task/compact-snapshot.md"
 if [[ -f "$SNAPSHOT" ]]; then
     pass "PreCompact: creates compact-snapshot.md"
-    if grep -q "active-task" "$SNAPSHOT" && grep -q "subagent-driven-development" "$SNAPSHOT"; then
+    if grep -q "active-task" "$SNAPSHOT" && grep -q "workflow-driven-development" "$SNAPSHOT"; then
         pass "PreCompact: snapshot has task+phase"
     else
         fail "PreCompact: snapshot content incomplete"
@@ -336,7 +336,7 @@ echo ""
 echo "--- Test 12: Multiple active tasks → picks newest ---"
 
 cat > .claude/auto/active-task/state.json << 'JSONEOF'
-{"task_name":"old-task","phase":"subagent-driven-development","status":"AWAITING_SUBAGENTS","progress":{"tasks_total":1,"tasks_completed":0},"active_agents":[],"task_states":{"t1":{"status":"implementing"}},"gate_states":{"gate_1_tasks_executed":{"passed":false,"iterations":0}},"updated_at":"2026-05-28T10:00:00Z"}
+{"task_name":"old-task","phase":"workflow-driven-development","status":"AWAITING_SUBAGENTS","progress":{"tasks_total":1,"tasks_completed":0},"active_agents":[],"task_states":{"t1":{"status":"implementing"}},"gate_states":{"gate_1_tasks_executed":{"passed":false,"iterations":0}},"updated_at":"2026-05-28T10:00:00Z"}
 JSONEOF
 mkdir -p .claude/auto/newer-task
 cat > .claude/auto/newer-task/state.json << 'JSONEOF'

@@ -1,7 +1,14 @@
+﻿// Invoked by the workflow-driven-development skill for the full-auto pipeline mode.
+// Orchestrates: scope → research → synthesize spec → review spec → write plan →
+// review plan → parse plan → execute (delegates to execute-plan workflow) → 7 gates.
+//
+// See SKILL.md for launch instructions.
+// Delegates to execute-plan.workflow.js via workflow() at the Execute phase.
+
 export const meta = {
   name: 'full-auto-pipeline',
   description:
-    'Full auto-mode pipeline: research → spec → plan review → parse plan → execute → gates. One workflow, zero pauses.',
+    'Full auto-mode pipeline: research → spec → plan review → parse plan → execute → gates',
   phases: [
     { title: 'Scope', detail: 'Determine research angles' },
     { title: 'Research', detail: 'Parallel research per angle' },
@@ -21,7 +28,6 @@ const {
   specs_dir,
   plans_dir,
   execute_plan_script_path,
-  prompts,
   model_tasks,
   max_retries,
 } = args
@@ -424,7 +430,6 @@ const executeResult = await workflow(
   {
     groups: parsed.groups,
     tasks: parsed.tasks,
-    prompts: prompts,
     worktree: worktree,
     model_tasks: model_tasks,
   },

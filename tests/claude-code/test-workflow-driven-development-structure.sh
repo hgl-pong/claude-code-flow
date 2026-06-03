@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Test: workflow-driven development — structure validation
 # Zero-cost static checks: file existence, JS syntax, JSON Schema validity, placeholder coverage
 set -euo pipefail
@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 
-SKILL_DIR="$SCRIPT_DIR/../../skills/subagent-driven-development"
+SKILL_DIR="$SCRIPT_DIR/../../skills/workflow-driven-development"
 
 echo "=== Test: workflow-driven development — structure ==="
 echo ""
@@ -24,16 +24,12 @@ check_file() {
 
 check_file "execute-plan.workflow.js"
 check_file "full-auto-pipeline.workflow.js"
-check_file "implementer-prompt-wf.md"
-check_file "spec-reviewer-prompt-wf.md"
-check_file "code-quality-reviewer-prompt-wf.md"
-check_file "fix-prompt-wf.md"
 
-echo "Test 1b: SKILL.md contains Workflow-Driven Mode section..."
-if grep -q "Workflow-Driven Mode" "$SKILL_DIR/SKILL.md"; then
-    pass "SKILL.md references Workflow-Driven Mode"
+echo "Test 1b: SKILL.md contains Workflow-Driven Development title..."
+if grep -q "Workflow-Driven Development" "$SKILL_DIR/SKILL.md"; then
+    pass "SKILL.md has correct title"
 else
-    fail "SKILL.md missing Workflow-Driven Mode section"
+    fail "SKILL.md missing Workflow-Driven Development title"
 fi
 
 echo ""
@@ -75,11 +71,11 @@ else
     errors=$((errors + 1))
 fi
 
-# Check no obvious syntax errors
-if head -1 "$SKILL_DIR/execute-plan.workflow.js" | grep -q "export const meta"; then
-    pass "Starts with export const meta"
+# Check meta block appears early (first non-comment, non-blank line)
+if head -15 "$SKILL_DIR/execute-plan.workflow.js" | grep -q "export const meta"; then
+    pass "export const meta appears in first 15 lines"
 else
-    fail "Missing export const meta at start"
+    fail "export const meta missing in first 15 lines"
     errors=$((errors + 1))
 fi
 
@@ -109,14 +105,14 @@ else
     fail "execute-plan.workflow.js meta missing required fields"
 fi
 
-echo "Test 2d: Workflow script references all prompts keys..."
-for key in 'prompts\.implement' 'prompts\.specReview' 'prompts\.codeReview' 'prompts\.fix'; do
-    if grep -q "$key" "$SKILL_DIR/execute-plan.workflow.js"; then
-        pass "workflow script uses $key"
-    else
-        fail "workflow script missing $key reference"
-    fi
-done
+echo "Test 2d: Workflow script builds prompts inline..."
+if grep -q "implementPrompt" "$SKILL_DIR/execute-plan.workflow.js" && \
+   grep -q "specReviewPrompt" "$SKILL_DIR/execute-plan.workflow.js" && \
+   grep -q "codeReviewPrompt" "$SKILL_DIR/execute-plan.workflow.js"; then
+    pass "workflow script has inline prompt builder functions"
+else
+    fail "workflow script missing inline prompt builders"
+fi
 
 echo ""
 
@@ -170,42 +166,37 @@ fi
 
 echo ""
 
-# ── Test 4: Prompt templates contain required placeholders ──────────────
-echo "Test 4: Prompt template placeholders..."
+# ── Test 4: Behavioral content embedded in workflow script ────────────
+echo "Test 4: Behavioral content in workflow script..."
 
-check_placeholder() {
-    local file="$1"
-    local placeholder="$2"
-    if grep -F -q "$placeholder" "$SKILL_DIR/$file"; then
-        pass "$file contains $placeholder"
-    else
-        fail "$file missing placeholder: $placeholder"
-    fi
-}
+if grep -q "Behavioral Guards" "$SKILL_DIR/execute-plan.workflow.js"; then
+    pass "execute-plan.workflow.js embeds Behavioral Guards table"
+else
+    fail "execute-plan.workflow.js missing Behavioral Guards"
+fi
 
-# implementer-prompt-wf.md
-check_placeholder "implementer-prompt-wf.md" "{{TASK_ID}}"
-check_placeholder "implementer-prompt-wf.md" "{{TASK_DESCRIPTION}}"
-check_placeholder "implementer-prompt-wf.md" "{{WORKTREE}}"
+if grep -q "Self-Review" "$SKILL_DIR/execute-plan.workflow.js"; then
+    pass "execute-plan.workflow.js embeds Self-Review checklist"
+else
+    fail "execute-plan.workflow.js missing Self-Review"
+fi
 
-# spec-reviewer-prompt-wf.md
-check_placeholder "spec-reviewer-prompt-wf.md" "{{TASK_DESCRIPTION}}"
-check_placeholder "spec-reviewer-prompt-wf.md" "{{IMPLEMENTER_SUMMARY}}"
-check_placeholder "spec-reviewer-prompt-wf.md" "{{FILES_MODIFIED}}"
+if grep -q "CRITICAL: Do Not Trust the Report" "$SKILL_DIR/execute-plan.workflow.js"; then
+    pass "execute-plan.workflow.js embeds adversarial review stance"
+else
+    fail "execute-plan.workflow.js missing adversarial stance"
+fi
 
-# code-quality-reviewer-prompt-wf.md
-check_placeholder "code-quality-reviewer-prompt-wf.md" "{{TASK_SUMMARY}}"
-check_placeholder "code-quality-reviewer-prompt-wf.md" "{{COMMIT_SHA}}"
-check_placeholder "code-quality-reviewer-prompt-wf.md" "{{FILES_MODIFIED}}"
-
-# fix-prompt-wf.md
-check_placeholder "fix-prompt-wf.md" "{{ISSUES}}"
-check_placeholder "fix-prompt-wf.md" "{{FILES_MODIFIED}}"
+if grep -q "When You're in Over Your Head" "$SKILL_DIR/execute-plan.workflow.js"; then
+    pass "execute-plan.workflow.js embeds escalation guidance"
+else
+    fail "execute-plan.workflow.js missing escalation guidance"
+fi
 
 echo ""
 
-# ── Test 5: Existing files unchanged ────────────────────────────────────
-echo "Test 5: Existing files unchanged..."
+# ── Test 5: Canonical prompt files unchanged ──────────────────────────
+echo "Test 5: Canonical prompt files exist..."
 
 ORIGINAL_FILES=(
     "implementer-prompt.md"
@@ -215,23 +206,20 @@ ORIGINAL_FILES=(
 
 for file in "${ORIGINAL_FILES[@]}"; do
     if [ -f "$SKILL_DIR/$file" ]; then
-        pass "$file still exists (not replaced by -wf variant)"
+        pass "$file exists"
     else
-        fail "$file is missing (may have been replaced by -wf variant)"
+        fail "$file is missing"
     fi
 done
 
-echo "Test 5b: New files don't overwrite existing files..."
-# -wf files should be distinct files, not replacing existing ones
-for file in "${ORIGINAL_FILES[@]}"; do
-    wf_file="${file%.md}-wf.md"
-    if [ -f "$SKILL_DIR/$wf_file" ]; then
-        # Both exist — good
-        :
+echo "Test 5b: WF duplicates removed..."
+for wf_file in "implementer-prompt-wf.md" "spec-reviewer-prompt-wf.md" "code-quality-reviewer-prompt-wf.md" "fix-prompt-wf.md"; do
+    if [ ! -f "$SKILL_DIR/$wf_file" ]; then
+        pass "$wf_file correctly removed (merged into workflow script)"
+    else
+        fail "$wf_file should not exist (content is now in workflow script)"
     fi
 done
-# If we got here without errors, all old + new files coexist
-pass "All -wf files coexist alongside original templates"
 
 echo ""
 

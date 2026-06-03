@@ -1,4 +1,4 @@
----
+﻿---
 name: brainstorming
 description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
 ---
@@ -24,7 +24,7 @@ You MUST create a task for each of these items and complete them in order:
 1. **Explore project context** — check files, docs, recent commits
 2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Dispatch researcher for product/market/feasibility research** — after requirements are clear, dispatch researcher subagent using `skills/subagent-driven-development/researcher-prompt.md`. Specify research type (`product-research`, `market-research`, `feasibility-research`) based on task needs. Researcher saves to `.claude/research/<task-name>/<type>-research.md`. Read report before step 6.
+4. **Dispatch researcher for product/market/feasibility research** — after requirements are clear, dispatch researcher subagent using `skills/workflow-driven-development/researcher-prompt.md`. Specify research type (`product-research`, `market-research`, `feasibility-research`) based on task needs. Researcher saves to `.claude/research/<task-name>/<type>-research.md`. Read report before step 6.
 5. **Run frontend/UI design path** (if task involves pages, components, styling, layout, interaction, visual states, or visible UI) — designer writes `.claude/research/<task-name>/ui-research.md`, produces `DESIGN.md`, and design reviewer approves it
 6. **Propose 2-3 approaches** — with trade-offs and your recommendation, citing research artifacts
 7. **Present design** — in sections scaled to their complexity, get user approval after each section
@@ -96,7 +96,7 @@ digraph brainstorming {
 - Focus on understanding: purpose, constraints, success criteria
 **Research artifacts:**
 
-- Once requirements are clear, dispatch a researcher subagent using `skills/subagent-driven-development/researcher-prompt.md` before proposing approaches or drafting the spec.
+- Once requirements are clear, dispatch a researcher subagent using `skills/workflow-driven-development/researcher-prompt.md` before proposing approaches or drafting the spec.
 - Specify research type: `product-research`, `market-research`, or `feasibility-research`. (UI research is handled separately by the designer subagent in step 5.)
 - Researcher uses dual-source tools (local codebase + web search) and saves to `.claude/research/<task-name>/<type>-research.md`.
 - All research files go to `.claude/research/<task-name>/` with source provenance on every finding.
@@ -107,7 +107,7 @@ digraph brainstorming {
 
 - If the task involves pages, components, styling, layout, interaction, visual states, or any visible UI, dispatch a designer before proposing approaches.
 - The designer must save UI research to `.claude/research/<task-name>/ui-research.md` before producing root `DESIGN.md`.
-- Dispatch the design reviewer using `skills/subagent-driven-development/design-reviewer-prompt.md`.
+- Dispatch the design reviewer using `skills/workflow-driven-development/design-reviewer-prompt.md`.
 - If the design reviewer finds issues, the designer revises and the same reviewer re-reviews. Repeat until approved.
 - Do not proceed to the general design/spec or implementation planning until `DESIGN.md` is approved.
 - The approved `DESIGN.md` is binding for downstream UI implementation.

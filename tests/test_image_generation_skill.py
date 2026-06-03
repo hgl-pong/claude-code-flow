@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,7 +38,6 @@ def test_image_generation_skill_frontmatter_and_routing_contract():
     assert "image" in meta["description"].lower()
     assert "artist" in meta["description"].lower()
     assert "artist" in skill.lower()
-    assert "CCF_MAX_PARALLEL_AGENTS" in skill
     assert "manifest" in skill.lower()
     assert "BLOCKED" in skill
     assert "cx/gpt-5.5-image" in skill
@@ -48,7 +47,7 @@ def test_image_generation_skill_frontmatter_and_routing_contract():
 
 
 def test_artist_prompt_status_protocol_and_manifest_contract():
-    prompt = read("skills/subagent-driven-development/artist-prompt.md")
+    prompt = read("skills/workflow-driven-development/artist-prompt.md")
 
     for status in ["DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED"]:
         assert status in prompt
@@ -62,8 +61,8 @@ def test_artist_prompt_status_protocol_and_manifest_contract():
     assert "rate limit" in prompt.lower()
 
 
-def test_subagent_driven_development_lists_artist_prompt():
-    skill = read("skills/subagent-driven-development/SKILL.md")
+def test_workflow_driven_development_lists_artist_prompt():
+    skill = read("skills/workflow-driven-development/SKILL.md")
 
     assert "artist-prompt.md" in skill
     assert "image generation" in skill.lower()

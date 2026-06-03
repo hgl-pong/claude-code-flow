@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Test: designer-prompt.md content verification
 # Static checks — no Claude Code invocation needed
 set -euo pipefail
@@ -6,8 +6,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 
-PROMPT_FILE="$SCRIPT_DIR/../../skills/subagent-driven-development/designer-prompt.md"
-FORMAT_FILE="$SCRIPT_DIR/../../skills/subagent-driven-development/design-md-format.md"
+PROMPT_FILE="$SCRIPT_DIR/../../skills/workflow-driven-development/designer-prompt.md"
+FORMAT_FILE="$SCRIPT_DIR/../../skills/workflow-driven-development/design-md-format.md"
 
 echo "=== Test: designer-prompt.md content ==="
 echo ""

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Auto-mode hook helpers — shared JSON parsing and state detection."""
 
 import json
@@ -106,7 +106,7 @@ Current state summary:
 
 Instructions by phase:
 - brainstorming / writing-plans: Continue from current_step={step}. Auto-decide everything. Log to audit trail. Proceed to next phase when done.
-- subagent-driven-development: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter completion-gates.
+- workflow-driven-development: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter completion-gates.
 - completion-gates: Run gates in order ({failing}). Do NOT re-check passed gates. After all 7 pass, enter finishing.
 - finishing: Complete the merge, set status to DONE.
 

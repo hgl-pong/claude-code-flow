@@ -1,7 +1,0 @@
-[Previous assistant message]:
-Plan complete and saved to .claude/plans/auth-system.md.
-
-Using subagent-driven-development for execution — dispatching fresh subagent per task with review between tasks.
-
-[Your response]:
-subagent-driven-development, please

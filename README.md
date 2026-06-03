@@ -1,4 +1,4 @@
-# Claude Code Flow
+﻿# Claude Code Flow
 
 Claude Code Flow is a software development methodology for your coding agents, built on top of composable skills that trigger automatically at the right moments.
 
@@ -14,7 +14,7 @@ Once it's teased a spec out of the conversation, it shows it to you in chunks sh
 
 After you've signed off on the design, your agent puts together an implementation plan clear enough for an enthusiastic junior engineer with poor taste, no judgment, no project context, and an aversion to testing to follow. It emphasizes true red/green TDD, YAGNI (You Aren't Gonna Need It), and DRY.
 
-Next up, once you say "go", it launches a *subagent-driven-development* process, dispatching agents to work through each engineering task, inspecting and reviewing their work, and continuing forward. It's not uncommon for Claude to be able to work autonomously for a couple hours at a time without deviating from the plan.
+Next up, once you say "go", it launches a *workflow-driven-development* process, dispatching agents to work through each engineering task, inspecting and reviewing their work, and continuing forward. It's not uncommon for Claude to be able to work autonomously for a couple hours at a time without deviating from the plan.
 
 There's a bunch more to it, but that's the core of the system. And because the skills trigger automatically, you don't need to do anything special. Your coding agent just has Claude Code Flow.
 
@@ -71,7 +71,7 @@ Reinstall from scratch:
 
 3. **writing-plans** — Activates with approved design. Breaks work into bite-sized tasks (2–5 minutes each). Every task has exact file paths, complete code, verification steps.
 
-4. **subagent-driven-development** or **executing-plans** — Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
+4. **workflow-driven-development** or **executing-plans** — Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
 
 5. **test-driven-development** — Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
 
@@ -101,7 +101,7 @@ Reinstall from scratch:
 - **receiving-code-review** — Responding to feedback
 - **using-git-worktrees** — Parallel development branches
 - **finishing-a-development-branch** — Merge/PR decision workflow
-- **subagent-driven-development** — Fast iteration with two-stage review (spec compliance, then code quality)
+- **workflow-driven-development** — Fast iteration with two-stage review (spec compliance, then code quality)
 
 **Meta**
 - **writing-skills** — Create new skills following best practices (includes testing methodology)

@@ -1,11 +1,11 @@
-# Auto-Mode State Machine Reference
+﻿# Auto-Mode State Machine Reference
 
 ## `state.json` Schema
 
 ```json
 {
   "task_name": "<sanitized task name slug>",
-  "phase": "<brainstorming|writing-plans|subagent-driven-development|completion-gates|finishing>",
+  "phase": "<brainstorming|writing-plans|workflow-driven-development|completion-gates|finishing>",
   "status": "<DECIDING|AWAITING_SUBAGENT|AWAITING_SUBAGENTS|AWAITING_SHELL|EXECUTING_GATE|STOPPED_ASK_USER|FINISHING|DONE>",
   "status_detail": {
     "agent_id": "<subagent id, if AWAITING_SUBAGENT (legacy, single-agent)>",
@@ -17,10 +17,10 @@
     "completed_count": 0
   },
   "progress": {
-    "phase_order": ["brainstorming", "writing-plans", "subagent-driven-development", "completion-gates", "finishing"],
+    "phase_order": ["brainstorming", "writing-plans", "workflow-driven-development", "completion-gates", "finishing"],
     "completed": [],
     "current": "brainstorming",
-    "pending": ["writing-plans", "subagent-driven-development", "completion-gates", "finishing"],
+    "pending": ["writing-plans", "workflow-driven-development", "completion-gates", "finishing"],
     "tasks_total": 0,
     "tasks_completed": 0,
     "tasks_reviewed": 0
@@ -74,10 +74,10 @@
 | writing-plans | `technical-research` |
 | writing-plans | `write-plan` |
 | writing-plans | `plan-review-loop` |
-| subagent-driven-development | `dispatch-implementer` |
-| subagent-driven-development | `dispatch-parallel` |
-| subagent-driven-development | `spec-review-loop` |
-| subagent-driven-development | `code-review-loop` |
+| workflow-driven-development | `dispatch-implementer` |
+| workflow-driven-development | `dispatch-parallel` |
+| workflow-driven-development | `spec-review-loop` |
+| workflow-driven-development | `code-review-loop` |
 | completion-gates | `running-gates` |
 | finishing | `merging` |
 

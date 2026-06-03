@@ -1,4 +1,4 @@
-# Claude Code Skills Tests
+﻿# Claude Code Skills Tests
 
 Automated tests for claude-code-flow skills using Claude Code CLI.
 
@@ -25,7 +25,7 @@ This test suite verifies that skills are loaded correctly and Claude follows the
 
 ### Run specific test:
 ```bash
-./run-skill-tests.sh --test test-subagent-driven-development.sh
+./run-skill-tests.sh --test test-workflow-driven-development.sh
 ```
 
 ### Run with verbose output:
@@ -82,38 +82,20 @@ echo "=== All tests passed ==="
 
 ### Fast Tests (run by default)
 
-#### test-subagent-driven-development.sh
+#### test-workflow-driven-development.sh
 Tests skill content and requirements (~2 minutes):
-- Skill loading and accessibility
-- Workflow ordering (spec compliance before code quality)
-- Self-review requirements documented
-- Plan reading efficiency documented
-- Spec compliance reviewer skepticism documented
-- Review loops documented
-- Task context provision documented
+- Skill loading and name recognition
+- Four-step process: Prepare Context → Build Args → Launch → Handle Results
+- Pipeline stage ordering (implement → spec review → code review)
+- Retry behavior (up to 5 iterations per review stage)
+- Reviewer independence and skepticism
+- Results structure (completed/blocked/final_review)
+- Blocked task handling (re-dispatch, split, escalate)
+- Model selection (forge/oracle/prism/artist)
+- Red Flags (Never/Always rules)
+- Integration with required skills
 
 ### Integration Tests (use --integration flag)
-
-#### test-subagent-driven-development-integration.sh
-Full workflow execution test (~10-30 minutes):
-- Creates real test project with Node.js setup
-- Creates implementation plan with 2 tasks
-- Executes plan using subagent-driven-development
-- Verifies actual behaviors:
-  - Plan read once at start (not per task)
-  - Full task text provided in subagent prompts
-  - Subagents perform self-review before reporting
-  - Spec compliance review happens before code quality
-  - Spec reviewer reads code independently
-  - Working implementation is produced
-  - Tests pass
-  - Proper git commits created
-
-**What it tests:**
-- The workflow actually works end-to-end
-- Our improvements are actually applied
-- Subagents follow the skill correctly
-- Final code is functional and tested
 
 #### test-requesting-code-review.sh
 Behavioral test for the code reviewer subagent (~5 minutes):
@@ -146,7 +128,7 @@ Behavioral test for the code reviewer subagent (~5 minutes):
 
 With `--verbose`, you'll see full Claude output:
 ```bash
-./run-skill-tests.sh --verbose --test test-subagent-driven-development.sh
+./run-skill-tests.sh --verbose --test test-workflow-driven-development.sh
 ```
 
 Without verbose, only failures show output.

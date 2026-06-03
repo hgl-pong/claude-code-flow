@@ -1,4 +1,4 @@
----
+﻿---
 name: image-generation
 description: Use when the user wants to generate, draw, render, create, or edit images; delegates focused image work to artist subagents and supports bounded parallel batches
 ---
@@ -34,14 +34,14 @@ If a detail is unspecified, choose the simplest reasonable default. Ask only whe
 
 ## Dispatch model
 
-Delegate generation to `skills/subagent-driven-development/artist-prompt.md`.
+Delegate generation to `skills/workflow-driven-development/artist-prompt.md`.
 
 For one image or one tightly-coupled set, dispatch one artist subagent.
 
 For many independent images:
 
 1. Split the request into independent image jobs.
-2. Dispatch artist subagents concurrently up to `CCF_MAX_PARALLEL_AGENTS`.
+2. Dispatch artist subagents concurrently — the Workflow runtime manages parallelism automatically.
 3. Use lower concurrency if the provider has known rate limits, quota limits, or high cost.
 4. Do not parallelize jobs that depend on earlier generated images.
 5. Merge the returned manifests into one final summary.

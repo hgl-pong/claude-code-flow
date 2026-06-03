@@ -1,4 +1,4 @@
----
+﻿---
 name: writing-plans
 description: Use when you have a spec or requirements for a multi-step task, before touching code
 ---
@@ -24,7 +24,7 @@ If the spec covers multiple independent subsystems, it should have been broken i
 
 ## Technical Research Gate
 
-Before writing the plan, dispatch a researcher subagent using `skills/subagent-driven-development/researcher-prompt.md` with research type `technical-research`. Researcher saves to:
+Before writing the plan, dispatch a researcher subagent using `skills/workflow-driven-development/researcher-prompt.md` with research type `technical-research`. Researcher saves to:
 
 ```text
 .claude/research/<task-name>/technical-research.md
@@ -59,7 +59,7 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## Task Dependencies
 
-Declare `**Depends on:**` in each task header to enable parallel dispatch. When subagent-driven-development executes the plan, tasks with no dependencies run concurrently (up to `CCF_MAX_PARALLEL_AGENTS`). Tasks wait until all their `depends_on` tasks are `done`.
+Declare `**Depends on:**` in each task header to enable parallel dispatch. When workflow-driven-development executes the plan, tasks with no dependencies run concurrently (Workflow runtime manages parallelism automatically). Tasks wait until all their `depends_on` tasks are `done`.
 
 - If Task B creates a file that Task C imports → Task C depends on Task B
 - If tasks touch completely independent files → no dependency needed
@@ -82,7 +82,7 @@ Declare `**Depends on:**` in each task header to enable parallel dispatch. When 
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use claude-code-flow:subagent-driven-development (recommended) or claude-code-flow:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use claude-code-flow:workflow-driven-development (recommended) or claude-code-flow:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -169,10 +169,10 @@ After writing the complete plan, run a reviewer loop before offering execution c
 
 ## Execution Handoff
 
-After the plan reviewer approves the plan, save it and execute. Default to subagent-driven — inline is only for trivial tasks.
+After the plan reviewer approves the plan, save it and execute. Default to workflow-driven — inline is only for trivial tasks.
 
-**Default: Subagent-Driven**
-- **REQUIRED SUB-SKILL:** Use claude-code-flow:subagent-driven-development
+**Default: Workflow-Driven**
+- **REQUIRED SUB-SKILL:** Use claude-code-flow:workflow-driven-development
 - Fresh subagent per task + two-stage review
 
 **Inline Execution only when ALL of:**

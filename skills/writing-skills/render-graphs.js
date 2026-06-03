@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * Render graphviz diagrams from a skill's SKILL.md to SVG files.
@@ -93,8 +93,8 @@ function main() {
     console.error('  --combine    Combine all diagrams into one SVG');
     console.error('');
     console.error('Example:');
-    console.error('  ./render-graphs.js ../subagent-driven-development');
-    console.error('  ./render-graphs.js ../subagent-driven-development --combine');
+    console.error('  ./render-graphs.js ../workflow-driven-development');
+    console.error('  ./render-graphs.js ../workflow-driven-development --combine');
     process.exit(1);
   }
 

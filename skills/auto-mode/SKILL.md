@@ -1,4 +1,4 @@
----
+﻿---
 name: auto-mode
 description: Fully automatic development pipeline — brainstorming to merge, no user interaction. Trigger with /auto or 全自动模式
 ---
@@ -7,7 +7,7 @@ description: Fully automatic development pipeline — brainstorming to merge, no
 
 ## Overview
 
-Run the full Claude Code Flow pipeline — brainstorming → writing-plans → subagent-driven-development → finishing — without user interaction. Completion gates run between subagent-driven-development and finishing (tracked as a separate state-machine phase for recovery).
+Run the full Claude Code Flow pipeline — brainstorming → writing-plans → workflow-driven-development → finishing — without user interaction. Completion gates run between workflow-driven-development and finishing (tracked as a separate state-machine phase for recovery).
 
 **Core principle:** Automate every decision. Log everything. Never stop unless truly stuck.
 
@@ -20,18 +20,14 @@ Before entering the pipeline, check whether the `Workflow` tool is available.
 ### Workflow-Driven Mode (preferred, when available)
 
 When the Workflow tool is available, replace all 4 phases with a single workflow call.
-The workflow handles brainstorming, writing-plans, subagent-driven-development,
+The workflow handles brainstorming, writing-plans, workflow-driven-development,
 and completion gates in one deterministic run. Your job shrinks to:
 
 1. Create or enter a worktree via `Skill("claude-code-flow:using-git-worktrees")`
 2. Create `.claude/auto/<task-name>/` and write initial `state.json`
-3. Read the workflow scripts and prompt templates:
-   - `skills/subagent-driven-development/full-auto-pipeline.workflow.js`
-   - `skills/subagent-driven-development/execute-plan.workflow.js`
-   - `skills/subagent-driven-development/implementer-prompt-wf.md`
-   - `skills/subagent-driven-development/spec-reviewer-prompt-wf.md`
-   - `skills/subagent-driven-development/code-quality-reviewer-prompt-wf.md`
-   - `skills/subagent-driven-development/fix-prompt-wf.md`
+3. Read the workflow scripts (self-contained — prompts are embedded):
+   - `skills/workflow-driven-development/full-auto-pipeline.workflow.js`
+   - `skills/workflow-driven-development/execute-plan.workflow.js`
 4. Build the args:
    - `task` — the user's task description
    - `worktree` — absolute path to worktree
@@ -39,7 +35,6 @@ and completion gates in one deterministic run. Your job shrinks to:
    - `plans_dir` — `".claude/plans"`
    - `auto_dir` — `".claude/auto/<task-name>"`
    - `execute_plan_script_path` — absolute path to `execute-plan.workflow.js`
-   - `prompts` — `{implement, specReview, codeReview, fix}` with full template text
    - `model_tasks` — `null` or model name
    - `max_retries` — `5`
 5. Launch:
@@ -107,15 +102,15 @@ Invoke `Skill("claude-code-flow:writing-plans")` with the completed spec.
 | Technical research ambiguity | Stop and ask | Auto-resolve with best-guess based on research findings. Log to `decisions.md`. |
 | Plan reviewer loop | Fix → re-review until approved, then ask user | Same fix → re-review loop. When reviewer approves, proceed without asking user. |
 
-### Phase 3: Subagent-Driven Development
+### Phase 3: Workflow-Driven Development
 
-Invoke `Skill("claude-code-flow:subagent-driven-development")` with the plan.
+Invoke `Skill("claude-code-flow:workflow-driven-development")` with the plan.
 
-**Parallelism:** Read `CCF_MAX_PARALLEL_AGENTS` env var (default 5). Build dependency graph from `plan.tasks[].depends_on`. Independent tasks dispatch in parallel up to the pool limit. Review chain per task (spec → code quality) runs without blocking other tasks' implementers. Track active agents in `active_agents[]` and per-task progress in `task_states{}` within `state.json`.
+**Parallelism:** The Workflow runtime handles concurrency automatically (up to 16 agents). Build dependency graph from `plan.tasks[].depends_on` and pass topological groups to the workflow. Review chain per task (spec → code quality) runs within the pipeline. Track progress in `task_states{}` within `state.json`.
 
 | Situation | Normal Mode | Auto Mode |
 |-----------|-------------|-----------|
-| Dispatch phase | Parallel pool (same as auto) — build dependency graph, fill pool to `CCF_MAX_PARALLEL_AGENTS` with dispatchable tasks | Same as normal + write `state.json` with `status: AWAITING_SUBAGENTS`, populate `active_agents[]` and `task_states{}`. |
+| Dispatch phase | Build dependency graph, pass topological groups to workflow | Same as normal + write `state.json` with `status: AWAITING_SUBAGENTS`, populate `task_states{}`. |
 | Implementer DONE_WITH_CONCERNS | Read concerns, address if correctness/scope, proceed | Auto-read concerns. If correctness/scope issues: address, log, re-dispatch. If observations only: note and proceed to review. |
 | Implementer NEEDS_CONTEXT | Search codebase, infer context, re-dispatch. Ask user if still ambiguous. | Auto-search codebase, infer context, re-dispatch with additional info. Log to `decisions.md`. |
 | Implementer BLOCKED | Try in order: (1) more capable model, (2) smaller task, (3) additional context. Escalate if all fail. | Same + log each attempt. Only stop if all 3 fail. |
@@ -231,7 +226,7 @@ Everything else is auto-decided: naming, file structure, library choices, UI lay
 **Required workflow skills:**
 - **claude-code-flow:brainstorming** — Phase 1: requirements and design
 - **claude-code-flow:writing-plans** — Phase 2: implementation plan
-- **claude-code-flow:subagent-driven-development** — Phase 3: execute plan tasks
+- **claude-code-flow:workflow-driven-development** — Phase 3: execute plan tasks
 - **claude-code-flow:finishing-a-development-branch** — Final phase: merge and cleanup
 - **claude-code-flow:using-git-worktrees** — Worktree creation and management
 - **claude-code-flow:requesting-code-review** — Code review template for reviewer subagents

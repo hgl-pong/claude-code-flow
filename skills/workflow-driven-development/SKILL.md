@@ -1,99 +1,11 @@
 ---
-name: subagent-driven-development
-description: Use when executing implementation plans with independent tasks in the current session
+name: workflow-driven-development
+description: Use when executing implementation plans via Claude Code Dynamic Workflows — implement, review, fix pipeline runs in the background while your session stays responsive
 ---
 
-# Subagent-Driven Development
+# Workflow-Driven Development
 
-Execute plan by dispatching fresh subagent per task, with two-stage review after each: spec compliance review first, then code quality review.
-
-**Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
-
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
-
-**Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
-
-## Execution Mode Selection
-
-Before dispatching any subagents, check whether the `Workflow` tool is available in your tool list. If it is, use **Workflow-Driven Mode** (preferred). If not, or if you are unsure, fall back to **Subagent-Driven Mode** below.
-
-### Workflow-Driven Mode
-
-When the Workflow tool is available, use it to deterministically orchestrate the implement → spec review → code review pipeline. The Workflow runtime handles parallel dispatch, review chains, retry loops, and progress tracking — you don't manage pools or review triggers manually.
-
-**Pre-flight checklist:**
-
-1. Verify hooks don't interfere: if your project has PreToolUse hooks that block or auto-deny Bash/Edit/Write calls, confirm they exempt subagents by checking for `agent_id` in the hook input. Workflow agents run the same tools as regular subagents.
-
-2. Pre-approve shell commands: workflow agents run in `acceptEdits` mode for file edits, but shell commands not in your tool allowlist still prompt. Add your project's test/build commands to the allowlist before launching.
-
-3. Check your model: all workflow agents default to your session model. Check `/model` before a large run and set `model_tasks` in the args if you want to use a different model for implementers.
-
-**Step-by-step instructions:**
-
-**1. Prepare context (in your session):**
-
-Read the plan file once. Extract every task: `id`, `description`, `depends_on` (array of task IDs this task must wait for), and `complexity` (simple/full-stack/ui/design/research). Hold the full task descriptions in memory — workflow scripts can't read files.
-
-Build the dependency graph. Group tasks by topological level:
-- Level 0: tasks with empty `depends_on`
-- Level 1: tasks that depend only on Level 0 tasks
-- Level N: tasks that depend only on earlier levels
-
-Read these prompt templates:
-- `./implementer-prompt-wf.md` — contains `{{TASK_ID}}`, `{{TASK_DESCRIPTION}}`, `{{WORKTREE}}`
-- `./spec-reviewer-prompt-wf.md` — contains `{{TASK_DESCRIPTION}}`, `{{IMPLEMENTER_SUMMARY}}`, `{{FILES_MODIFIED}}`
-- `./code-quality-reviewer-prompt-wf.md` — contains `{{TASK_SUMMARY}}`, `{{COMMIT_SHA}}`, `{{FILES_MODIFIED}}`
-- `./fix-prompt-wf.md` — contains `{{ISSUES}}`, `{{FILES_MODIFIED}}`
-
-If any task involves UI, read the root `DESIGN.md`. Include relevant tokens, layout rules, and component states in that task's description.
-
-Read `./execute-plan.workflow.js` — this is the workflow script you'll pass to the Workflow tool.
-
-**2. Build the args:**
-
-Construct the `args` object:
-
-| Key | Value |
-|-----|-------|
-| `groups` | Array of arrays. `groups[0]` = Level 0 task IDs, `groups[1]` = Level 1, etc. |
-| `tasks` | Object keyed by task ID. Each: `{id, description}` |
-| `prompts.implement` | Full text of `implementer-prompt-wf.md` with placeholders intact |
-| `prompts.specReview` | Full text of `spec-reviewer-prompt-wf.md` with placeholders intact |
-| `prompts.codeReview` | Full text of `code-quality-reviewer-prompt-wf.md` with placeholders intact |
-| `prompts.fix` | Full text of `fix-prompt-wf.md` with placeholders intact |
-| `worktree` | Absolute path to current worktree |
-| `model_tasks` | `null` (use session model) or a model name string |
-
-**3. Launch the workflow:**
-
-```
-Workflow({
-  script: <contents of execute-plan.workflow.js>,
-  args: { groups, tasks, prompts, worktree, model_tasks }
-})
-```
-
-Announce: "Using workflow-driven development: N tasks in M dependency groups."
-
-The workflow runs in the background. Use `/workflows` to watch progress. Your session stays responsive.
-
-**4. Handle results:**
-
-When the workflow completes, inspect the returned `results` object:
-
-- `results.completed[]` — tasks that passed all reviews. Each has `id`, `spec_passed`, `code_passed`, `code_review`, `files`. Mark them done.
-- `results.blocked[]` — tasks the workflow couldn't complete. Each has `id`, `reason`, `impl`. Handle blocked tasks individually:
-  1. Dispatch with a more capable model
-  2. Split into smaller sub-tasks
-  3. Escalate to your human partner (stop condition met)
-- `results.final_review` — cross-task code review (present if all tasks passed). If it has Critical issues, fix them before proceeding.
-
-If all tasks are in `results.completed` and `results.final_review` has no Critical issues, proceed to **claude-code-flow:finishing-a-development-branch**.
-
-### Subagent-Driven Mode (fallback)
-
-When the Workflow tool is NOT available, follow the process below.
+Orchestrate implementation plan execution via Claude Code Dynamic Workflows. You prepare the plan context and build workflow arguments; the Workflow runtime handles parallel dispatch, review chains, retry loops, and progress tracking.
 
 ## When to Use
 
@@ -101,316 +13,189 @@ When the Workflow tool is NOT available, follow the process below.
 digraph when_to_use {
     "Have implementation plan?" [shape=diamond];
     "Trivial? (config-only, no logic/tests)" [shape=diamond];
-    "subagent-driven-development" [shape=box];
+    "workflow-driven-development" [shape=box];
     "executing-plans" [shape=box];
     "Manual execution or brainstorm first" [shape=box];
 
     "Have implementation plan?" -> "Trivial? (config-only, no logic/tests)" [label="yes"];
     "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
     "Trivial? (config-only, no logic/tests)" -> "executing-plans" [label="yes"];
-    "Trivial? (config-only, no logic/tests)" -> "subagent-driven-development" [label="no"];
+    "Trivial? (config-only, no logic/tests)" -> "workflow-driven-development" [label="no"];
 }
 ```
 
-**Default: subagent-driven.** Only fall back to executing-plans for trivial tasks (config-only, no new logic, no tests, no review loop).
-- Same session (no context switch)
-- Fresh subagent per task (no context pollution)
-- Two-stage review after each task: spec compliance first, then code quality
-- Faster iteration (no human-in-loop between tasks)
+**Default: workflow-driven.** Only fall back to executing-plans for trivial tasks (config-only, no new logic, no tests, no review loop).
 
-## The Process
+**Continuous execution:** Do not pause to check in with your human partner between tasks. The workflow runs autonomously in the background. The only reasons to stop are: BLOCKED tasks you cannot resolve after workflow completion, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
-```dot
-digraph process {
-    rankdir=TB;
+## How It Works
 
-    subgraph cluster_per_task {
-        label="Per Task (review chain runs independently per task; implementers run in parallel pool)";
-        "Dispatch implementer subagent (./implementer-prompt.md)" [shape=box];
-        "Implementer subagent asks questions?" [shape=diamond];
-        "Answer questions, provide context" [shape=box];
-        "Implementer subagent implements, tests, commits, self-reviews" [shape=box];
-        "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [shape=box];
-        "Spec reviewer subagent confirms code matches spec?" [shape=diamond];
-        "Implementer subagent fixes spec gaps" [shape=box];
-        "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [shape=box];
-        "Code quality reviewer subagent approves?" [shape=diamond];
-        "Implementer subagent fixes quality issues" [shape=box];
-        "Mark task done in TodoWrite" [shape=box];
-    }
+You do four things:
 
-    "Read plan, extract all tasks with full text, build dependency graph, create TodoWrite" [shape=box];
-    "Dispatchable tasks remain AND pool has free slots?" [shape=diamond];
-    "On any subagent completion: fire next step for that task, fill vacant pool slots" [shape=box style=filled fillcolor=lightblue];
-    "All tasks done?" [shape=diamond];
-    "Dispatch final code reviewer subagent for entire implementation" [shape=box];
-    "Use claude-code-flow:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
+1. **Prepare context** — read the plan, extract tasks, build dependency graph
+2. **Build args** — construct the workflow args object with groups and tasks
+3. **Launch** — call `Workflow()` once; it runs in the background
+4. **Handle results** — inspect `results.completed`, `results.blocked`, `results.final_review`
 
-    "Read plan, extract all tasks with full text, build dependency graph, create TodoWrite" -> "Dispatchable tasks remain AND pool has free slots?";
-    "Dispatchable tasks remain AND pool has free slots?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes (up to N max)"];
-    "Dispatchable tasks remain AND pool has free slots?" -> "All tasks done?" [label="no"];
-    "Dispatch implementer subagent (./implementer-prompt.md)" -> "Implementer subagent asks questions?";
-    "Implementer subagent asks questions?" -> "Answer questions, provide context" [label="yes"];
-    "Answer questions, provide context" -> "Dispatch implementer subagent (./implementer-prompt.md)";
-    "Implementer subagent asks questions?" -> "Implementer subagent implements, tests, commits, self-reviews" [label="no"];
-    "Implementer subagent implements, tests, commits, self-reviews" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)";
-    "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" -> "Spec reviewer subagent confirms code matches spec?";
-    "Spec reviewer subagent confirms code matches spec?" -> "Implementer subagent fixes spec gaps" [label="no"];
-    "Implementer subagent fixes spec gaps" -> "Dispatch spec reviewer subagent (./spec-reviewer-prompt.md)" [label="re-review"];
-    "Spec reviewer subagent confirms code matches spec?" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="yes"];
-    "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" -> "Code quality reviewer subagent approves?";
-    "Code quality reviewer subagent approves?" -> "Implementer subagent fixes quality issues" [label="no"];
-    "Implementer subagent fixes quality issues" -> "Dispatch code quality reviewer subagent (./code-quality-reviewer-prompt.md)" [label="re-review"];
-    "Code quality reviewer subagent approves?" -> "Mark task done in TodoWrite" [label="yes"];
-    "Mark task done in TodoWrite" -> "On any subagent completion: fire next step for that task, fill vacant pool slots";
-    "On any subagent completion: fire next step for that task, fill vacant pool slots" -> "Dispatchable tasks remain AND pool has free slots?";
-    "All tasks done?" -> "Dispatch final code reviewer subagent for entire implementation" [label="yes"];
-    "All tasks done?" -> "On any subagent completion: fire next step for that task, fill vacant pool slots" [label="no"];
-    "Dispatch final code reviewer subagent for entire implementation" -> "Use claude-code-flow:finishing-a-development-branch";
-}
+The Workflow runtime executes `execute-plan.workflow.js`, a self-contained script that embeds all prompt logic (behavioral guards, self-review checklists, adversarial review stances) drawn from the canonical prompt templates. You do not manage pools, review triggers, or retry logic — the runtime does that.
+
+## Step 1: Prepare Context
+
+Read the plan file once. For every task, extract:
+
+- `id` — task identifier (e.g. "task-1")
+- `description` — the FULL text from the plan (all implementation details)
+- `depends_on` — array of task IDs this task must wait for (empty if none)
+- `complexity` — simple, full-stack, ui, design, research
+
+Build the dependency graph. Group tasks by topological level:
+
+- Level 0: tasks with empty `depends_on`
+- Level 1: tasks that depend only on Level 0 tasks
+- Level N: tasks that depend only on earlier levels
+
+Read `./execute-plan.workflow.js` — this is the workflow script. The script is self-contained: all agent prompts (behavioral guards, self-review checklists, review dimensions) are embedded in it.
+
+If any task involves UI, read the root `DESIGN.md`. Include relevant design tokens, layout rules, component states, and accessibility requirements in that task's description text.
+
+## Step 2: Build Args
+
+Construct the `args` object:
+
+| Key | Value |
+|-----|-------|
+| `groups` | Array of arrays. `groups[0]` = Level 0 task IDs, `groups[1]` = Level 1, etc. |
+| `tasks` | Object keyed by task ID. Each value: `{id, description}` — description is the FULL plan text for that task |
+| `worktree` | Absolute path to current worktree |
+| `model_tasks` | `null` (use session model) or a model name string (see Model Selection) |
+
+The workflow script embeds all prompt content — you only pass data. No prompt templates to read or pass.
+
+For **full-auto pipeline mode**, also read `./full-auto-pipeline.workflow.js` and construct the extended args with `task`, `specs_dir`, `plans_dir`, `execute_plan_script_path`, `model_tasks`, `max_retries`.
+
+## Step 3: Launch
+
+```
+Workflow({
+  script: <contents of execute-plan.workflow.js>,
+  args: { groups, tasks, worktree, model_tasks }
+})
 ```
 
-## Parallel Execution
+Announce: "Using workflow-driven development: N tasks in M dependency groups."
 
-Tasks that share no files or dependencies can implement in parallel. Use a pool model: up to `CCF_MAX_PARALLEL_AGENTS` concurrent implementers (default 5). Reviews happen in-chain per task — when any implementer finishes, its spec and code reviewers fire immediately, overlapping with other implementers still running. The pool stays full until all tasks are dispatched.
+The workflow runs in the background. Use `/workflows` to watch progress. Your session stays responsive — you can continue other work while the workflow executes.
 
-**Task dependency graph:** Each task may declare a `depends_on` field listing task IDs it requires to be `done` before it can be dispatched. A task is dispatchable when all its declared dependencies are `done`. Tasks with no `depends_on` field are dispatchable immediately.
+## Step 4: Handle Results
 
-**Event-driven dispatch rules:**
+When the workflow completes, inspect the returned `results` object:
 
-1. When a plan is loaded, extract all tasks and build the dependency graph
-2. Dispatch all immediately-dispatchable tasks, up to the pool limit
-3. On any subagent completion event, immediately:
-   a. Fire the next step for that specific task (implementer done → spec reviewer; spec reviewer passed → code reviewer; code reviewer passed → mark done)
-   b. While pool has free slots AND dispatchable tasks remain: dispatch the next implementer
-4. Review chains can overlap — spec reviewer for Task A runs while Task B's implementer is still coding
-5. Continue until all tasks are done and all reviews are complete
+**`results.completed[]`** — tasks that passed all reviews. Each entry has:
+- `id` — task identifier
+- `spec_passed` — boolean
+- `code_passed` — boolean
+- `code_review` — full review result with `issues[]` and `summary`
+- `files` — array of files modified
 
-**All subagents work in the same worktree.** This works because independent tasks are designed not to conflict — they touch different files or different parts of the same file with no logical overlap.
+**`results.blocked[]`** — tasks the workflow could not complete:
+- `id` — task identifier
+- `reason` — why it was blocked
+- `impl` — last implementation attempt result
 
-**Cost/benefit tradeoff:** If `CCF_MAX_PARALLEL_AGENTS=1`, the process is identical to sequential execution. For plans with many independent tasks, higher concurrency dramatically reduces wall-clock time. Independent tasks by design don't interfere, so the risk of merge conflicts is minimal.
+**`results.final_review`** — cross-task code review (present if all tasks passed). If it has Critical issues, fix them before proceeding.
 
-## Image Generation Tasks
+If all tasks are in `results.completed` and `results.final_review` has no Critical issues, proceed to **claude-code-flow:finishing-a-development-branch**.
 
-For tasks that generate or edit images, dispatch `./artist-prompt.md` instead of a general implementer. Independent image jobs can run in parallel because image generation is slow, but still respect the same pool rules: cap concurrency at `CCF_MAX_PARALLEL_AGENTS`, lower it for provider rate limits or cost concerns, and do not parallelize jobs that depend on previous generated outputs.
+### Handling Blocked Tasks
 
-Artist subagents must return output paths plus a manifest. Do not mark an image task done when files are missing, the provider was not configured, or the artist returned `BLOCKED`.
+For each task in `results.blocked[]`:
+
+1. **Re-dispatch with a more capable model** — if the task requires more reasoning, use forge or oracle
+2. **Split into smaller sub-tasks** — if the task was too large for one agent
+3. **Escalate to your human partner** — if the plan itself is wrong
+
+Never re-dispatch the same task with the same model and same instructions. If the workflow's built-in retry could not complete it, something needs to change.
+
+## Task Status Handling
+
+The workflow handles implementer statuses automatically:
+
+| Status | Workflow Behavior |
+|--------|------------------|
+| **DONE** | Proceeds to spec review automatically |
+| **DONE_WITH_CONCERNS** | Concerns flow into review context. If about correctness/scope, surface in spec review. If observations (e.g. "file getting large"), noted but workflow proceeds. |
+| **BLOCKED** | Workflow retries once with a self-service prompt. If still BLOCKED, task appears in `results.blocked[]`. |
+
+The workflow implements retry loops: up to 5 iterations per review stage. Spec review failures trigger fix-and-re-review. Code quality Critical issues trigger fix-and-re-review. Important and Minor code issues are reported but do not block progression.
 
 ## Model Selection
 
-Use the least powerful model that can handle each role to conserve cost and increase speed.
+Set `model_tasks` in workflow args to override the session model for all workflow agents:
 
-**forge** (Sonnet) — general implementation, backend + frontend, full-stack work. Use `./forge-implementer-prompt.md`.
-
-**oracle** (Opus) — planning, architecture, system decomposition. Use `./oracle-planner-prompt.md`.
-
-**prism** (Sonnet) — testing, builds, acceptance verification. Use `./prism-verifier-prompt.md`.
-
-**artist** (Sonnet) — image generation, image editing, visual asset rendering, and multi-image batches. Use `./artist-prompt.md`.
-
-**Default implementer** — for straightforward mechanical tasks (1-2 files, complete spec). Use `./implementer-prompt.md`.
+| Model | Role | When to Use |
+|-------|------|-------------|
+| Default (session model) | General implementation | Mechanical tasks: 1-2 files, complete spec |
+| **forge** (Sonnet) | Full-stack implementation | Multi-file coordination, UI, complex logic |
+| **oracle** (Opus) | Planning, architecture | System decomposition, ambiguous requirements |
+| **prism** (Sonnet) | Verification | Test engineering, build, acceptance gates |
+| **artist** (Sonnet) | Image generation | Visual asset creation and editing |
 
 **Task complexity signals:**
-- Touches 1-2 files with a complete spec → default implementer (cheap model)
-- Full-stack, UI, multi-file coordination → forge (Sonnet)
-- Requires plan creation or architecture → oracle (Opus)
-- Requires test engineering or acceptance gate → prism (Sonnet)
-- Image generation, image editing, or visual asset rendering → artist (Sonnet)
+- Touches 1-2 files, complete spec → default
+- Full-stack, UI, multi-file coordination → forge
+- Requires plan creation or architecture → oracle
+- Requires test engineering or acceptance gate → prism
+- Image generation or editing → artist
 
-## UI Implementation Constraint
+The workflow script embeds all prompt content (behavioral guards, self-review checklists, review dimensions). `model_tasks` sets the model for all workflow agents — the same prompts are used regardless of model. The canonical prompt files (`implementer-prompt.md`, `forge-implementer-prompt.md`, etc.) are reference documentation for non-workflow use.
 
-For tasks involving visible UI, read the approved root `DESIGN.md` before dispatching the implementer. Include the relevant tokens, layout rules, component states, accessibility requirements, and path to `.claude/research/<task-name>/ui-research.md` in the implementer prompt. UI implementation that ignores approved `DESIGN.md` is not spec compliant. Spec review verifies the task matches the plan; design review verifies UI work matches `DESIGN.md`. Do not let spec review substitute for design review when `DESIGN.md` exists.
+## Image Generation
 
-## Runtime Evidence Completion
+For tasks that generate or edit images, set the task model to artist. The workflow handles image tasks in the same implement → review chain. Artist agents return output paths plus a manifest. Tasks with missing output files or BLOCKED status appear in `results.blocked[]`.
 
-For runnable deliverables, completion requires runtime evidence and the deliverables artifact layout from `prism-verifier-prompt.md`. Do not mark a runnable task done until the verifier has recorded the real runtime path, exit code, crash/hang status, and evidence files.
+## UI Implementation
 
-## Handling Implementer Status
+For tasks involving visible UI, read the root `DESIGN.md` and include relevant design content (tokens, layout rules, component states, accessibility requirements) directly in the task's `description` text before building args. The workflow's spec review stage verifies that UI output matches the task description.
 
-Implementer subagents report one of four statuses. Handle each appropriately:
+## Verification
 
-**DONE:** Proceed to spec compliance review.
-
-**DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
-
-**NEEDS_CONTEXT:** The implementer needs information that wasn't provided. Provide the missing context and re-dispatch.
-
-**BLOCKED:** The implementer cannot complete the task. Assess the blocker:
-1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model
-3. If the task is too large, break it into smaller pieces
-4. If the plan itself is wrong, escalate to the human
-
-**Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
-
-## Prompt Templates
-
-**Implementers:**
-- `./implementer-prompt.md` - Default implementer (mechanical tasks, cheap model)
-- `./forge-implementer-prompt.md` - Forge implementer (full-stack, UI, multi-file)
-
-**Planner:**
-- `./oracle-planner-prompt.md` - Oracle planner (architecture, task decomposition)
-
-**Reviewers:**
-- `./spec-reviewer-prompt.md` - Spec compliance reviewer
-- `./code-quality-reviewer-prompt.md` - Code quality reviewer
-- `./design-reviewer-prompt.md` - Design compliance reviewer for UI work against `DESIGN.md`
-- `./prism-verifier-prompt.md` - Prism verifier (test engineering, build, acceptance)
-
-**Specialized:**
-- `./researcher-prompt.md` - Researcher (writes `.claude/research/<task-name>/<research-type>-research.md`)
-- `./designer-prompt.md` - Designer (UI/UX research, `.claude/research/<task-name>/ui-research.md`, root `DESIGN.md` output)
-- `./artist-prompt.md` - Artist (image generation/editing, visual asset batches, output manifests)
-
-## Example Workflow
-
-```
-You: I'm using Subagent-Driven Development to execute this plan.
-
-[Read plan file once: .claude/plans/feature-plan.md]
-[Extract all 5 tasks with full text and context]
-[Build dependency graph: Task 3 depends_on [Task 1]; Tasks 2,4,5 independent]
-[Create TodoWrite with all tasks]
-[CCF_MAX_PARALLEL_AGENTS=3. Dispatchable now: Task 1, Task 2, Task 4 → dispatch all 3]
-
-=== Pool: [Task 1 implementing, Task 2 implementing, Task 4 implementing] ===
-
-[Task 2 implementer finishes first]
-Implementer (Task 2):
-  - Added verify/repair modes
-  - 8/8 tests passing
-  - Self-review: All good
-  - Committed
-
-[Dispatch Task 2 spec reviewer]  ← fires immediately, Task 1 & 4 still implementing
-[Pool slot free: dispatch Task 5 (dispatchable, independent)]
-=== Pool: [Task 1 implementing, Task 4 implementing, Task 5 implementing] ===
-
-[Task 2 spec reviewer completes] Spec reviewer: ✅ Spec compliant
-
-[Dispatch Task 2 code quality reviewer]  ← still overlapping with implementers
-Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
-
-[Task 2 implementer fixes → re-review → ✅ Approved]
-[Mark Task 2 done]  ← Task 3 now dispatchable (depends_on Task 1 still in progress, not Task 2 → waits)
-
-[Task 1 implementer finishes with question]
-Implementer (Task 1): "Should the hook be installed at user or system level?"
-You: "User level (~/.config/claude-code-flow/hooks/)"
-
-Implementer (Task 1): [Proceeds, implements, commits]
-[Dispatch Task 1 spec reviewer]  ← Task 4 & 5 still implementing
-
-Spec reviewer (Task 1): ✅ Spec compliant
-[Dispatch Task 1 code quality reviewer]
-Code reviewer (Task 1): ✅ Approved
-[Mark Task 1 done]  ← Task 3 NOW dispatchable (Task 1 done)
-[Pool slot free: dispatch Task 3]
-=== Pool: [Task 4 implementing, Task 5 implementing, Task 3 implementing] ===
-
-[Task 4 implementer finishes → spec review → code review → approved]
-[Mark Task 4 done]
-[Pool slot free, no more dispatchable tasks]
-
-[Task 5 implementer finishes → spec review finds issues → fix → re-review → approved]
-[Mark Task 5 done]
-
-[Task 3 implementer finishes → spec review → code review → approved]
-[Mark Task 3 done]
-
-[All tasks done]
-[Dispatch final code-reviewer]
-Final reviewer: All requirements met, ready to merge
-
-Done! Wall-clock: ~3 concurrent streams instead of 5 sequential rounds.
-```
-
-## Advantages
-
-**vs. Manual execution:**
-- Subagents follow TDD naturally
-- Fresh context per task (no confusion)
-- Parallel-safe (subagents don't interfere)
-- Subagent can ask questions (before AND during work)
-
-**vs. Executing Plans:**
-- Same session (no handoff)
-- Continuous progress (no waiting)
-- Review checkpoints automatic
-
-**Efficiency gains:**
-- No file reading overhead (controller provides full text)
-- Controller curates exactly what context is needed
-- Subagent gets complete information upfront
-- Questions surfaced before work begins (not after)
-- Independent tasks implement in parallel (wall-clock reduction up to Nx)
-- Reviews overlap with implementation (no idle time between tasks)
-
-**Quality gates:**
-- Self-review catches issues before handoff
-- Two-stage review: spec compliance, then code quality
-- Review loops ensure fixes actually work
-- Spec compliance prevents over/under-building
-- Code quality ensures implementation is well-built
-
-**Cost:**
-- More subagent invocations (implementer + 2 reviewers per task)
-- Controller does more prep work (extracting all tasks upfront)
-- Review loops add iterations
-- But catches issues early (cheaper than debugging later)
+For runnable deliverables, implementers must produce test results and commit SHAs. These flow through the workflow's structured output schemas (`IMPLEMENT_RESULT`, `REVIEW_RESULT`) and appear in `results.completed[].code_review`. The workflow's final cross-task review re-verifies the complete change set.
 
 ## Red Flags
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip reviews (spec compliance OR code quality)
-- Proceed with unfixed issues
-- Make subagent read plan file (provide full text instead)
-- Skip scene-setting context (subagent needs to understand where task fits)
-- Ignore subagent questions (answer before letting them proceed)
-- Accept "close enough" on spec compliance (spec reviewer found issues = not done)
-- Skip review loops (reviewer found issues = implementer fixes = review again)
-- Let implementer self-review replace actual review (both are needed)
-- **Start code quality review before spec compliance is ✅** (wrong order)
-- Skip approved source `DESIGN.md` for UI work
-- Use a `DESIGN.md` summary or spec summary instead of reading the source `DESIGN.md`
-- Let spec review substitute for design review when reviewing against `DESIGN.md`
-- Treat researcher/designer summaries as enough when saved research files are required
-- Mark a task done while either review has open issues for that task
-- Dispatch tasks that share files or dependencies in parallel
-- Dispatch tasks whose `depends_on` are not all `done`
+- Skip reading the plan file before building workflow args
+- Make the workflow read plan files (provide full task text in args)
+- Modify `execute-plan.workflow.js` at launch time
+- Ignore blocked tasks in results
+- Proceed without fixing Critical issues from `results.final_review`
+- Interrupt or cancel the workflow mid-execution (let it finish; review results after)
 
 **Always:**
-- Respect task dependency graph — don't dispatch tasks whose `depends_on` aren't `done`
-- Build dependency graph from plan before dispatching any subagent
-- Fill pool to capacity with dispatchable tasks on every completion event
+- Build the dependency graph from the plan before launching
+- Include FULL task descriptions in args (not just IDs or summaries)
+- Read `DESIGN.md` for UI tasks and include relevant content in task descriptions
+- Use `/workflows` to check progress if the run is taking a while
+- Handle each blocked task individually after workflow completion
+- Proceed to `claude-code-flow:finishing-a-development-branch` only after all tasks pass
 
-**If subagent asks questions:**
-- Answer clearly and completely
-- Provide additional context if needed
-- Don't rush them into implementation
-
-**If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
-
-**If subagent fails task:**
-- Dispatch fix subagent with specific instructions
-- Don't try to fix manually (context pollution)
+**If the workflow returns blocked tasks:**
+- Re-dispatch with a more capable model (same prompt, better model)
+- Split oversized tasks into smaller pieces
+- Escalate to your human partner for plan-level issues
+- Do NOT manually implement blocked tasks in your session (context pollution defeats subagent isolation)
 
 ## Integration
 
 **Required workflow skills:**
-- **claude-code-flow:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
-- **claude-code-flow:writing-plans** - Creates the plan this skill executes
-- **claude-code-flow:requesting-code-review** - Code review template for reviewer subagents
-- **claude-code-flow:finishing-a-development-branch** - Complete development after all tasks
+- **claude-code-flow:using-git-worktrees** — Ensures isolated workspace
+- **claude-code-flow:writing-plans** — Creates the plan this skill executes
+- **claude-code-flow:requesting-code-review** — Code review template for reviewer agents
+- **claude-code-flow:finishing-a-development-branch** — Complete development after all tasks
 
 **Subagents should use:**
-- **claude-code-flow:test-driven-development** - Subagents follow TDD for each task
+- **claude-code-flow:test-driven-development** — Follow TDD for each task
 
 **Alternative workflow:**
-- **claude-code-flow:executing-plans** - Use for parallel session instead of same-session execution
+- **claude-code-flow:executing-plans** — Use for trivial tasks (config-only, no logic)

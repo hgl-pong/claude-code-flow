@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Test runner for Claude Code skills
 # Tests skills by invoking Claude Code CLI and verifying behavior
 set -euo pipefail
@@ -57,10 +57,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --help, -h           Show this help"
             echo ""
             echo "Tests:"
-            echo "  test-subagent-driven-development.sh  Test skill loading and requirements"
+            echo "  test-workflow-driven-development.sh  Test skill loading and requirements"
             echo ""
             echo "Integration Tests (use --integration):"
-            echo "  test-subagent-driven-development-integration.sh  Full workflow execution"
             exit 0
             ;;
         *)
@@ -73,12 +72,11 @@ done
 
 # List of skill tests to run (fast unit tests)
 tests=(
-    "test-subagent-driven-development.sh"
+    "test-workflow-driven-development.sh"
 )
 
 # Integration tests (slow, full execution)
 integration_tests=(
-    "test-subagent-driven-development-integration.sh"
     "test-requesting-code-review.sh"
     "test-hook-interception.sh"
 )

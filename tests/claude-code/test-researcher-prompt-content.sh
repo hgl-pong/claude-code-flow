@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Test: researcher-prompt.md content verification
 # Static checks — no Claude Code invocation needed
 set -euo pipefail
@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 
-PROMPT_FILE="$SCRIPT_DIR/../../skills/subagent-driven-development/researcher-prompt.md"
+PROMPT_FILE="$SCRIPT_DIR/../../skills/workflow-driven-development/researcher-prompt.md"
 
 echo "=== Test: researcher-prompt.md content ==="
 echo ""

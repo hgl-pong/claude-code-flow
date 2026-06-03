@@ -1,4 +1,4 @@
-# Oracle Planner Prompt Template
+﻿# Oracle Planner Prompt Template
 
 Use this template when dispatching an oracle subagent for plan creation, architecture design, or task decomposition.
 
@@ -81,7 +81,7 @@ Task tool (general-purpose):
     ```markdown
     # [Feature Name] Implementation Plan
 
-    > **For agentic workers:** REQUIRED SUB-SKILL: Use claude-code-flow:subagent-driven-development to implement this plan task-by-task.
+    > **For agentic workers:** REQUIRED SUB-SKILL: Use claude-code-flow:workflow-driven-development to implement this plan task-by-task.
 
     **Goal:** [One sentence describing what this builds]
 
