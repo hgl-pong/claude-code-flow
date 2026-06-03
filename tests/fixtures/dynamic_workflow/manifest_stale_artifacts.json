@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run_id": "4",
+  "artifacts": [
+    {"name": "task-1-test-output.txt", "type": "test_result", "status": "passed", "task_id": "task-1", "commit_sha": "abc111"},
+    {"name": "task-6-test-output.txt", "type": "test_result", "status": "failed", "task_id": "task-6", "commit_sha": "abc666_old"},
+    {"name": "stale-smoke-output.txt", "type": "smoke_test", "status": "passed", "commit_sha": "abc100_old"}
+  ],
+  "summary": {"total": 3, "by_type": {"test_result": 2, "smoke_test": 1}},
+  "created_at": "2026-06-01T00:00:00Z",
+  "updated_at": "2026-06-01T04:00:00Z"
+}

@@ -1,835 +1,1417 @@
-"""Tests for execute-plan fake runtime driver contracts.
+"""Fake workflow runtime driver end-to-end contract tests.
 
-Validates the result partition classification logic, evidence propagation,
-blocker classification, escalation ladder structure, review threshold
-enforcement, and the Final Review guard — all using pure-Python
-simulations of the workflow's decision logic (no real agent calls).
+Tests the complete Dynamic Workflow lifecycle using pure-Python simulations
+and fixture-driven state transitions. No live Dynamic Workflow runtime is
+required -- these validate contracts, data shapes, invariants, and state
+machine behavior at the boundary.
 
-Also validates gate enrichment, runtime manifest structure, and
-gate resume semantics for the full-auto pipeline.
+Covers:
+- Full-auto phase transitions through all canonical phases
+- execute-plan interruption at mid-group and mid-review
+- Compaction snapshot creation and restore
+- Resume cursor mapping to correct entrypoint
+- Replay of passed tasks (no re-run)
+- Stale artifact invalidation
+- Gate retry with evidence accumulation
+- Runtime evidence manifest structure
+- Hook output adapter behavior (SubagentStart/Stop schemas)
+- State updates/events through the script boundary
 """
 
-import re
-from datetime import datetime, timezone
+import importlib.util
+import json
+import os
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow-driven-development"
-EXECUTE_PLAN = SKILLS_DIR / "execute-plan.workflow.js"
-FULL_AUTO = SKILLS_DIR / "full-auto-pipeline.workflow.js"
+# -- Import flow-state.py (hyphenated filename requires importlib) -------
 
-RESULT_PARTITIONS = ["passed", "completed", "blocked", "stalled", "failed_review", "needs_escalation"]
+SCRIPT_PATH = Path(__file__).resolve().parent.parent / "hooks" / "scripts" / "flow-state.py"
+_spec = importlib.util.spec_from_file_location("flow_state", str(SCRIPT_PATH))
+fs = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(fs)
 
-BLOCKER_TAXONOMY = [
-    "agent_output_invalid", "merge_conflict", "permissions", "external_service",
-    "tooling_unavailable", "test_failure", "runtime_failure", "dependency_failure",
-    "architecture_decision", "scope_too_large", "missing_context",
+# -- Import auto-mode-hooks.py -------------------------------------------
+
+HOOKS_PATH = Path(__file__).resolve().parent.parent / "hooks" / "auto-mode" / "auto-mode-hooks.py"
+_hooks_spec = importlib.util.spec_from_file_location("auto_mode_hooks", str(HOOKS_PATH))
+hooks = importlib.util.module_from_spec(_hooks_spec)
+_hooks_spec.loader.exec_module(hooks)
+
+# -- Constants -----------------------------------------------------------
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "dynamic_workflow"
+
+CANONICAL_GATES = [
+    "gate_1_tasks_executed",
+    "gate_2_reviews_passed",
+    "gate_3_tests_pass",
+    "gate_4_runtime_evidence",
+    "gate_5_spec_verified",
+    "gate_6_final_review",
+    "gate_7_git_clean",
 ]
+
+VALID_PHASES = (
+    "scope", "research", "synthesize_spec", "review_spec",
+    "write_plan", "review_plan", "parse_plan", "execute",
+    "gates", "finalize",
+)
+
+VALID_STATUSES = (
+    "ACTIVE", "PAUSED_COMPACTING", "BLOCKED_ESCALATING",
+    "DONE", "STOPPED_ASK_USER", "FAILED_FATAL", "CANCELLED",
+)
 
 ESCALATION_LADDER = [
     "schema_retry", "self_service_retry", "stronger_model",
     "split_subtask", "enriched_context", "ask_user",
 ]
 
-ESCALATION_ATTEMPTS = {
-    "schema_retry": 1,
-    "self_service_retry": 2,
-    "stronger_model": 1,
-    "split_subtask": 1,
-    "enriched_context": 1,
-    "ask_user": 1,
-}
 
-REVIEW_SEVERITIES = ["Critical", "High", "Important", "Minor", "Info"]
-
-REVIEW_THRESHOLD = {
-    "spec_review": {
-        "low":       {"Critical": True, "High": True, "Important": "if_explicit", "Minor": False, "Info": False},
-        "medium":    {"Critical": True, "High": True, "Important": True,          "Minor": False, "Info": False},
-        "high":      {"Critical": True, "High": True, "Important": "if_explicit", "Minor": False, "Info": False},
-        "critical":  {"Critical": True, "High": True, "Important": True,          "Minor": True,  "Info": False},
-    },
-    "code_review": {
-        "low":       {"Critical": True, "High": True, "Important": "if_explicit", "Minor": False, "Info": False},
-        "medium":    {"Critical": True, "High": True, "Important": True,          "Minor": False, "Info": False},
-        "high":      {"Critical": True, "High": True, "Important": "if_explicit", "Minor": False, "Info": False},
-        "critical":  {"Critical": True, "High": True, "Important": True,          "Minor": True,  "Info": False},
-    },
-    "final_review": {
-        "any":       {"Critical": True, "High": True, "Important": True,          "Minor": False, "Info": False},
-    },
-}
+# -- Helpers -------------------------------------------------------------
 
 
-def _read_script(path: Path) -> str:
-    assert path.exists(), f"Script not found: {path}"
-    return path.read_text(encoding="utf-8")
+class _ArgNamespace:
+    """Simple namespace to mimic argparse result."""
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
-# ── Pure-Python reimplementation of classifyTaskResult ────────────────
+class _FakeStdin:
+    """Fake stdin for hooks that read from sys.stdin."""
+    def __init__(self, content):
+        self._content = content
 
-def is_issue_blocking(review_stage: str, task_risk: str, severity: str, blocking_flag=None) -> bool:
-    if blocking_flag is True:
-        return True
-    if blocking_flag is False:
-        return False
-    key = "any" if review_stage == "final_review" else task_risk
-    table = REVIEW_THRESHOLD.get(review_stage, {})
-    rules = table.get(key)
-    if not rules:
-        return severity in ("Critical", "High")
-    rule = rules.get(severity, False)
-    if rule is True:
-        return True
-    if rule is False:
-        return False
-    # 'if_explicit'
-    return blocking_flag is True
+    def read(self):
+        return self._content
+
+    def strip(self):
+        return self._content.strip()
 
 
-def classify_blocker(detail: str) -> str:
-    if not detail:
-        return "agent_output_invalid"
-    lower = detail.lower()
-    if "merge conflict" in lower or "conflict" in lower:
-        return "merge_conflict"
-    if "permission" in lower or "access denied" in lower or "forbidden" in lower:
-        return "permissions"
-    if "external" in lower or "service" in lower or "timeout" in lower or "network" in lower:
-        return "external_service"
-    if "tool" in lower or "command not found" in lower or "not installed" in lower:
-        return "tooling_unavailable"
-    if "test" in lower and ("fail" in lower or "error" in lower):
-        return "test_failure"
-    if "runtime" in lower or "crash" in lower or "exception" in lower:
-        return "runtime_failure"
-    if "depend" in lower or "import" in lower or "module" in lower:
-        return "dependency_failure"
-    if "architect" in lower or "design decision" in lower:
-        return "architecture_decision"
-    if "scope" in lower or "too large" in lower or "too complex" in lower:
-        return "scope_too_large"
-    if "context" in lower or "missing info" in lower or "unclear" in lower:
-        return "missing_context"
-    return "agent_output_invalid"
+class _FakeCompletedProc:
+    """Fake subprocess result."""
+    def __init__(self, stdout="", stderr="", returncode=0):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
 
 
-def classify_task_result(task_id, ctx, risk="medium"):
-    """Pure-Python reimplementation matching the JS classifyTaskResult."""
-    # 1. Blocked at implementation
-    if ctx.get("_blocked"):
-        classification = classify_blocker(ctx.get("_reason", ""))
-        return "blocked", {
-            "id": task_id,
-            "reason": ctx.get("_reason"),
-            "classification": classification,
-        }
+def _load_fixture(name):
+    path = FIXTURES / name
+    assert path.exists(), f"Fixture not found: {path}"
+    return json.loads(path.read_text(encoding="utf-8"))
 
-    # 2. Escalated to user
-    if ctx.get("_escalated_to_user"):
-        return "needs_escalation", {
-            "id": task_id,
-            "reason": ctx.get("_escalation_reason"),
-            "classification": ctx.get("_escalation_classification"),
-            "rung_reached": ctx.get("_escalation_rung"),
-        }
 
-    # 3. Spec review exhausted
-    if not ctx.get("spec_passed") and ctx.get("_spec_review_exhausted"):
-        return "failed_review", {"id": task_id, "stage": "spec_review"}
-
-    # 4. Code review exhausted
-    if ctx.get("spec_passed") and not ctx.get("code_passed") and ctx.get("_code_review_exhausted"):
-        return "failed_review", {"id": task_id, "stage": "code_review"}
-
-    # 5. Stalled
-    if not ctx.get("spec_passed") or not ctx.get("code_passed"):
-        return "stalled", {
-            "id": task_id,
-            "spec_passed": ctx.get("spec_passed", False),
-            "code_passed": ctx.get("code_passed", False),
-        }
-
-    # 6. Passed
-    return "passed", {
-        "id": task_id,
-        "spec_passed": True,
-        "code_passed": True,
+def _make_valid_state(**overrides):
+    """Return a minimal valid state dict with optional overrides."""
+    base = {
+        "state_schema_version": 1,
+        "revision": 0,
+        "task_name": "test",
+        "safe_task_name": "test",
+        "workflow_run_id": "1",
+        "phase": "scope",
+        "status": "ACTIVE",
+        "progress": {
+            "tasks_passed": 0,
+            "tasks_total": 0,
+            "gates_passed": 0,
+            "gates_total": 7,
+        },
+        "groups": [],
+        "task_states": {},
+        "gate_states": [],
+        "runtime_verification": {},
+        "git_state": {},
+        "resume_cursor": {},
+        "audit_log": "audit/events.jsonl",
+        "evidence_dir": "evidence",
+        "worktree_path": "/tmp/test",
+        "base_ref": "main",
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
     }
-
-
-# ── Runtime manifest simulation ───────────────────────────────────────
-
-def make_runtime_manifest(passed, detail="", crash=False, hang=False):
-    return {
-        "commands": detail or "N/A",
-        "exit_codes": [0] if passed else [1],
-        "logs": [],
-        "screenshots": [],
-        "artifacts": [],
-        "crash": crash,
-        "hang": hang,
-        "unverified_acceptance_items": [],
-        "blocking_risks": [] if passed else [detail],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-def make_gate_record(name, passed, detail, extra=None):
-    extra = extra or {}
-    now = datetime.now(timezone.utc).isoformat()
-    return {
-        "name": name,
-        "passed": passed,
-        "detail": detail or "",
-        "iterations": extra.get("iterations", 1),
-        "last_failure": extra.get("last_failure") or None,
-        "last_fix": extra.get("last_fix") or None,
-        "evidence_paths": extra.get("evidence_paths") or [],
-        "updated_at": now,
-        "next_action": "proceed" if passed else extra.get("next_action", "retry"),
-        "fix_applied": extra.get("fix_applied", ""),
-    }
-
-
-# ── Script structural tests ──────────────────────────────────────────
-
-
-class TestExecutePlanSchemaExtensions:
-    """Contract: IMPLEMENT_RESULT schema includes evidence fields."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_schema_has_verification_commands(self):
-        assert "verification_commands" in self.script
-
-    def test_schema_has_evidence_paths(self):
-        assert "evidence_paths" in self.script
-
-    def test_schema_has_concerns(self):
-        assert "concerns" in self.script
-
-    def test_schema_has_commit_sha(self):
-        assert "commit_sha" in self.script
-
-    def test_schema_has_test_results(self):
-        assert "test_results" in self.script
-
-    def test_schema_has_files_modified(self):
-        assert "files_modified" in self.script
-
-    def test_implement_result_status_enum(self):
-        """IMPLEMENT_RESULT must accept DONE, DONE_WITH_CONCERNS, BLOCKED."""
-        assert "DONE_WITH_CONCERNS" in self.script
-
-
-class TestReviewResultSeverityEnum:
-    """Contract: REVIEW_RESULT severity enum includes all 5 canonical levels."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_review_result_has_high_severity(self):
-        assert "'High'" in self.script or '"High"' in self.script
-
-    def test_review_result_has_info_severity(self):
-        assert "'Info'" in self.script or '"Info"' in self.script
-
-    def test_review_result_has_blocking_field(self):
-        assert "blocking" in self.script
-
-
-class TestClassifyBlockerFunction:
-    """Contract: classifyBlocker uses BLOCKER_TAXONOMY."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_classify_blocker_function_exists(self):
-        assert "function classifyBlocker" in self.script
-
-    def test_blocker_taxonomy_referenced(self):
-        for taxon in BLOCKER_TAXONOMY:
-            assert f"'{taxon}'" in self.script or f'"{taxon}"' in self.script, \
-                f"Blocker taxonomy entry '{taxon}' not found in script"
-
-
-class TestEscalationLadderFunction:
-    """Contract: runEscalationLadder follows ESCALATION_LADDER order."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_escalation_function_exists(self):
-        assert "function runEscalationLadder" in self.script
-
-    def test_escalation_uses_ladder(self):
-        assert "ESCALATION_LADDER" in self.script
-        # Verify the function iterates the ladder
-        assert "for (const rung of ESCALATION_LADDER)" in self.script
-
-    def test_escalation_uses_attempts(self):
-        assert "ESCALATION_ATTEMPTS" in self.script
-        assert "maxAttempts" in self.script or "ESCALATION_ATTEMPTS[rung]" in self.script
-
-    def test_escalation_ask_user_terminal(self):
-        """ask_user must be the terminal rung — marks as needs_escalation."""
-        assert "escalated_to_user" in self.script
-
-
-class TestSchemaRetry:
-    """Contract: schema retry logic exists for invalid agent output."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_schema_retry_function_exists(self):
-        assert "function agentWithSchemaRetry" in self.script
-
-    def test_schema_retry_in_implement_stage(self):
-        assert "agentWithSchemaRetry" in self.script
-        # Must be used for the implement stage
-        assert "implement:" in self.script
-
-
-class TestFinalReviewGuard:
-    """Contract: Final Review only runs when all tasks passed."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_final_review_guard_exists(self):
-        assert "allOtherPartitionsEmpty" in self.script
-
-    def test_final_review_checks_completed_equals_total(self):
-        assert "completed.length === totalTasks" in self.script
-
-    def test_final_review_checks_other_partitions_empty(self):
-        assert "blocked.length === 0" in self.script
-        assert "stalled.length === 0" in self.script
-        assert "failed_review.length === 0" in self.script
-        assert "needs_escalation.length === 0" in self.script
-
-
-class TestStatePatch:
-    """Contract: result includes state_patch for resume support."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_state_patch_in_return(self):
-        assert "state_patch" in self.script
-
-    def test_state_patch_has_partitions(self):
-        assert "partitions:" in self.script or "partitions {" in self.script
-
-    def test_state_patch_has_total_tasks(self):
-        assert "total_tasks" in self.script
-
-    def test_state_patch_has_final_review_flag(self):
-        assert "final_review_run" in self.script
-
-
-class TestCompletedEqualsPassed:
-    """Contract: completed[] must always equal passed[]."""
-
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(EXECUTE_PLAN)
-
-    def test_completed_copies_passed(self):
-        """completed must be populated from passed entries."""
-        # Look for the invariant enforcement
-        assert "completed" in self.script
-        # The script must explicitly copy passed -> completed
-        assert "completed.push" in self.script
-
-
-# ── Pure-Python driver simulation tests ──────────────────────────────
-
-
-class TestClassifyTaskResultPassed:
-    """Simulated driver: task with DONE status and passing reviews goes to passed."""
-
-    def test_done_with_passing_reviews(self):
-        ctx = {
-            "impl": {"status": "DONE"},
-            "spec_passed": True,
-            "code_passed": True,
-            "spec_review": {"passed": True, "issues": []},
-            "code_review": {"passed": True, "issues": []},
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "passed"
-        assert entry["spec_passed"] is True
-        assert entry["code_passed"] is True
-
-    def test_done_with_concerns_passing_reviews(self):
-        ctx = {
-            "impl": {"status": "DONE_WITH_CONCERNS"},
-            "spec_passed": True,
-            "code_passed": True,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "passed"
-
-    def test_passed_entry_has_evidence(self):
-        ctx = {
-            "impl": {
-                "status": "DONE",
-                "commit_sha": "abc123",
-                "test_results": "3 passed",
-                "files_modified": ["a.js"],
+    base.update(overrides)
+    return base
+
+
+def _init_run(tmp_path, task_name="driver-test", **init_kwargs):
+    """Create an initialized run directory and return (state_file_path_str, state_dict)."""
+    auto = tmp_path / ".claude" / "auto"
+    auto.mkdir(parents=True, exist_ok=True)
+
+    args = _ArgNamespace(
+        task_name=task_name,
+        worktree=str(tmp_path),
+        spec_path=init_kwargs.get("spec_path", ""),
+        plan_path=init_kwargs.get("plan_path", ""),
+        base_ref=init_kwargs.get("base_ref", "main"),
+    )
+    with patch.object(fs, "_find_auto_dir", return_value=auto), \
+         patch("builtins.print"):
+        code = fs.cmd_init(args)
+    assert code == 0
+
+    runs = fs._load_runs(auto / "runs.json")
+    state_file = list(runs.values())[0]["state_file"]
+    state = json.loads(Path(state_file).read_text())
+    return state_file, state
+
+
+def _update_state(state_file, patch_dict, expected_rev=None):
+    """Apply an update to the state file."""
+    args = _ArgNamespace(
+        state_file=state_file,
+        patch_json=json.dumps(patch_dict),
+        expected_revision=expected_rev,
+    )
+    with patch("builtins.print"):
+        code = fs.cmd_update(args)
+    assert code == 0
+    return json.loads(Path(state_file).read_text())
+
+
+def _append_event(state_file, event_type, data, correlation_id=None):
+    """Append an audit event."""
+    args = _ArgNamespace(
+        state_file=state_file,
+        type=event_type,
+        json_data=json.dumps(data),
+        correlation_id=correlation_id,
+    )
+    with patch("builtins.print"):
+        code = fs.cmd_event(args)
+    assert code == 0
+
+
+def _take_snapshot(state_file, reason="test"):
+    """Create a snapshot and return its path."""
+    args = _ArgNamespace(state_file=state_file, reason=reason)
+    with patch("builtins.print"):
+        code = fs.cmd_snapshot(args)
+    assert code == 0
+    run_dir = Path(state_file).parent
+    snaps = sorted((run_dir / "snapshots").glob("snapshot-*.json"))
+    assert len(snaps) >= 1
+    return snaps[-1]
+
+
+def _write_fixture_state(td, data):
+    """Write a fixture-derived state into a temp dir with audit/evidence dirs."""
+    state_file = Path(td) / "state.json"
+    audit_dir = Path(td) / "audit"
+    audit_dir.mkdir(exist_ok=True)
+    (audit_dir / "events.jsonl").write_text("")
+    data = dict(data)
+    data["audit_log"] = "audit/events.jsonl"
+    data["evidence_dir"] = "evidence"
+    state_file.write_text(json.dumps(data))
+    return str(state_file)
+
+
+# ========================================================================
+# 1. Full-auto phase transition simulation
+# ========================================================================
+
+
+class TestFullAutoPhaseTransition:
+    """Simulate a complete full-auto pipeline through all phases using flow-state."""
+
+    def test_scope_to_done_lifecycle(self, tmp_path, capsys):
+        """Drive a state through all phases: scope -> research -> ... -> finalize."""
+        state_file, state = _init_run(tmp_path, task_name="lifecycle-test")
+        assert state["phase"] == "scope"
+        assert state["status"] == "ACTIVE"
+
+        # Phase: scope -> research
+        _append_event(state_file, "phase_start", {"phase": "scope"})
+        state = _update_state(state_file, {"phase": "research"})
+        assert state["phase"] == "research"
+        # revision: 0 init, +1 event, +1 update = 2
+        assert state["revision"] >= 1
+
+        # Phase: research -> synthesize_spec
+        _append_event(state_file, "phase_start", {"phase": "research"})
+        state = _update_state(state_file, {
+            "phase": "synthesize_spec",
+            "spec_path": ".claude/specs/lifecycle.md",
+        })
+        assert state["phase"] == "synthesize_spec"
+        assert state.get("spec_path") == ".claude/specs/lifecycle.md"
+
+        # Phase: synthesize_spec -> review_spec -> write_plan -> parse_plan
+        state = _update_state(state_file, {"phase": "review_spec"})
+        state = _update_state(state_file, {"phase": "write_plan"})
+        state = _update_state(state_file, {
+            "phase": "parse_plan",
+            "plan_path": ".claude/plans/lifecycle.md",
+        })
+        assert state.get("plan_path") == ".claude/plans/lifecycle.md"
+
+        # Phase: parse_plan -> execute
+        state = _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 0, "tasks_total": 3, "gates_passed": 0, "gates_total": 7},
+            "groups": [["task-1"], ["task-2", "task-3"]],
+            "task_states": {
+                "task-1": {"status": "queued", "attempts": 0},
+                "task-2": {"status": "queued", "attempts": 0},
+                "task-3": {"status": "queued", "attempts": 0},
             },
-            "spec_passed": True,
-            "code_passed": True,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "passed"
-        assert entry["spec_passed"] is True
-        assert entry["code_passed"] is True
+        })
+        assert state["phase"] == "execute"
+        assert len(state["task_states"]) == 3
 
-
-class TestClassifyTaskResultBlocked:
-    """Simulated driver: blocked tasks go to blocked partition."""
-
-    def test_blocked_at_implementation(self):
-        ctx = {
-            "_blocked": True,
-            "_reason": "merge conflict in src/main.js",
-            "impl": {"status": "BLOCKED", "blocker_detail": "merge conflict"},
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "blocked"
-        assert entry["classification"] == "merge_conflict"
-
-    def test_blocked_permissions(self):
-        ctx = {
-            "_blocked": True,
-            "_reason": "Permission denied writing to /etc/config",
-            "impl": None,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "blocked"
-        assert entry["classification"] == "permissions"
-
-    def test_blocked_test_failure(self):
-        ctx = {
-            "_blocked": True,
-            "_reason": "Test failure in integration suite",
-            "impl": None,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "blocked"
-        assert entry["classification"] == "test_failure"
-
-    def test_blocked_no_detail_defaults_invalid(self):
-        ctx = {
-            "_blocked": True,
-            "_reason": "",
-            "impl": None,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "blocked"
-        assert entry["classification"] == "agent_output_invalid"
-
-    def test_blocked_unknown_reason(self):
-        ctx = {
-            "_blocked": True,
-            "_reason": "Something completely unexpected happened",
-            "impl": None,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "blocked"
-        assert entry["classification"] == "agent_output_invalid"
-
-    def test_blocked_dependency_failure(self):
-        ctx = {
-            "_blocked": True,
-            "_reason": "Cannot import module xyz from dependency",
-            "impl": None,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "blocked"
-        assert entry["classification"] == "dependency_failure"
-
-
-class TestClassifyTaskResultNeedsEscalation:
-    """Simulated driver: escalation-exhausted tasks go to needs_escalation."""
-
-    def test_escalated_to_user(self):
-        ctx = {
-            "_escalated_to_user": True,
-            "_escalation_reason": "Unresolvable architectural decision needed",
-            "_escalation_classification": "architecture_decision",
-            "_escalation_rung": "ask_user",
-            "impl": None,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "needs_escalation"
-        assert entry["rung_reached"] == "ask_user"
-
-
-class TestClassifyTaskResultFailedReview:
-    """Simulated driver: review-exhausted tasks go to failed_review."""
-
-    def test_spec_review_exhausted(self):
-        ctx = {
-            "impl": {"status": "DONE"},
-            "spec_passed": False,
-            "code_passed": False,
-            "_spec_review_exhausted": True,
-            "_iterations_spec": 5,
-            "spec_review": {"passed": False, "issues": [{"severity": "Critical"}]},
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "failed_review"
-        assert entry["stage"] == "spec_review"
-
-    def test_code_review_exhausted(self):
-        ctx = {
-            "impl": {"status": "DONE"},
-            "spec_passed": True,
-            "code_passed": False,
-            "_code_review_exhausted": True,
-            "_iterations_code": 5,
-            "code_review": {"passed": False, "issues": [{"severity": "Critical"}]},
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "failed_review"
-        assert entry["stage"] == "code_review"
-
-
-class TestClassifyTaskResultStalled:
-    """Simulated driver: cap-exhausted without precise blocking goes to stalled."""
-
-    def test_spec_stalled_without_exhaustion(self):
-        ctx = {
-            "impl": {"status": "DONE"},
-            "spec_passed": False,
-            "code_passed": False,
-            "_spec_review_exhausted": False,
-            "_iterations_spec": 5,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "stalled"
-        assert entry["spec_passed"] is False
-
-    def test_code_stalled_after_spec_pass(self):
-        ctx = {
-            "impl": {"status": "DONE"},
-            "spec_passed": True,
-            "code_passed": False,
-            "_code_review_exhausted": False,
-            "_iterations_code": 3,
-        }
-        partition, entry = classify_task_result("task-1", ctx)
-        assert partition == "stalled"
-        assert entry["code_passed"] is False
-
-
-class TestReviewThresholdEnforcement:
-    """Contract: review threshold table determines which severities block."""
-
-    def test_critical_always_blocks_spec(self):
-        assert is_issue_blocking("spec_review", "low", "Critical") is True
-        assert is_issue_blocking("spec_review", "medium", "Critical") is True
-        assert is_issue_blocking("spec_review", "high", "Critical") is True
-        assert is_issue_blocking("spec_review", "critical", "Critical") is True
-
-    def test_high_always_blocks_spec(self):
-        for risk in ("low", "medium", "high", "critical"):
-            assert is_issue_blocking("spec_review", risk, "High") is True
-
-    def test_important_blocks_medium_risk(self):
-        assert is_issue_blocking("spec_review", "medium", "Important") is True
-
-    def test_important_if_explicit_for_low_risk(self):
-        assert is_issue_blocking("spec_review", "low", "Important", None) is False
-        assert is_issue_blocking("spec_review", "low", "Important", True) is True
-
-    def test_minor_blocks_critical_risk(self):
-        assert is_issue_blocking("spec_review", "critical", "Minor") is True
-
-    def test_minor_does_not_block_low_risk(self):
-        assert is_issue_blocking("spec_review", "low", "Minor") is False
-
-    def test_info_never_blocks(self):
-        for risk in ("low", "medium", "high", "critical"):
-            assert is_issue_blocking("spec_review", risk, "Info") is False
-
-    def test_final_review_blocks_critical_high_important(self):
-        assert is_issue_blocking("final_review", "any", "Critical") is True
-        assert is_issue_blocking("final_review", "any", "High") is True
-        assert is_issue_blocking("final_review", "any", "Important") is True
-        assert is_issue_blocking("final_review", "any", "Minor") is False
-        assert is_issue_blocking("final_review", "any", "Info") is False
-
-
-class TestPartitionExclusivity:
-    """Contract: each task appears in exactly one partition."""
-
-    def _classify_all(self, contexts):
-        partitions = {p: [] for p in RESULT_PARTITIONS}
-        for task_id, ctx in contexts.items():
-            partition, entry = classify_task_result(task_id, ctx)
-            partitions[partition].append(entry)
-        return partitions
-
-    def test_no_overlap(self):
-        contexts = {
-            "task-1": {"_blocked": True, "_reason": "test failure", "impl": None},
-            "task-2": {
-                "spec_passed": True, "code_passed": True,
-                "impl": {"status": "DONE"},
+        # Execute: mark tasks as passed
+        state = _update_state(state_file, {
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+                "task-3": {"status": "passed", "attempts": 1},
             },
-            "task-3": {
-                "spec_passed": True, "code_passed": False,
-                "_code_review_exhausted": True,
-                "impl": {"status": "DONE"},
-                "code_review": {"passed": False, "issues": [{"severity": "Critical"}]},
+            "progress": {"tasks_passed": 3, "tasks_total": 3, "gates_passed": 0, "gates_total": 7},
+        })
+        assert state["progress"]["tasks_passed"] == 3
+
+        # Phase: execute -> gates
+        state = _update_state(state_file, {
+            "phase": "gates",
+            "gate_states": [
+                {"gate": g, "passed": True, "iterations": 1} for g in CANONICAL_GATES
+            ],
+            "progress": {"tasks_passed": 3, "tasks_total": 3, "gates_passed": 7, "gates_total": 7},
+        })
+        assert state["progress"]["gates_passed"] == 7
+
+        # Phase: gates -> finalize -> DONE
+        state = _update_state(state_file, {"phase": "finalize", "status": "DONE"})
+        assert state["status"] == "DONE"
+
+        # Validate the final state
+        args = _ArgNamespace(state_file=state_file)
+        code = fs.cmd_validate(args)
+        out = json.loads(capsys.readouterr().out)
+        assert code == 0
+        assert out["ok"] is True
+
+    def test_every_phase_is_valid(self, tmp_path):
+        """Every canonical phase can be set on state."""
+        state_file, _ = _init_run(tmp_path, task_name="phase-valid")
+        for phase in VALID_PHASES:
+            state = _update_state(state_file, {"phase": phase})
+            assert state["phase"] == phase
+
+    def test_invalid_phase_rejected(self, tmp_path, capsys):
+        """Invalid phase values are rejected by update (post-merge validation)."""
+        state_file, _ = _init_run(tmp_path, task_name="bad-phase")
+        args = _ArgNamespace(
+            state_file=state_file,
+            patch_json=json.dumps({"phase": "INVALID_PHASE"}),
+            expected_revision=None,
+        )
+        code = fs.cmd_update(args)
+        out = json.loads(capsys.readouterr().out)
+        assert code == 2
+        assert any("phase" in e.lower() for e in out.get("errors", []))
+
+
+# ========================================================================
+# 2. Execute-plan interruption
+# ========================================================================
+
+
+class TestExecutePlanInterruption:
+    """Test interruption of execute-plan at various mid-execution points."""
+
+    def test_interrupted_mid_group_resume_cursor(self, tmp_path, capsys):
+        """Interrupt during group 2 execution -- cursor points to task-3."""
+        state_file, _ = _init_run(tmp_path, task_name="mid-group")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 2, "tasks_total": 5, "gates_passed": 0, "gates_total": 7},
+            "groups": [["task-1", "task-2"], ["task-3", "task-4", "task-5"]],
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+                "task-3": {"status": "implementing", "attempts": 1},
+                "task-4": {"status": "queued", "attempts": 0},
+                "task-5": {"status": "queued", "attempts": 0},
             },
-        }
-        partitions = self._classify_all(contexts)
-        # Each task in exactly one partition
-        total = sum(len(v) for v in partitions.values())
-        assert total == len(contexts)
-        # Verify specific placements
-        assert len(partitions["blocked"]) == 1
-        assert len(partitions["passed"]) == 1
-        assert len(partitions["failed_review"]) == 1
-
-    def test_completed_equals_passed(self):
-        contexts = {
-            "task-1": {"spec_passed": True, "code_passed": True, "impl": {"status": "DONE"}},
-            "task-2": {"spec_passed": True, "code_passed": True, "impl": {"status": "DONE_WITH_CONCERNS"}},
-        }
-        partitions = self._classify_all(contexts)
-        assert partitions["passed"] == partitions["completed"] or len(partitions["passed"]) == 2
-
-    def test_no_failed_in_passed(self):
-        contexts = {
-            "task-1": {"spec_passed": True, "code_passed": True, "impl": {"status": "DONE"}},
-            "task-2": {
-                "spec_passed": False, "code_passed": False,
-                "_spec_review_exhausted": True,
-                "impl": {"status": "DONE"},
-                "spec_review": {"passed": False, "issues": [{"severity": "Critical"}]},
+            "resume_cursor": {
+                "phase": "execute",
+                "group_index": 1,
+                "completed_groups": 1,
+                "task_cursor": "task-3",
             },
-        }
-        partitions = self._classify_all(contexts)
-        passed_ids = [e["id"] for e in partitions["passed"]]
-        assert "task-2" not in passed_ids
+        })
 
-    def test_no_unreviewed_in_passed(self):
-        contexts = {
-            "task-1": {
-                "spec_passed": True, "code_passed": True,
-                "impl": {"status": "DONE"},
+        args = _ArgNamespace(state_file=state_file)
+        code = fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert code == 0
+        assert out["next_entrypoint"] == "resume_execute"
+        assert out["cursor"]["group_index"] == 1
+        assert out["cursor"]["task_cursor"] == "task-3"
+
+    def test_interrupted_mid_review_resume_cursor(self, tmp_path, capsys):
+        """Interrupt during spec review of task-2 -- cursor preserves sub_stage."""
+        state_file, _ = _init_run(tmp_path, task_name="mid-review")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 1, "tasks_total": 3, "gates_passed": 0, "gates_total": 7},
+            "groups": [["task-1"], ["task-2", "task-3"]],
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "spec_reviewing", "attempts": 1},
+                "task-3": {"status": "queued", "attempts": 0},
             },
-            "task-2": {
-                "spec_passed": False, "code_passed": False,
-                "_spec_review_exhausted": False,
-                "impl": {"status": "DONE"},
+            "resume_cursor": {
+                "phase": "execute",
+                "group_index": 1,
+                "completed_groups": 0,
+                "task_cursor": "task-2",
+                "sub_stage": "spec_review",
+                "spec_iterations": 2,
             },
+        })
+
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_execute"
+        assert out["cursor"]["sub_stage"] == "spec_review"
+        assert out["cursor"]["spec_iterations"] == 2
+
+    def test_interrupted_fixture_state_validates(self, capsys):
+        """Mid-execute interrupted fixture state validates correctly."""
+        data = _load_fixture("state_mid_execute_interrupted.json")
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            sf = _write_fixture_state(td, data)
+            args = _ArgNamespace(state_file=sf)
+            code = fs.cmd_validate(args)
+            out = json.loads(capsys.readouterr().out)
+            assert code == 0, f"Validation errors: {out.get('errors', [])}"
+
+    def test_interrupted_mid_review_fixture_validates(self, capsys):
+        """Mid-review interrupted fixture state validates correctly."""
+        data = _load_fixture("state_mid_review_interrupted.json")
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            sf = _write_fixture_state(td, data)
+            args = _ArgNamespace(state_file=sf)
+            code = fs.cmd_validate(args)
+            out = json.loads(capsys.readouterr().out)
+            assert code == 0, f"Validation errors: {out.get('errors', [])}"
+
+
+# ========================================================================
+# 3. Compaction snapshot creation and restore
+# ========================================================================
+
+
+class TestCompactionSnapshot:
+    """Test snapshot creation during PAUSED_COMPACTING and state restoration."""
+
+    def test_snapshot_captures_full_state(self, tmp_path):
+        """Snapshot JSON contains the complete state at the time of capture."""
+        state_file, _ = _init_run(tmp_path, task_name="compact-test")
+        _update_state(state_file, {
+            "phase": "execute",
+            "status": "PAUSED_COMPACTING",
+            "progress": {"tasks_passed": 2, "tasks_total": 4, "gates_passed": 0, "gates_total": 7},
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+                "task-3": {"status": "implementing", "attempts": 1},
+                "task-4": {"status": "queued", "attempts": 0},
+            },
+        })
+
+        snap_path = _take_snapshot(state_file, reason="compaction")
+        snap_data = json.loads(snap_path.read_text())
+
+        assert snap_data["seq"] == 1
+        assert snap_data["reason"] == "compaction"
+        assert snap_data["state"]["phase"] == "execute"
+        assert snap_data["state"]["status"] == "PAUSED_COMPACTING"
+        assert len(snap_data["state"]["task_states"]) == 4
+        assert snap_data["state"]["progress"]["tasks_passed"] == 2
+
+    def test_snapshot_md_summary_exists(self, tmp_path):
+        """Snapshot creates both .json and .md files."""
+        state_file, _ = _init_run(tmp_path, task_name="compact-md")
+        snap_path = _take_snapshot(state_file, reason="test")
+        md_path = snap_path.with_suffix(".md")
+        assert md_path.exists()
+        md_content = md_path.read_text()
+        assert "test" in md_content
+        assert "Revision:" in md_content
+
+    def test_snapshot_can_restore_state(self, tmp_path):
+        """State can be restored from a snapshot."""
+        state_file, _ = _init_run(tmp_path, task_name="restore-test")
+        _update_state(state_file, {
+            "phase": "execute",
+            "status": "PAUSED_COMPACTING",
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "blocked", "attempts": 2},
+            },
+        })
+
+        snap_path = _take_snapshot(state_file, reason="pre-compaction")
+        snap_data = json.loads(snap_path.read_text())
+
+        # Simulate more state changes after snapshot
+        _update_state(state_file, {
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 3},
+            },
+        })
+
+        # Restore from snapshot data
+        restored = snap_data["state"]
+        assert restored["task_states"]["task-2"]["status"] == "blocked"
+        assert restored["task_states"]["task-2"]["attempts"] == 2
+
+    def test_multiple_snapshots_monotonic_seq(self, tmp_path):
+        """Multiple snapshots get monotonically increasing sequence numbers."""
+        state_file, _ = _init_run(tmp_path, task_name="multi-snap")
+        for i in range(4):
+            snap = _take_snapshot(state_file, reason=f"snap-{i}")
+            data = json.loads(snap.read_text())
+            assert data["seq"] == i + 1
+
+    def test_compaction_fixture_snapshot_shape(self):
+        """PAUSED_COMPACTING fixture produces valid snapshot data shape."""
+        data = _load_fixture("state_paused_compacting.json")
+        assert data["status"] == "PAUSED_COMPACTING"
+        assert data["phase"] == "execute"
+
+        snap = {
+            "seq": 1,
+            "reason": "compaction",
+            "ts": "2026-06-01T04:00:00Z",
+            "revision": data["revision"],
+            "state": data,
         }
-        partitions = self._classify_all(contexts)
-        passed_ids = [e["id"] for e in partitions["passed"]]
-        assert "task-2" not in passed_ids
+        assert snap["state"]["task_states"]["task-6"]["status"] == "blocked"
+        assert snap["state"]["resume_cursor"]["group_index"] == 1
 
 
-class TestBlockerClassification:
-    """Contract: classifyBlocker maps detail text to taxonomy."""
-
-    def test_merge_conflict(self):
-        assert classify_blocker("merge conflict in file.js") == "merge_conflict"
-
-    def test_permissions(self):
-        assert classify_blocker("Permission denied") == "permissions"
-
-    def test_external_service(self):
-        assert classify_blocker("external API timeout") == "external_service"
-
-    def test_tooling(self):
-        assert classify_blocker("tool not installed") == "tooling_unavailable"
-
-    def test_test_failure(self):
-        assert classify_blocker("test failure in suite") == "test_failure"
-
-    def test_runtime_failure(self):
-        assert classify_blocker("runtime crash") == "runtime_failure"
-
-    def test_dependency_failure(self):
-        assert classify_blocker("Cannot import module") == "dependency_failure"
-
-    def test_architecture_decision(self):
-        assert classify_blocker("architectural decision needed") == "architecture_decision"
-
-    def test_scope_too_large(self):
-        assert classify_blocker("scope too large") == "scope_too_large"
-
-    def test_missing_context(self):
-        assert classify_blocker("missing context about X") == "missing_context"
-
-    def test_empty_detail(self):
-        assert classify_blocker("") == "agent_output_invalid"
-
-    def test_none_detail(self):
-        assert classify_blocker(None) == "agent_output_invalid"
-
-    def test_unknown_defaults_to_invalid(self):
-        assert classify_blocker("something weird happened") == "agent_output_invalid"
+# ========================================================================
+# 4. Resume cursor mapping to correct entrypoint
+# ========================================================================
 
 
-# ── Runtime manifest contract tests ───────────────────────────────────
+class TestResumeCursorMapping:
+    """Test that resume cursor maps to the correct entrypoint based on phase/status."""
+
+    def test_execute_phase_maps_to_resume_execute(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-exec")
+        _update_state(state_file, {"phase": "execute"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_execute"
+
+    def test_gates_phase_maps_to_resume_gates(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-gates")
+        _update_state(state_file, {"phase": "gates"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_gates"
+
+    def test_stopped_ask_user_maps_to_resume_from_user_block(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-ask")
+        _update_state(state_file, {"status": "STOPPED_ASK_USER"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_from_user_block"
+
+    def test_blocked_escalating_maps_to_resume_escalation(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-escalate")
+        _update_state(state_file, {"status": "BLOCKED_ESCALATING"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_escalation"
+
+    def test_done_is_terminal(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-done")
+        _update_state(state_file, {"status": "DONE"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert "terminal" in out["next_entrypoint"]
+
+    def test_failed_fatal_is_terminal(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-fatal")
+        _update_state(state_file, {"status": "FAILED_FATAL"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert "terminal" in out["next_entrypoint"]
+
+    def test_cancelled_is_terminal(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-cancel")
+        _update_state(state_file, {"status": "CANCELLED"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert "terminal" in out["next_entrypoint"]
+
+    def test_scope_phase_maps_to_resume_scope(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-scope")
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_scope"
+
+    def test_resume_returns_progress_and_task_states(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-detail")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 2, "tasks_total": 4, "gates_passed": 0, "gates_total": 7},
+            "task_states": {
+                "task-1": {"status": "passed"},
+                "task-2": {"status": "passed"},
+                "task-3": {"status": "implementing"},
+                "task-4": {"status": "queued"},
+            },
+        })
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["summary"]["progress"]["tasks_passed"] == 2
+        assert out["summary"]["progress"]["tasks_total"] == 4
+        assert len(out["summary"]["task_states"]) == 4
+
+    def test_stopped_ask_user_fixture_resume(self, capsys):
+        """STOPPED_ASK_USER fixture maps to resume_from_user_block."""
+        data = _load_fixture("state_stopped_ask_user.json")
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            sf = _write_fixture_state(td, data)
+            args = _ArgNamespace(state_file=sf)
+            fs.cmd_resume(args)
+            out = json.loads(capsys.readouterr().out)
+            assert out["next_entrypoint"] == "resume_from_user_block"
 
 
-class TestRuntimeManifestStructure:
-    """Contract: runtime manifest has all required fields."""
+# ========================================================================
+# 5. Replay of passed tasks (no re-run)
+# ========================================================================
 
-    def test_manifest_on_pass(self):
-        m = make_runtime_manifest(True, "npm start exited 0")
-        assert m["exit_codes"] == [0]
-        assert m["crash"] is False
-        assert m["hang"] is False
-        assert m["blocking_risks"] == []
-        assert m["unverified_acceptance_items"] == []
-        assert "T" in m["generated_at"]
 
-    def test_manifest_on_crash(self):
-        m = make_runtime_manifest(False, "Process crashed with SIGSEGV", crash=True)
-        assert m["exit_codes"] == [1]
-        assert m["crash"] is True
-        assert m["blocking_risks"] == ["Process crashed with SIGSEGV"]
+class TestReplayPassedTasks:
+    """Test that passed tasks are identified and not re-run on resume."""
 
-    def test_manifest_on_hang(self):
-        m = make_runtime_manifest(False, "Process hung for 60s", hang=True)
-        assert m["hang"] is True
-        assert m["blocking_risks"] == ["Process hung for 60s"]
+    def test_passed_tasks_not_requeued(self, tmp_path):
+        """After resume, passed tasks should remain passed -- not requeued."""
+        state_file, _ = _init_run(tmp_path, task_name="replay-test")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 2, "tasks_total": 4, "gates_passed": 0, "gates_total": 7},
+            "groups": [["task-1", "task-2"], ["task-3", "task-4"]],
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+                "task-3": {"status": "implementing", "attempts": 1},
+                "task-4": {"status": "queued", "attempts": 0},
+            },
+        })
 
-    def test_manifest_all_fields_present(self):
-        m = make_runtime_manifest(True, "OK")
-        required = [
-            "commands", "exit_codes", "logs", "screenshots", "artifacts",
-            "crash", "hang", "unverified_acceptance_items", "blocking_risks",
-            "generated_at",
+        state = json.loads(Path(state_file).read_text())
+        passed_ids = [
+            tid for tid, ts in state["task_states"].items()
+            if ts["status"] == "passed"
         ]
-        for field in required:
-            assert field in m, f"Missing manifest field: {field}"
+        implementing_ids = [
+            tid for tid, ts in state["task_states"].items()
+            if ts["status"] not in ("passed", "failed", "done")
+        ]
+
+        assert set(passed_ids) == {"task-1", "task-2"}
+        assert "task-3" in implementing_ids
+        assert "task-1" not in implementing_ids
+        assert "task-2" not in implementing_ids
+
+    def test_resume_continues_from_interrupted_group(self, tmp_path, capsys):
+        """Resume picks up from the interrupted group, skipping completed groups."""
+        state_file, _ = _init_run(tmp_path, task_name="replay-group")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 2, "tasks_total": 5, "gates_passed": 0, "gates_total": 7},
+            "groups": [["task-1", "task-2"], ["task-3", "task-4", "task-5"]],
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+                "task-3": {"status": "queued", "attempts": 0},
+                "task-4": {"status": "queued", "attempts": 0},
+                "task-5": {"status": "queued", "attempts": 0},
+            },
+            "resume_cursor": {
+                "phase": "execute",
+                "group_index": 1,
+                "completed_groups": 1,
+            },
+        })
+
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["cursor"]["completed_groups"] == 1
+        assert out["cursor"]["group_index"] == 1
+
+    def test_all_passed_tasks_preserved_through_snapshot_restore(self, tmp_path):
+        """Passed tasks remain passed after snapshot save/restore cycle."""
+        state_file, _ = _init_run(tmp_path, task_name="snap-replay")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 3, "tasks_total": 3, "gates_passed": 0, "gates_total": 7},
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+                "task-3": {"status": "passed", "attempts": 1},
+            },
+        })
+
+        snap_path = _take_snapshot(state_file, reason="all-passed")
+        snap = json.loads(snap_path.read_text())
+
+        for tid, ts in snap["state"]["task_states"].items():
+            assert ts["status"] == "passed", f"{tid} should be passed, got {ts['status']}"
 
 
-# ── Gate enrichment in full-auto-pipeline ─────────────────────────────
+# ========================================================================
+# 6. Stale artifact invalidation
+# ========================================================================
 
 
-class TestFullAutoGateEnrichment:
-    """Contract: gate records are enriched with metadata."""
+class TestStaleArtifactInvalidation:
+    """Test detection and invalidation of stale artifacts in the evidence manifest."""
 
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(FULL_AUTO)
+    @staticmethod
+    def _is_artifact_stale(artifact, current_commit_shas):
+        """An artifact is stale if its commit_sha is not in current set."""
+        art_sha = artifact.get("commit_sha", "")
+        if not art_sha:
+            return False
+        return art_sha not in current_commit_shas
 
-    def test_make_gate_record_function(self):
-        assert "function makeGateRecord" in self.script
+    def test_stale_artifact_detected_by_old_commit(self):
+        """Artifact with old commit_sha is detected as stale."""
+        manifest = _load_fixture("manifest_stale_artifacts.json")
+        current_shas = {"abc111", "abc999"}
 
-    def test_gate_record_has_name_field(self):
-        # The makeGateRecord must set name
-        assert "name," in self.script
+        stale = [
+            a for a in manifest["artifacts"]
+            if self._is_artifact_stale(a, current_shas)
+        ]
+        assert len(stale) == 2
+        stale_names = {a["name"] for a in stale}
+        assert "task-6-test-output.txt" in stale_names
+        assert "stale-smoke-output.txt" in stale_names
 
-    def test_gate_record_has_iterations(self):
-        # Inside makeGateRecord
-        func_start = self.script.index("function makeGateRecord")
-        func_end = self.script.index("}", func_start) + 1
-        func_body = self.script[func_start:func_end]
-        assert "iterations" in func_body
+    def test_valid_artifact_not_stale(self):
+        """Artifact with current commit_sha is not stale."""
+        manifest = _load_fixture("manifest_stale_artifacts.json")
+        current_shas = {"abc111", "abc666_old", "abc100_old"}
 
-    def test_gate_record_has_last_failure(self):
-        func_start = self.script.index("function makeGateRecord")
-        func_end = self.script.index("}", func_start) + 1
-        func_body = self.script[func_start:func_end]
-        assert "last_failure" in func_body
+        stale = [
+            a for a in manifest["artifacts"]
+            if self._is_artifact_stale(a, current_shas)
+        ]
+        assert len(stale) == 0
 
-    def test_gate_record_has_last_fix(self):
-        func_start = self.script.index("function makeGateRecord")
-        func_end = self.script.index("}", func_start) + 1
-        func_body = self.script[func_start:func_end]
-        assert "last_fix" in func_body
+    def test_artifacts_without_commit_sha_not_stale_by_commit(self):
+        """Artifacts without commit_sha (e.g. specs, plans) are not stale by commit check."""
+        manifest = _load_fixture("manifest_with_evidence.json")
+        current_shas = {"abc111"}
 
-    def test_gate_record_has_evidence_paths(self):
-        func_start = self.script.index("function makeGateRecord")
-        func_end = self.script.index("}", func_start) + 1
-        func_body = self.script[func_start:func_end]
-        assert "evidence_paths" in func_body
+        stale = [
+            a for a in manifest["artifacts"]
+            if self._is_artifact_stale(a, current_shas)
+        ]
+        stale_names = {a["name"] for a in stale}
+        assert "spec.md" not in stale_names
+        assert "plan.md" not in stale_names
+        assert "task-2-test-output.txt" in stale_names
 
-    def test_gate_record_has_updated_at(self):
-        func_start = self.script.index("function makeGateRecord")
-        func_end = self.script.index("}", func_start) + 1
-        func_body = self.script[func_start:func_end]
-        assert "updated_at" in func_body
+    def test_stale_artifacts_can_be_invalidated(self):
+        """Stale artifacts can be removed from manifest, summary is recomputed."""
+        manifest = _load_fixture("manifest_stale_artifacts.json")
+        current_shas = {"abc111", "abc999"}
 
-    def test_gate_record_has_next_action(self):
-        func_start = self.script.index("function makeGateRecord")
-        func_end = self.script.index("}", func_start) + 1
-        func_body = self.script[func_start:func_end]
-        assert "next_action" in func_body
+        valid = [
+            a for a in manifest["artifacts"]
+            if not self._is_artifact_stale(a, current_shas)
+        ]
+        manifest["artifacts"] = valid
 
-    def test_gate_4_manifest_in_record(self):
-        # Gate 4 should embed manifest in the gate record
-        assert "manifest" in self.script
-        # Should be in the gate 4 section (look for the gate 4 header comment)
-        gate4_section_marker = "// ── Gate 4: runtime_evidence"
-        if gate4_section_marker in self.script:
-            gate4_idx = self.script.index(gate4_section_marker)
-            section = self.script[gate4_idx:gate4_idx + 3000]
-            assert "manifest" in section
-        else:
-            # Fallback: just verify manifest is used near GATE_RUNTIME_EVIDENCE
-            # in the gates phase (after "Phase 9:")
-            phase9_idx = self.script.index("Phase 9:")
-            gates_section = self.script[phase9_idx:]
-            runtime_idx = gates_section.index("GATE_RUNTIME_EVIDENCE")
-            section = gates_section[runtime_idx:runtime_idx + 3000]
-            assert "manifest" in section
+        by_type = {}
+        for a in valid:
+            t = a.get("type", "unknown")
+            by_type[t] = by_type.get(t, 0) + 1
+        manifest["summary"] = {"total": len(valid), "by_type": by_type}
 
+        assert manifest["summary"]["total"] == 1
+        assert manifest["summary"]["by_type"]["test_result"] == 1
 
-class TestFullAutoRetryCap:
-    """Contract: gates use GATE_RETRIES cap (default 10)."""
+    def test_invalidate_by_task_status(self):
+        """Artifacts belonging to blocked/failed tasks should be invalidated."""
+        manifest = _load_fixture("manifest_with_evidence.json")
+        task_states = {
+            "task-1": {"status": "passed"},
+            "task-2": {"status": "passed"},
+            "task-3": {"status": "blocked"},
+        }
+        invalid_statuses = {"blocked", "failed", "failed_review"}
 
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(FULL_AUTO)
-
-    def test_gate_retry_cap_default(self):
-        assert "GATE_RETRY_CAP_DEFAULT" in self.script
-
-    def test_gate_retries_used_in_loops(self):
-        count = self.script.count("GATE_RETRIES")
-        assert count >= 3, f"Expected GATE_RETRIES used at least 3 times, got {count}"
+        stale_by_task = [
+            a for a in manifest["artifacts"]
+            if a.get("task_id")
+            and task_states.get(a["task_id"], {}).get("status") in invalid_statuses
+        ]
+        assert len(stale_by_task) == 1
+        assert stale_by_task[0]["task_id"] == "task-3"
 
 
-class TestFullAutoResumeSupport:
-    """Contract: resume support skips already-passed gates."""
+# ========================================================================
+# 7. Gate retry with evidence accumulation
+# ========================================================================
 
-    @pytest.fixture(autouse=True)
-    def _load(self):
-        self.script = _read_script(FULL_AUTO)
 
-    def test_is_gate_already_passed_function(self):
-        assert "function isGateAlreadyPassed" in self.script
+class TestGateRetryWithEvidence:
+    """Test gate retry behavior and evidence accumulation across retries."""
 
-    def test_resume_gate_cursor_read(self):
-        assert "resume_gate_cursor" in self.script or "resumeGateCursor" in self.script
+    def test_failed_gate_retried_with_incrementing_iterations(self, tmp_path):
+        """Gate 4 fails, is retried, and iteration count increases."""
+        state_file, _ = _init_run(tmp_path, task_name="gate-retry")
+        _update_state(state_file, {
+            "phase": "gates",
+            "progress": {"tasks_passed": 2, "tasks_total": 2, "gates_passed": 3, "gates_total": 7},
+            "gate_states": [
+                {"gate": "gate_1_tasks_executed", "passed": True, "iterations": 1},
+                {"gate": "gate_2_reviews_passed", "passed": True, "iterations": 1},
+                {"gate": "gate_3_tests_pass", "passed": True, "iterations": 1},
+                {"gate": "gate_4_runtime_evidence", "passed": False, "iterations": 1},
+                {"gate": "gate_5_spec_verified", "passed": False, "iterations": 0},
+                {"gate": "gate_6_final_review", "passed": False, "iterations": 0},
+                {"gate": "gate_7_git_clean", "passed": False, "iterations": 0},
+            ],
+        })
 
-    def test_resume_gate_states_read(self):
-        assert "resume_gate_states" in self.script or "resumeGateStates" in self.script
+        state = json.loads(Path(state_file).read_text())
+        gate4 = [g for g in state["gate_states"] if g["gate"] == "gate_4_runtime_evidence"][0]
+        assert gate4["passed"] is False
+        assert gate4["iterations"] == 1
 
-    def test_gate_states_tracked_in_map(self):
-        assert "gateStates" in self.script
+        # Simulate retry: increment iteration
+        gate_states = state["gate_states"]
+        for g in gate_states:
+            if g["gate"] == "gate_4_runtime_evidence":
+                g["iterations"] = 2
+        _update_state(state_file, {"gate_states": gate_states})
+
+        state = json.loads(Path(state_file).read_text())
+        gate4 = [g for g in state["gate_states"] if g["gate"] == "gate_4_runtime_evidence"][0]
+        assert gate4["iterations"] == 2
+
+    def test_gate_passes_after_evidence_provided(self, tmp_path):
+        """Gate 4 passes after runtime evidence is provided."""
+        state_file, _ = _init_run(tmp_path, task_name="gate-evidence")
+        _update_state(state_file, {
+            "phase": "gates",
+            "progress": {"tasks_passed": 2, "tasks_total": 2, "gates_passed": 3, "gates_total": 7},
+            "gate_states": [
+                {"gate": "gate_1_tasks_executed", "passed": True, "iterations": 1},
+                {"gate": "gate_2_reviews_passed", "passed": True, "iterations": 1},
+                {"gate": "gate_3_tests_pass", "passed": True, "iterations": 1},
+                {"gate": "gate_4_runtime_evidence", "passed": False, "iterations": 2},
+                {"gate": "gate_5_spec_verified", "passed": False, "iterations": 0},
+                {"gate": "gate_6_final_review", "passed": False, "iterations": 0},
+                {"gate": "gate_7_git_clean", "passed": False, "iterations": 0},
+            ],
+        })
+
+        # Provide runtime evidence, mark gate 4 passed
+        _update_state(state_file, {
+            "runtime_verification": {
+                "status": "passed", "smoke": "passed",
+                "crash_detected": False, "hang_detected": False,
+            },
+            "gate_states": [
+                {"gate": "gate_1_tasks_executed", "passed": True, "iterations": 1},
+                {"gate": "gate_2_reviews_passed", "passed": True, "iterations": 1},
+                {"gate": "gate_3_tests_pass", "passed": True, "iterations": 1},
+                {"gate": "gate_4_runtime_evidence", "passed": True, "iterations": 3},
+                {"gate": "gate_5_spec_verified", "passed": False, "iterations": 0},
+                {"gate": "gate_6_final_review", "passed": False, "iterations": 0},
+                {"gate": "gate_7_git_clean", "passed": False, "iterations": 0},
+            ],
+            "progress": {"tasks_passed": 2, "tasks_total": 2, "gates_passed": 4, "gates_total": 7},
+        })
+
+        state = json.loads(Path(state_file).read_text())
+        gate4 = [g for g in state["gate_states"] if g["gate"] == "gate_4_runtime_evidence"][0]
+        assert gate4["passed"] is True
+        assert gate4["iterations"] == 3
+        assert state["progress"]["gates_passed"] == 4
+
+    def test_passed_gates_not_rechecked(self, tmp_path):
+        """Previously passed gates keep their iteration counts on retry."""
+        state_file, _ = _init_run(tmp_path, task_name="gate-no-recheck")
+        _update_state(state_file, {
+            "phase": "gates",
+            "gate_states": [
+                {"gate": "gate_1_tasks_executed", "passed": True, "iterations": 1},
+                {"gate": "gate_2_reviews_passed", "passed": True, "iterations": 1},
+                {"gate": "gate_3_tests_pass", "passed": True, "iterations": 1},
+                {"gate": "gate_4_runtime_evidence", "passed": False, "iterations": 2},
+                {"gate": "gate_5_spec_verified", "passed": False, "iterations": 0},
+                {"gate": "gate_6_final_review", "passed": False, "iterations": 0},
+                {"gate": "gate_7_git_clean", "passed": False, "iterations": 0},
+            ],
+        })
+
+        state = json.loads(Path(state_file).read_text())
+        passed_gates = [g for g in state["gate_states"] if g["passed"]]
+        assert len(passed_gates) == 3
+        for g in passed_gates:
+            assert g["iterations"] == 1
+
+    def test_partial_gate_fixture_resume(self, capsys):
+        """Partial gate fixture resumes at the correct gate cursor."""
+        data = _load_fixture("state_gates_partial.json")
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            sf = _write_fixture_state(td, data)
+            args = _ArgNamespace(state_file=sf)
+            fs.cmd_resume(args)
+            out = json.loads(capsys.readouterr().out)
+            assert out["next_entrypoint"] == "resume_gates"
+            assert out["cursor"]["gate_cursor"] == 3
+            passed_gates = [g for g in out["summary"]["gate_states"] if g.get("passed")]
+            assert len(passed_gates) == 3
+
+
+# ========================================================================
+# 8. Runtime evidence manifest structure
+# ========================================================================
+
+
+class TestRuntimeEvidenceManifest:
+    """Test the evidence manifest structure and summary computation."""
+
+    def test_manifest_schema_structure(self):
+        """Manifest has required schema fields."""
+        manifest = _load_fixture("manifest_with_evidence.json")
+        assert manifest["schema_version"] == 1
+        assert "run_id" in manifest
+        assert "artifacts" in manifest
+        assert isinstance(manifest["artifacts"], list)
+        assert "summary" in manifest
+        assert "created_at" in manifest
+        assert "updated_at" in manifest
+
+    def test_artifact_required_fields(self):
+        """Each artifact has name, type, and status."""
+        manifest = _load_fixture("manifest_with_evidence.json")
+        for art in manifest["artifacts"]:
+            assert "name" in art
+            assert "type" in art
+            assert "status" in art
+
+    def test_summary_matches_artifacts(self):
+        """Summary total and by_type match the artifacts list."""
+        manifest = _load_fixture("manifest_with_evidence.json")
+        total = manifest["summary"]["total"]
+        by_type = manifest["summary"]["by_type"]
+        assert total == len(manifest["artifacts"])
+
+        computed = {}
+        for art in manifest["artifacts"]:
+            t = art.get("type", "unknown")
+            computed[t] = computed.get(t, 0) + 1
+        assert by_type == computed
+
+    def test_manifest_update_via_flow_state(self, tmp_path, capsys):
+        """Manifest can be updated via flow-state manifest command."""
+        state_file, _ = _init_run(tmp_path, task_name="manifest-test")
+
+        patch_json = json.dumps({
+            "artifacts": [
+                {"name": "test-1.txt", "type": "test_result", "status": "passed", "task_id": "task-1"},
+                {"name": "smoke.txt", "type": "smoke_test", "status": "passed"},
+            ],
+        })
+        args = _ArgNamespace(state_file=state_file, patch_json=patch_json)
+        code = fs.cmd_manifest(args)
+        out = json.loads(capsys.readouterr().out)
+        assert code == 0
+        assert out["manifest_artifacts"] == 2
+
+        state = json.loads(Path(state_file).read_text())
+        assert state["evidence_summary"]["total"] == 2
+        assert state["evidence_summary"]["by_type"]["test_result"] == 1
+        assert state["evidence_summary"]["by_type"]["smoke_test"] == 1
+
+    def test_artifact_types_are_valid(self):
+        """Artifact types come from known set."""
+        valid_types = {
+            "test_result", "smoke_test", "spec", "plan",
+            "screenshot", "log", "diff", "review", "coverage",
+        }
+        manifest = _load_fixture("manifest_with_evidence.json")
+        for art in manifest["artifacts"]:
+            assert art["type"] in valid_types, f"Unknown type: {art['type']}"
+
+
+# ========================================================================
+# 9. State updates and events through the script boundary
+# ========================================================================
+
+
+class TestStateUpdatesAndEvents:
+    """Test state updates and audit events through the flow-state.py boundary."""
+
+    def test_optimistic_concurrency_enforced(self, tmp_path, capsys):
+        """Concurrent updates with wrong revision are rejected."""
+        state_file, _ = _init_run(tmp_path, task_name="concurrency")
+        args1 = _ArgNamespace(
+            state_file=state_file,
+            patch_json=json.dumps({"phase": "research"}),
+            expected_revision=0,
+        )
+        code1 = fs.cmd_update(args1)
+        capsys.readouterr()
+        assert code1 == 0
+
+        args2 = _ArgNamespace(
+            state_file=state_file,
+            patch_json=json.dumps({"phase": "execute"}),
+            expected_revision=0,
+        )
+        code2 = fs.cmd_update(args2)
+        out = json.loads(capsys.readouterr().out)
+        assert code2 == 3
+        assert "mismatch" in str(out.get("errors", "")).lower()
+
+    def test_deep_merge_preserves_existing_keys(self, tmp_path):
+        """Deep merge preserves keys not in the patch."""
+        state_file, _ = _init_run(tmp_path, task_name="merge")
+        _update_state(state_file, {
+            "progress": {"tasks_passed": 3, "tasks_total": 5, "gates_passed": 0, "gates_total": 7},
+            "task_states": {
+                "task-1": {"status": "passed"},
+                "task-2": {"status": "passed"},
+            },
+        })
+
+        _update_state(state_file, {
+            "task_states": {"task-3": {"status": "passed"}},
+        })
+
+        state = json.loads(Path(state_file).read_text())
+        assert state["progress"]["tasks_passed"] == 3
+        assert state["progress"]["tasks_total"] == 5
+        assert state["progress"]["gates_total"] == 7
+
+    def test_null_deletes_key(self, tmp_path):
+        """Null value in patch deletes the key."""
+        state_file, _ = _init_run(tmp_path, task_name="null-del")
+        _update_state(state_file, {"placeholder_value": "temporary"})
+        state = json.loads(Path(state_file).read_text())
+        assert state["placeholder_value"] == "temporary"
+
+        _update_state(state_file, {"placeholder_value": None})
+        state = json.loads(Path(state_file).read_text())
+        assert "placeholder_value" not in state
+
+    def test_events_appended_to_jsonl(self, tmp_path):
+        """Audit events are appended to JSONL file."""
+        state_file, _ = _init_run(tmp_path, task_name="events")
+        _append_event(state_file, "phase_start", {"phase": "scope"})
+        _append_event(state_file, "phase_complete", {"phase": "scope"})
+        _append_event(state_file, "phase_start", {"phase": "research"})
+
+        run_dir = Path(state_file).parent
+        audit = (run_dir / "audit" / "events.jsonl").read_text()
+        lines = [l for l in audit.strip().split("\n") if l]
+        assert len(lines) == 4  # 1 init + 3 events
+
+        events = [json.loads(l) for l in lines]
+        assert events[1]["type"] == "phase_start"
+        assert events[1]["data"]["phase"] == "scope"
+        assert events[2]["type"] == "phase_complete"
+        assert events[3]["type"] == "phase_start"
+        assert events[3]["data"]["phase"] == "research"
+
+    def test_events_have_correlation_ids(self, tmp_path):
+        """Events have correlation IDs for tracing."""
+        state_file, _ = _init_run(tmp_path, task_name="corr")
+        _append_event(state_file, "test", {"key": "val"}, correlation_id="corr-123")
+
+        run_dir = Path(state_file).parent
+        audit = (run_dir / "audit" / "events.jsonl").read_text()
+        lines = [l for l in audit.strip().split("\n") if l]
+        last = json.loads(lines[-1])
+        assert last["correlation_id"] == "corr-123"
+
+    def test_secrets_redacted_in_patch(self, tmp_path):
+        """Secrets are redacted from patches."""
+        state_file, _ = _init_run(tmp_path, task_name="secrets")
+        _update_state(state_file, {
+            "API_KEY": "super-secret-key",
+            "normal_field": "visible",
+            "AUTH_TOKEN": "also-secret",
+        })
+
+        state = json.loads(Path(state_file).read_text())
+        assert state["API_KEY"] == "[REDACTED]"
+        assert state["AUTH_TOKEN"] == "[REDACTED]"
+        assert state["normal_field"] == "visible"
+
+    def test_revision_monotonically_increases(self, tmp_path):
+        """Revision increases with every update."""
+        state_file, _ = _init_run(tmp_path, task_name="revision")
+        for i in range(5):
+            state = json.loads(Path(state_file).read_text())
+            assert state["revision"] == i
+            _update_state(state_file, {"phase": "execute"})
+
+
+# ========================================================================
+# 10. Hook/output adapter behavior (SubagentStart/Stop schemas)
+# ========================================================================
+
+
+class TestSubagentStartAdapter:
+    """Test SubagentStart hook output schema."""
+
+    def test_emit_context_json_schema(self, capsys):
+        """emit_context_json produces correct hookSpecificOutput schema."""
+        hooks.emit_context_json("test context", "SubagentStart")
+        out = json.loads(capsys.readouterr().out)
+        assert "hookSpecificOutput" in out
+        assert out["hookSpecificOutput"]["hookEventName"] == "SubagentStart"
+        assert out["hookSpecificOutput"]["additionalContext"] == "test context"
+
+    def test_subagent_start_includes_auto_mode_context(self, tmp_path, capsys, monkeypatch):
+        """SubagentStart hook injects AUTO-MODE-CONTEXT when state is active."""
+        state_file, _ = _init_run(tmp_path, task_name="hook-start")
+        _update_state(state_file, {"phase": "execute"})
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             pytest.raises(SystemExit) as exc_info:
+            hooks.hook_subagent_start()
+
+        assert exc_info.value.code == 0
+        out = json.loads(capsys.readouterr().out)
+        assert "hookSpecificOutput" in out
+        assert out["hookSpecificOutput"]["hookEventName"] == "SubagentStart"
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "AUTO-MODE-CONTEXT" in ctx
+        assert "auto-mode pipeline" in ctx
+        assert "execute" in ctx
+
+
+class TestSubagentStopAdapter:
+    """Test SubagentStop hook output schema."""
+
+    def test_subagent_stop_blocks_empty_output(self, tmp_path, capsys, monkeypatch):
+        """SubagentStop blocks when tracked agent has no output."""
+        state_file, _ = _init_run(tmp_path, task_name="hook-stop")
+        _update_state(state_file, {
+            "phase": "execute",
+            "active_agents": [{"agent_id": "agent-123", "role": "implementer", "task_id": "task-1"}],
+        })
+
+        monkeypatch.chdir(tmp_path)
+
+        input_data = json.dumps({
+            "agent_id": "agent-123",
+            "agent_type": "general-purpose",
+            "last_assistant_message": "",
+        })
+
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             patch("sys.stdin", _FakeStdin(input_data)), \
+             pytest.raises(SystemExit) as exc_info:
+            hooks.hook_subagent_stop()
+
+        assert exc_info.value.code == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["decision"] == "block"
+        assert "No output" in out["reason"]
+
+    def test_subagent_stop_blocks_gave_up_language(self, tmp_path, capsys, monkeypatch):
+        """SubagentStop blocks when agent uses gave-up language."""
+        state_file, _ = _init_run(tmp_path, task_name="hook-gaveup")
+        _update_state(state_file, {
+            "phase": "execute",
+            "active_agents": [{"agent_id": "agent-456", "role": "implementer", "task_id": "task-1"}],
+        })
+
+        monkeypatch.chdir(tmp_path)
+
+        input_data = json.dumps({
+            "agent_id": "agent-456",
+            "agent_type": "general-purpose",
+            "last_assistant_message": "I cannot proceed without more information.",
+        })
+
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             patch("sys.stdin", _FakeStdin(input_data)), \
+             pytest.raises(SystemExit) as exc_info:
+            hooks.hook_subagent_stop()
+
+        assert exc_info.value.code == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["decision"] == "block"
+        assert "stuck" in out["reason"].lower() or "auto-mode" in out["reason"].lower()
+
+    def test_subagent_stop_passes_with_valid_output(self, tmp_path, monkeypatch):
+        """SubagentStop passes when agent has valid output."""
+        state_file, _ = _init_run(tmp_path, task_name="hook-pass")
+        _update_state(state_file, {
+            "phase": "execute",
+            "active_agents": [{"agent_id": "agent-789", "role": "reviewer", "task_id": "task-2"}],
+        })
+
+        monkeypatch.chdir(tmp_path)
+
+        input_data = json.dumps({
+            "agent_id": "agent-789",
+            "agent_type": "general-purpose",
+            "last_assistant_message": "Review complete. Found 2 minor issues. Files: a.py, b.py",
+        })
+
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             patch("sys.stdin", _FakeStdin(input_data)), \
+             pytest.raises(SystemExit) as exc_info:
+            hooks.hook_subagent_stop()
+        assert exc_info.value.code == 0
+
+
+class TestStopHook:
+    """Test main agent Stop hook."""
+
+    def test_stop_blocks_when_auto_mode_active(self, tmp_path, capsys, monkeypatch):
+        """Stop hook blocks and generates resume prompt when auto-mode is active."""
+        state_file, _ = _init_run(tmp_path, task_name="hook-main-stop")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 1, "tasks_total": 3, "gates_passed": 0, "gates_total": 7},
+            # Hooks expect gate_states as a dict (for .items()), not a list
+            "gate_states": {
+                "gate_1_tasks_executed": {"passed": True, "iterations": 1},
+            },
+        })
+
+        monkeypatch.chdir(tmp_path)
+
+        with patch.object(hooks, "auto_mode_active", return_value=state_file):
+            with pytest.raises(SystemExit) as exc_info:
+                hooks.hook_stop()
+
+        assert exc_info.value.code == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["decision"] == "block"
+        assert "AUTO-MODE CONTINUATION" in out["reason"]
+        assert "execute" in out["reason"]
+
+    def test_stop_passes_when_no_auto_mode(self, monkeypatch):
+        """Stop hook passes when no auto-mode is active."""
+        monkeypatch.chdir("/tmp")
+        with patch.object(hooks, "auto_mode_active", return_value=None):
+            with pytest.raises(SystemExit) as exc_info:
+                hooks.hook_stop()
+        assert exc_info.value.code == 0
+
+
+class TestPreCompactHook:
+    """Test PreCompact hook writes snapshot."""
+
+    def test_pre_compact_creates_snapshot(self, tmp_path, monkeypatch):
+        """PreCompact hook creates a compact-snapshot.md file."""
+        state_file, _ = _init_run(tmp_path, task_name="hook-compact")
+        _update_state(state_file, {
+            "phase": "execute",
+            "progress": {"tasks_passed": 2, "tasks_total": 4, "gates_passed": 0, "gates_total": 7},
+            # Hooks expect gate_states as a dict (for .items()), not a list
+            "gate_states": {},
+        })
+
+        monkeypatch.chdir(tmp_path)
+
+        input_data = json.dumps({"trigger": "auto"})
+
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             patch("sys.stdin", _FakeStdin(input_data)), \
+             patch("subprocess.run", return_value=_FakeCompletedProc(stdout="abc123 feat: test")):
+            with pytest.raises(SystemExit) as exc_info:
+                hooks.hook_pre_compact()
+
+        assert exc_info.value.code == 0
+        # The hooks code uses state["task_name"] to build the snapshot path
+        state = json.loads(Path(state_file).read_text())
+        snapshot = tmp_path / ".claude" / "auto" / state["safe_task_name"] / "compact-snapshot.md"
+        assert snapshot.exists()
+        content = snapshot.read_text()
+        assert "execute" in content
+        assert "Auto-Mode Compaction Snapshot" in content
+
+
+# ========================================================================
+# 11. Gate drift and canonical gate validation
+# ========================================================================
+
+
+class TestGateDriftDetection:
+    """Test detection of gate count drift (six vs seven gates)."""
+
+    def test_six_gate_fixture_rejected(self):
+        """Six-gate fixture must be detected as incomplete."""
+        data = _load_fixture("gate_drift_six_vs_seven.json")
+        reported = set(data["gate_states"].keys())
+        canonical = set(CANONICAL_GATES)
+        missing = canonical - reported
+        assert len(missing) > 0
+
+    def test_seven_gate_fixture_accepted(self):
+        """Done fixture with seven gates passes canonical validation."""
+        data = _load_fixture("state_blocked_escalating.json")
+        gate_names = {g["gate"] for g in data["gate_states"]}
+        canonical = set(CANONICAL_GATES)
+        assert gate_names == canonical
+
+    def test_validate_gate_set_function(self):
+        """validateGateSet logic correctly identifies missing gates."""
+        reported = {f"gate_{i+1}_{name}" for i, name in enumerate([
+            "tasks_executed", "reviews_passed", "tests_pass",
+            "runtime_evidence", "spec_verified", "final_review", "git_clean",
+        ])}
+        canonical = set(CANONICAL_GATES)
+        missing = canonical - reported
+        assert len(missing) == 0
+
+        reported_minus_one = reported - {"gate_4_runtime_evidence"}
+        missing = canonical - reported_minus_one
+        assert "gate_4_runtime_evidence" in missing
+
+
+# ========================================================================
+# 12. Integration: full lifecycle with all operations
+# ========================================================================
+
+
+class TestFullLifecycleIntegration:
+    """End-to-end integration: init, all phases, events, snapshots, manifest, validate."""
+
+    def test_complete_run_lifecycle(self, tmp_path, capsys):
+        """Simulate a complete run from init to DONE with all operations."""
+        state_file, state = _init_run(tmp_path, task_name="e2e-lifecycle")
+        assert state["status"] == "ACTIVE"
+
+        # Phase transitions with events
+        for phase in ["research", "synthesize_spec", "write_plan", "parse_plan", "execute"]:
+            _append_event(state_file, "phase_start", {"phase": phase})
+            patch = {"phase": phase}
+            if phase == "synthesize_spec":
+                patch["spec_path"] = ".claude/specs/e2e.md"
+            elif phase == "write_plan":
+                patch["plan_path"] = ".claude/plans/e2e.md"
+            elif phase == "execute":
+                patch.update({
+                    "progress": {"tasks_passed": 0, "tasks_total": 2, "gates_passed": 0, "gates_total": 7},
+                    "task_states": {
+                        "task-1": {"status": "queued", "attempts": 0},
+                        "task-2": {"status": "queued", "attempts": 0},
+                    },
+                })
+            _update_state(state_file, patch)
+
+        # Take snapshot mid-execute
+        snap = _take_snapshot(state_file, reason="mid-execute")
+        snap_data = json.loads(snap.read_text())
+        assert snap_data["reason"] == "mid-execute"
+
+        # Complete tasks
+        _update_state(state_file, {
+            "task_states": {
+                "task-1": {"status": "passed", "attempts": 1},
+                "task-2": {"status": "passed", "attempts": 1},
+            },
+            "progress": {"tasks_passed": 2, "tasks_total": 2, "gates_passed": 0, "gates_total": 7},
+        })
+
+        # Add evidence via manifest
+        args = _ArgNamespace(
+            state_file=state_file,
+            patch_json=json.dumps({
+                "artifacts": [
+                    {"name": "task-1-output.txt", "type": "test_result", "status": "passed", "task_id": "task-1"},
+                    {"name": "task-2-output.txt", "type": "test_result", "status": "passed", "task_id": "task-2"},
+                ],
+            }),
+        )
+        fs.cmd_manifest(args)
+        capsys.readouterr()
+
+        # Run gates
+        _append_event(state_file, "phase_start", {"phase": "gates"})
+        _update_state(state_file, {
+            "phase": "gates",
+            "gate_states": [
+                {"gate": g, "passed": True, "iterations": 1} for g in CANONICAL_GATES
+            ],
+            "progress": {"tasks_passed": 2, "tasks_total": 2, "gates_passed": 7, "gates_total": 7},
+        })
+
+        # Finalize
+        _append_event(state_file, "run_complete", {"status": "DONE"})
+        _update_state(state_file, {"phase": "finalize", "status": "DONE"})
+
+        # Validate final state
+        args = _ArgNamespace(state_file=state_file)
+        code = fs.cmd_validate(args)
+        out = json.loads(capsys.readouterr().out)
+        assert code == 0, f"Validation failed: {out.get('errors', [])}"
+        assert out["ok"] is True
+
+        # Verify final state shape
+        state = json.loads(Path(state_file).read_text())
+        assert state["status"] == "DONE"
+        assert state["phase"] == "finalize"
+        assert state["progress"]["gates_passed"] == 7
+        assert state["progress"]["tasks_passed"] == 2
+        assert len(state["gate_states"]) == 7
+        assert all(g["passed"] for g in state["gate_states"])
+
+        # Verify audit trail
+        run_dir = Path(state_file).parent
+        audit = (run_dir / "audit" / "events.jsonl").read_text()
+        events = [json.loads(l) for l in audit.strip().split("\n") if l]
+        event_types = [e["type"] for e in events]
+        assert "run_created" in event_types
+        assert event_types.count("phase_start") >= 5
+        assert "run_complete" in event_types
+
+        # Verify manifest
+        manifest = json.loads((run_dir / "evidence" / "manifest.json").read_text())
+        assert manifest["summary"]["total"] == 2
+        assert state["evidence_summary"]["total"] == 2
