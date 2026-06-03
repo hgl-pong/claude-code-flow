@@ -22,6 +22,63 @@ export const meta = {
 const { groups, tasks, worktree, model_tasks } = args
 const MAX_RETRIES = 5
 
+// ── Contract constants (shared with full-auto-pipeline) ────────────────
+
+const RESULT_PARTITIONS = ['passed', 'completed', 'blocked', 'stalled', 'failed_review', 'needs_escalation']
+
+const BLOCKER_TAXONOMY = [
+  'agent_output_invalid', 'merge_conflict', 'permissions', 'external_service',
+  'tooling_unavailable', 'test_failure', 'runtime_failure', 'dependency_failure',
+  'architecture_decision', 'scope_too_large', 'missing_context',
+]
+
+const ESCALATION_LADDER = [
+  'schema_retry', 'self_service_retry', 'stronger_model',
+  'split_subtask', 'enriched_context', 'ask_user',
+]
+
+const ESCALATION_ATTEMPTS = {
+  schema_retry: 1,
+  self_service_retry: 2,
+  stronger_model: 1,
+  split_subtask: 1,
+  enriched_context: 1,
+  ask_user: 1,
+}
+
+const REVIEW_SEVERITIES = ['Critical', 'High', 'Important', 'Minor', 'Info']
+const TASK_RISKS = ['low', 'medium', 'high', 'critical']
+
+const REVIEW_THRESHOLD = {
+  spec_review: {
+    low:       { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    medium:    { Critical: true, High: true, Important: true,          Minor: false, Info: false },
+    high:      { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    critical:  { Critical: true, High: true, Important: true,          Minor: true,  Info: false },
+  },
+  code_review: {
+    low:       { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    medium:    { Critical: true, High: true, Important: true,          Minor: false, Info: false },
+    high:      { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    critical:  { Critical: true, High: true, Important: true,          Minor: true,  Info: false },
+  },
+  final_review: {
+    any:       { Critical: true, High: true, Important: true,          Minor: false, Info: false },
+  },
+}
+
+function isIssueBlocking(reviewStage, taskRisk, severity, explicitFlag) {
+  if (explicitFlag === true) return true
+  if (explicitFlag === false) return false
+  const key = reviewStage === 'final_review' ? 'any' : taskRisk
+  const table = REVIEW_THRESHOLD[reviewStage]
+  if (!table || !table[key]) return severity === 'Critical' || severity === 'High'
+  const rule = table[key][severity]
+  if (rule === true) return true
+  if (rule === false) return false
+  return explicitFlag === true
+}
+
 // ── Structured Output Schemas ─────────────────────────────────────────
 
 const IMPLEMENT_RESULT = {

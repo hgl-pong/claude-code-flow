@@ -35,6 +35,112 @@ const {
 const RETRIES = max_retries || 5
 const GATE_RETRIES = 10
 
+// ── Contract constants ────────────────────────────────────────────────
+
+const PHASE_ORDER = [
+  'scope', 'research', 'synthesize_spec', 'review_spec',
+  'write_plan', 'review_plan', 'parse_plan', 'execute', 'gates', 'finalize',
+]
+
+const EXECUTE_SUBFLOW_STAGES = ['Implement', 'Spec Review', 'Code Review']
+
+const CANONICAL_GATES = [
+  'tasks_executed',
+  'reviews_passed',
+  'tests_pass',
+  'runtime_evidence',
+  'spec_verified',
+  'final_review',
+  'git_clean',
+]
+
+const RESULT_PARTITIONS = ['passed', 'completed', 'blocked', 'stalled', 'failed_review', 'needs_escalation']
+
+const BLOCKER_TAXONOMY = [
+  'agent_output_invalid', 'merge_conflict', 'permissions', 'external_service',
+  'tooling_unavailable', 'test_failure', 'runtime_failure', 'dependency_failure',
+  'architecture_decision', 'scope_too_large', 'missing_context',
+]
+
+const ESCALATION_LADDER = [
+  'schema_retry', 'self_service_retry', 'stronger_model',
+  'split_subtask', 'enriched_context', 'ask_user',
+]
+
+const ESCALATION_ATTEMPTS = {
+  schema_retry: 1,
+  self_service_retry: 2,
+  stronger_model: 1,
+  split_subtask: 1,
+  enriched_context: 1,
+  ask_user: 1,
+}
+
+const REVIEW_SEVERITIES = ['Critical', 'High', 'Important', 'Minor', 'Info']
+const TASK_RISKS = ['low', 'medium', 'high', 'critical']
+
+const REVIEW_RETRY_CAP_DEFAULT = 5
+const GATE_RETRY_CAP_DEFAULT = 10
+
+const TASK_METADATA_DEFAULTS = {
+  risk: 'medium',
+  subsystem: 'unknown',
+  runtime_evidence_required: 'optional',
+  depends_on: [],
+  files: [],
+  tests: [],
+  verification: [],
+  acceptance_refs: [],
+  concerns: [],
+}
+
+const TASK_STATUSES = [
+  'queued', 'implementing', 'implemented', 'spec_reviewing', 'code_reviewing',
+  'passed', 'blocked', 'stalled', 'failed_review', 'failed', 'split',
+]
+
+const TERMINAL_STATUSES = ['DONE', 'STOPPED_ASK_USER', 'FAILED_FATAL', 'CANCELLED']
+const NONTERMINAL_STATUSES = ['ACTIVE', 'PAUSED_COMPACTING', 'BLOCKED_ESCALATING']
+
+// Review threshold table: [review_stage][task_risk] -> which severities block
+const REVIEW_THRESHOLD = {
+  spec_review: {
+    low:       { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    medium:    { Critical: true, High: true, Important: true,          Minor: false, Info: false },
+    high:      { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    critical:  { Critical: true, High: true, Important: true,          Minor: true,  Info: false },
+  },
+  code_review: {
+    low:       { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    medium:    { Critical: true, High: true, Important: true,          Minor: false, Info: false },
+    high:      { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
+    critical:  { Critical: true, High: true, Important: true,          Minor: true,  Info: false },
+  },
+  final_review: {
+    any:       { Critical: true, High: true, Important: true,          Minor: false, Info: false },
+  },
+}
+
+function isIssueBlocking(reviewStage, taskRisk, severity, explicitFlag) {
+  if (explicitFlag === true) return true
+  if (explicitFlag === false) return false
+  const key = reviewStage === 'final_review' ? 'any' : taskRisk
+  const table = REVIEW_THRESHOLD[reviewStage]
+  if (!table || !table[key]) return severity === 'Critical' || severity === 'High'
+  const rule = table[key][severity]
+  if (rule === true) return true
+  if (rule === false) return false
+  // 'if_explicit' — blocking only if issue explicitly marked blocking=true
+  return explicitFlag === true
+}
+
+function validateGateSet(gateStates) {
+  const reported = Object.keys(gateStates)
+  const canonical = CANONICAL_GATES.map(g => 'gate_' + (CANONICAL_GATES.indexOf(g) + 1) + '_' + g)
+  const missing = canonical.filter(g => !reported.includes(g))
+  return { valid: missing.length === 0, missing }
+}
+
 function agentOpts(label, phase, schema) {
   const opts = { label, phase, schema }
   if (model_tasks) opts.model = model_tasks
