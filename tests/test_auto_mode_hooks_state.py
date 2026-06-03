@@ -339,7 +339,8 @@ class TestSubagentStartStateIntegration:
         monkeypatch.chdir(tmp_path)
 
         capsys.readouterr()
-        with patch.object(hooks, "auto_mode_active", return_value=state_file):
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             patch("sys.stdin", _FakeStdin("")):
             with pytest.raises(SystemExit) as exc_info:
                 hooks.hook_subagent_start()
 
@@ -476,7 +477,8 @@ class TestEmittedJsonSchema:
         monkeypatch.chdir(tmp_path)
 
         capsys.readouterr()
-        with patch.object(hooks, "auto_mode_active", return_value=state_file):
+        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
+             patch("sys.stdin", _FakeStdin("")):
             with pytest.raises(SystemExit):
                 hooks.hook_subagent_start()
 
