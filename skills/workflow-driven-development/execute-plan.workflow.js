@@ -79,6 +79,69 @@ function isIssueBlocking(reviewStage, taskRisk, severity, explicitFlag) {
   return explicitFlag === true
 }
 
+// ── Blocker classification ────────────────────────────────────────────
+
+function classifyBlocker(detail) {
+  if (!detail) return 'agent_output_invalid'
+  const lower = detail.toLowerCase()
+  if (lower.includes('merge conflict') || lower.includes('conflict')) return 'merge_conflict'
+  if (lower.includes('permission') || lower.includes('access denied') || lower.includes('forbidden')) return 'permissions'
+  if (lower.includes('external') || lower.includes('service') || lower.includes('timeout') || lower.includes('network')) return 'external_service'
+  if (lower.includes('tool') || lower.includes('command not found') || lower.includes('not installed')) return 'tooling_unavailable'
+  if (lower.includes('test') && (lower.includes('fail') || lower.includes('error'))) return 'test_failure'
+  if (lower.includes('runtime') || lower.includes('crash') || lower.includes('exception')) return 'runtime_failure'
+  if (lower.includes('depend') || lower.includes('import') || lower.includes('module')) return 'dependency_failure'
+  if (lower.includes('architect') || lower.includes('design decision')) return 'architecture_decision'
+  if (lower.includes('scope') || lower.includes('too large') || lower.includes('too complex')) return 'scope_too_large'
+  if (lower.includes('context') || lower.includes('missing info') || lower.includes('unclear')) return 'missing_context'
+  return 'agent_output_invalid'
+}
+
+// ── Escalation ladder executor ────────────────────────────────────────
+
+async function runEscalationLadder(task, impl, classifyReason) {
+  let currentImpl = impl
+  let currentReason = classifyReason
+  const attempts = []
+
+  for (const rung of ESCALATION_LADDER) {
+    const maxAttempts = ESCALATION_ATTEMPTS[rung]
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      log(task.id + ': escalation ' + rung + ' attempt ' + (attempt + 1) + '/' + maxAttempts)
+
+      let result = null
+      if (rung === 'schema_retry') {
+        result = await agent(implementPrompt(task),
+          opts('escalate-schema-retry:' + task.id, 'Implement', IMPLEMENT_RESULT))
+      } else if (rung === 'self_service_retry') {
+        result = await agent(selfServicePrompt(task),
+          opts('escalate-self-service:' + task.id, 'Implement', IMPLEMENT_RESULT))
+      } else if (rung === 'ask_user') {
+        log(task.id + ': BLOCKED — escalation exhausted, asking user: ' + currentReason)
+        attempts.push({ rung, attempt: attempt + 1, result: null })
+        return { impl: currentImpl, reason: currentReason, classification: classifyBlocker(currentReason), rung_reached: rung, attempts, escalated_to_user: true }
+      } else {
+        // stronger_model, split_subtask, enriched_context — log and continue
+        log(task.id + ': escalation rung ' + rung + ' — no automated action, escalating')
+        continue
+      }
+
+      if (result && result.status !== 'BLOCKED') {
+        log(task.id + ': escalation ' + rung + ' succeeded')
+        return { impl: result, reason: null, classification: null, rung_reached: rung, attempts, escalated_to_user: false }
+      }
+
+      if (result && result.status === 'BLOCKED') {
+        currentReason = result.blocker_detail || currentReason
+      }
+
+      attempts.push({ rung, attempt: attempt + 1, result })
+    }
+  }
+
+  return { impl: currentImpl, reason: currentReason, classification: classifyBlocker(currentReason), rung_reached: 'ask_user', attempts, escalated_to_user: true }
+}
+
 // ── Structured Output Schemas ─────────────────────────────────────────
 
 const IMPLEMENT_RESULT = {
@@ -92,6 +155,8 @@ const IMPLEMENT_RESULT = {
     commit_sha: { type: 'string', description: 'Git commit SHA (short)' },
     concerns: { type: 'array', items: { type: 'string' }, description: 'If DONE_WITH_CONCERNS, list each concern' },
     blocker_detail: { type: 'string', description: 'If BLOCKED: what blocks you, what you tried' },
+    verification_commands: { type: 'array', items: { type: 'string' }, description: 'Commands to verify the implementation' },
+    evidence_paths: { type: 'array', items: { type: 'string' }, description: 'Paths to evidence artifacts' },
   },
   required: ['status', 'summary', 'files_modified'],
 }
@@ -107,10 +172,11 @@ const REVIEW_RESULT = {
         type: 'object',
         additionalProperties: false,
         properties: {
-          severity: { type: 'string', enum: ['Critical', 'Important', 'Minor'] },
+          severity: { type: 'string', enum: ['Critical', 'High', 'Important', 'Minor', 'Info'] },
           file: { type: 'string' },
           line: { type: 'number' },
           description: { type: 'string' },
+          blocking: { type: 'boolean' },
         },
         required: ['severity', 'description'],
       },
@@ -354,9 +420,146 @@ function selfServicePrompt(task) {
     'Only report BLOCKED again if truly impossible.'
 }
 
+// ── Schema retry helper ───────────────────────────────────────────────
+
+async function agentWithSchemaRetry(prompt, agentOpts, maxSchemaRetries) {
+  const retries = maxSchemaRetries != null ? maxSchemaRetries : 1
+  let result = await agent(prompt, agentOpts)
+  if (result) return result
+  for (let i = 0; i < retries; i++) {
+    log(agentOpts.label + ': schema retry ' + (i + 1) + '/' + retries + ' (agent returned invalid result)')
+    result = await agent(prompt, agentOpts)
+    if (result) return result
+  }
+  return null
+}
+
+// ── Helper: check if review issues have blocking ones per threshold table ──
+
+function hasBlockingIssues(review, reviewStage, taskRisk) {
+  if (!review || !review.issues) return false
+  return review.issues.some(issue => {
+    const sev = issue.severity || 'Info'
+    return isIssueBlocking(reviewStage, taskRisk, sev, issue.blocking)
+  })
+}
+
+// ── Extract evidence from impl result ─────────────────────────────────
+
+function extractEvidence(task, impl, specReview, codeReview) {
+  return {
+    commit_sha: (impl && impl.commit_sha) || '',
+    test_results: (impl && impl.test_results) || '',
+    verification_commands: (impl && impl.verification_commands) || (task.verification) || [],
+    evidence_paths: (impl && impl.evidence_paths) || [],
+    concerns: (impl && impl.concerns) || [],
+    files_modified: (impl && impl.files_modified) || [],
+  }
+}
+
+// ── Result adapter: classify task into exactly one partition ──────────
+
+function classifyTaskResult(taskId, task, ctx) {
+  // 1. Blocked at implementation
+  if (ctx._blocked) {
+    const classification = classifyBlocker(ctx._reason)
+    return {
+      partition: 'blocked',
+      entry: {
+        id: taskId,
+        reason: ctx._reason,
+        classification,
+        impl: ctx.impl,
+      },
+    }
+  }
+
+  // 2. Escalated to user after ladder exhausted
+  if (ctx._escalated_to_user) {
+    return {
+      partition: 'needs_escalation',
+      entry: {
+        id: taskId,
+        reason: ctx._escalation_reason,
+        classification: ctx._escalation_classification,
+        rung_reached: ctx._escalation_rung,
+        impl: ctx.impl,
+      },
+    }
+  }
+
+  // 3. Spec review cap exhausted with blocking issues
+  if (!ctx.spec_passed && ctx._spec_review_exhausted) {
+    return {
+      partition: 'failed_review',
+      entry: {
+        id: taskId,
+        stage: 'spec_review',
+        blocking_issues: (ctx.spec_review && ctx.spec_review.issues) || [],
+        iterations: ctx._iterations_spec || 0,
+        evidence: extractEvidence(task, ctx.impl, ctx.spec_review, null),
+      },
+    }
+  }
+
+  // 4. Code review cap exhausted with blocking issues
+  if (ctx.spec_passed && !ctx.code_passed && ctx._code_review_exhausted) {
+    return {
+      partition: 'failed_review',
+      entry: {
+        id: taskId,
+        stage: 'code_review',
+        blocking_issues: (ctx.code_review && ctx.code_review.issues) || [],
+        iterations: ctx._iterations_code || 0,
+        evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+      },
+    }
+  }
+
+  // 5. Spec or code review stalled (cap exhausted without precise blocking)
+  if (!ctx.spec_passed || !ctx.code_passed) {
+    return {
+      partition: 'stalled',
+      entry: {
+        id: taskId,
+        spec_passed: ctx.spec_passed || false,
+        code_passed: ctx.code_passed || false,
+        spec_iterations: ctx._iterations_spec || 0,
+        code_iterations: ctx._iterations_code || 0,
+        evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+      },
+    }
+  }
+
+  // 6. Passed: status DONE or DONE_WITH_CONCERNS, spec_passed, code_passed
+  return {
+    partition: 'passed',
+    entry: {
+      id: taskId,
+      status: (ctx.impl && ctx.impl.status) || 'DONE',
+      spec_passed: true,
+      code_passed: true,
+      spec_review: ctx.spec_review,
+      code_review: ctx.code_review,
+      evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+      files: (ctx.impl && ctx.impl.files_modified) || [],
+    },
+  }
+}
+
 // ── Main execution ───────────────────────────────────────────────────
 
-const results = { completed: [], blocked: [] }
+const partitions = {
+  passed: [],
+  completed: [],
+  blocked: [],
+  stalled: [],
+  failed_review: [],
+  needs_escalation: [],
+}
+
+const totalTasks = Object.keys(tasks).length
+const taskRisk = 'medium' // default risk; per-task risk from task metadata
 
 for (const [gi, group] of groups.entries()) {
   if (group.length === 0) continue
@@ -365,121 +568,222 @@ for (const [gi, group] of groups.entries()) {
   const groupResults = await parallel(
     group.map(taskId => () => {
       const task = tasks[taskId]
+      const risk = task.risk || taskRisk
 
       return pipeline(
         [task],
 
-        // Stage 1: Implement
+        // Stage 1: Implement (with schema retry)
         async (t) => {
-          let result = await agent(implementPrompt(t),
-            opts('implement:' + t.id, 'Implement', IMPLEMENT_RESULT))
+          let result = await agentWithSchemaRetry(
+            implementPrompt(t),
+            opts('implement:' + t.id, 'Implement', IMPLEMENT_RESULT),
+            ESCALATION_ATTEMPTS.schema_retry,
+          )
 
           if (result && result.status === 'BLOCKED') {
-            log(t.id + ': BLOCKED — retrying with self-service prompt')
-            result = await agent(selfServicePrompt(t),
-              opts('implement:' + t.id + '-r2', 'Implement', IMPLEMENT_RESULT))
+            // Run escalation ladder for blocked tasks
+            const escalation = await runEscalationLadder(t, result, result.blocker_detail)
+            if (!escalation.escalated_to_user && escalation.impl && escalation.impl.status !== 'BLOCKED') {
+              result = escalation.impl
+            } else {
+              if (escalation.escalated_to_user) {
+                return {
+                  ...t, impl: escalation.impl,
+                  _blocked: true,
+                  _reason: escalation.reason,
+                  _escalated_to_user: true,
+                  _escalation_reason: escalation.reason,
+                  _escalation_classification: escalation.classification,
+                  _escalation_rung: escalation.rung_reached,
+                }
+              }
+            }
+          }
+
+          if (!result) {
+            // Schema retry exhausted — agent returned null/invalid
+            return {
+              ...t, impl: null,
+              _blocked: true,
+              _reason: 'Agent returned invalid output after schema retry',
+              _escalated_to_user: true,
+              _escalation_reason: 'Agent returned invalid output after schema retry',
+              _escalation_classification: 'agent_output_invalid',
+              _escalation_rung: 'schema_retry',
+            }
           }
 
           return { ...t, impl: result }
         },
 
-        // Stage 2: Spec Review
+        // Stage 2: Spec Review (with review threshold enforcement)
         async (ctx) => {
           const { impl, id } = ctx
           if (!impl || impl.status === 'BLOCKED') {
-            return { ...ctx, spec_review: null, _blocked: true, _reason: (impl && impl.blocker_detail) || 'BLOCKED' }
+            return { ...ctx, spec_review: null, spec_passed: false, _blocked: true, _reason: (impl && impl.blocker_detail) || 'BLOCKED' }
           }
 
-          let review = await agent(specReviewPrompt(ctx, impl),
-            opts('spec-review:' + id, 'Spec Review', REVIEW_RESULT))
+          let review = await agentWithSchemaRetry(
+            specReviewPrompt(ctx, impl),
+            opts('spec-review:' + id, 'Spec Review', REVIEW_RESULT),
+            0,
+          )
 
           let iterations = 0
-          while (review && !review.passed && iterations < MAX_RETRIES) {
-            log(id + ': spec review found ' + (review.issues || []).length + ' issue(s) — fixing')
-            const updated = await agent(fixPrompt(review.issues, impl.files_modified),
-              opts('fix-spec:' + id, 'Spec Review', IMPLEMENT_RESULT))
+          const hasBlocking = () => hasBlockingIssues(review, 'spec_review', risk)
+
+          while (review && hasBlocking() && iterations < MAX_RETRIES) {
+            const blockingIssues = review.issues.filter(i =>
+              isIssueBlocking('spec_review', risk, i.severity, i.blocking)
+            )
+            log(id + ': spec review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
+            const updated = await agentWithSchemaRetry(
+              fixPrompt(blockingIssues, impl.files_modified),
+              opts('fix-spec:' + id, 'Spec Review', IMPLEMENT_RESULT),
+              0,
+            )
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
-            review = await agent(specReviewPrompt(ctx, ctx.impl),
-              opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_RESULT))
+            review = await agentWithSchemaRetry(
+              specReviewPrompt(ctx, ctx.impl),
+              opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_RESULT),
+              0,
+            )
             iterations++
           }
+
+          const specPassed = review ? !hasBlocking() : false
+          const exhausted = iterations >= MAX_RETRIES && !specPassed
 
           return {
             ...ctx,
             spec_review: review,
-            spec_passed: review ? review.passed : false,
+            spec_passed: specPassed,
             _iterations_spec: iterations,
+            _spec_review_exhausted: exhausted,
           }
         },
 
-        // Stage 3: Code Quality Review
+        // Stage 3: Code Quality Review (with review threshold enforcement)
         async (ctx) => {
-          if (ctx._blocked || !ctx.spec_passed) return ctx
+          if (ctx._blocked) return ctx
+          if (!ctx.spec_passed) {
+            // Spec didn't pass — mark review exhausted if applicable
+            return {
+              ...ctx,
+              code_review: null,
+              code_passed: false,
+              _iterations_code: 0,
+              _code_review_exhausted: ctx._spec_review_exhausted || false,
+            }
+          }
 
-          let review = await agent(codeReviewPrompt(ctx.impl, ctx.id),
-            opts('code-review:' + ctx.id, 'Code Review', REVIEW_RESULT))
+          let review = await agentWithSchemaRetry(
+            codeReviewPrompt(ctx.impl, ctx.id),
+            opts('code-review:' + ctx.id, 'Code Review', REVIEW_RESULT),
+            0,
+          )
 
           let iterations = 0
-          while (
-            review &&
-            (review.issues || []).some(i => i.severity === 'Critical') &&
-            iterations < MAX_RETRIES
-          ) {
-            const criticals = review.issues.filter(i => i.severity === 'Critical')
-            log(ctx.id + ': code review found ' + criticals.length + ' critical issue(s) — fixing')
-            const updated = await agent(fixPrompt(criticals, ctx.impl.files_modified),
-              opts('fix-code:' + ctx.id, 'Code Review', IMPLEMENT_RESULT))
+          const hasBlocking = () => hasBlockingIssues(review, 'code_review', risk)
+
+          while (review && hasBlocking() && iterations < MAX_RETRIES) {
+            const blockingIssues = review.issues.filter(i =>
+              isIssueBlocking('code_review', risk, i.severity, i.blocking)
+            )
+            log(ctx.id + ': code review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
+            const updated = await agentWithSchemaRetry(
+              fixPrompt(blockingIssues, ctx.impl.files_modified),
+              opts('fix-code:' + ctx.id, 'Code Review', IMPLEMENT_RESULT),
+              0,
+            )
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
-            review = await agent(codeReviewPrompt(ctx.impl, ctx.id),
-              opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_RESULT))
+            review = await agentWithSchemaRetry(
+              codeReviewPrompt(ctx.impl, ctx.id),
+              opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_RESULT),
+              0,
+            )
             iterations++
           }
+
+          const codePassed = review ? !hasBlocking() : false
+          const exhausted = iterations >= MAX_RETRIES && !codePassed
 
           return {
             ...ctx,
             code_review: review,
-            code_passed: review ? !(review.issues || []).some(i => i.severity === 'Critical') : false,
+            code_passed: codePassed,
             _iterations_code: iterations,
+            _code_review_exhausted: exhausted,
           }
         },
       )
     }),
   )
 
+  // Classify each task into exactly one partition
   for (const r of groupResults.flat().filter(Boolean)) {
-    if (r._blocked) {
-      results.blocked.push({ id: r.id, reason: r._reason, impl: r.impl })
-    } else {
-      results.completed.push({
-        id: r.id,
-        spec_passed: r.spec_passed,
-        code_passed: r.code_passed,
-        code_review: r.code_review,
-        files: r.impl ? r.impl.files_modified : [],
-      })
-    }
+    const taskId = r.id
+    const task = tasks[taskId]
+    const { partition, entry } = classifyTaskResult(taskId, task, r)
+    partitions[partition].push(entry)
   }
 }
 
-// ── Final cross-task code review ─────────────────────────────────────
+// ── Enforce invariant: completed == passed ────────────────────────────
 
-const allPassed = results.completed.length > 0 && results.completed.every(r => r.code_passed)
+for (const entry of partitions.passed) {
+  partitions.completed.push({ ...entry })
+}
 
-if (allPassed) {
+// ── Guard: Final Review only when ALL tasks passed ────────────────────
+// Runs only when completed.length == totalTasks AND all other partitions empty
+
+const allOtherPartitionsEmpty =
+  partitions.blocked.length === 0 &&
+  partitions.stalled.length === 0 &&
+  partitions.failed_review.length === 0 &&
+  partitions.needs_escalation.length === 0
+
+let finalReview = null
+if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && totalTasks > 0) {
   phase('Final Review')
-  const allFiles = results.completed.flatMap(r => r.files).filter(Boolean)
-  const allIds = results.completed.map(r => r.id).join(', ')
+  const allFiles = partitions.completed.flatMap(r => r.files || r.evidence?.files_modified || []).filter(Boolean)
+  const allIds = partitions.completed.map(r => r.id).join(', ')
 
-  const finalReview = await agent(
+  finalReview = await agent(
     codeReviewPrompt(
       { summary: 'Entire implementation: ' + allIds, files_modified: allFiles },
       'final',
     ),
     opts('final-review', 'Final Review', REVIEW_RESULT),
   )
-  results.final_review = finalReview
 }
 
-return results
+// ── Build state_patch for resume support ──────────────────────────────
+
+const state_patch = {
+  partitions: {
+    passed: partitions.passed.map(e => e.id),
+    completed: partitions.completed.map(e => e.id),
+    blocked: partitions.blocked.map(e => e.id),
+    stalled: partitions.stalled.map(e => e.id),
+    failed_review: partitions.failed_review.map(e => e.id),
+    needs_escalation: partitions.needs_escalation.map(e => e.id),
+  },
+  total_tasks: totalTasks,
+  final_review_run: finalReview !== null,
+}
+
+return {
+  passed: partitions.passed,
+  completed: partitions.completed,
+  blocked: partitions.blocked,
+  stalled: partitions.stalled,
+  failed_review: partitions.failed_review,
+  needs_escalation: partitions.needs_escalation,
+  final_review: finalReview,
+  state_patch,
+}
