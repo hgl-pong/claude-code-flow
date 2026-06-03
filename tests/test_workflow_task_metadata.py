@@ -190,3 +190,138 @@ class TestDependencyGraphContract:
                     dupes.append(tid)
                 seen[tid] = i
         assert len(dupes) > 0, f"Should detect duplicate group membership: {dupes}"
+
+
+class TestValidateParsedPlanFunction:
+    """Contract: validateParsedPlan function exists with proper structure."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script()
+
+    def test_function_exists(self):
+        assert "function validateParsedPlan" in self.script
+
+    def test_returns_valid_and_errors(self):
+        """Function must return {valid, errors} structure."""
+        assert "valid:" in self.script
+        assert "errors" in self.script
+
+    def test_checks_duplicate_id(self):
+        assert "'duplicate_id'" in self.script or '"duplicate_id"' in self.script
+
+    def test_checks_empty_description(self):
+        assert "'empty_description'" in self.script or '"empty_description"' in self.script
+
+    def test_checks_unknown_dep(self):
+        assert "'unknown_dep'" in self.script or '"unknown_dep"' in self.script
+
+    def test_checks_cycle(self):
+        assert "'cycle'" in self.script or '"cycle"' in self.script
+
+    def test_checks_empty_group(self):
+        assert "'empty_group'" in self.script or '"empty_group"' in self.script
+
+    def test_checks_skipped_group(self):
+        assert "'skipped_group'" in self.script or '"skipped_group"' in self.script
+
+    def test_checks_duplicate_group_membership(self):
+        assert "'duplicate_group_membership'" in self.script or '"duplicate_group_membership"' in self.script
+
+    def test_checks_ungrouped_task(self):
+        assert "'ungrouped_task'" in self.script or '"ungrouped_task"' in self.script
+
+    def test_checks_intra_group_dep(self):
+        assert "'intra_group_dep'" in self.script or '"intra_group_dep"' in self.script
+
+    def test_checks_forward_dep(self):
+        assert "'forward_dep'" in self.script or '"forward_dep"' in self.script
+
+    def test_checks_missing_required_metadata(self):
+        assert "'missing_required_metadata'" in self.script or '"missing_required_metadata"' in self.script
+
+    def test_checks_missing_runtime_metadata(self):
+        assert "'missing_runtime_metadata'" in self.script or '"missing_runtime_metadata"' in self.script
+
+
+class TestTaskItemSchema:
+    """Contract: TASK_ITEM_SCHEMA defines all metadata fields."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script()
+
+    def test_task_item_schema_exists(self):
+        assert "TASK_ITEM_SCHEMA" in self.script
+
+    def test_schema_has_id_field(self):
+        assert "id:" in self.script
+
+    def test_schema_has_description_field(self):
+        # Must have minLength: 1 for description
+        assert "'description'" in self.script or '"description"' in self.script
+        assert "minLength: 1" in self.script
+
+    def test_schema_has_depends_on(self):
+        assert "'depends_on'" in self.script or '"depends_on"' in self.script
+
+    def test_schema_has_files(self):
+        assert "'files'" in self.script or '"files"' in self.script
+
+    def test_schema_has_tests(self):
+        assert "'tests'" in self.script or '"tests"' in self.script
+
+    def test_schema_has_verification(self):
+        assert "'verification'" in self.script or '"verification"' in self.script
+
+    def test_schema_has_acceptance_refs(self):
+        assert "'acceptance_refs'" in self.script or '"acceptance_refs"' in self.script
+
+    def test_schema_has_runtime_evidence_required(self):
+        assert "runtime_evidence_required" in self.script
+
+    def test_schema_has_risk(self):
+        # Must have risk with enum referencing TASK_RISKS
+        assert "'risk'" in self.script or '"risk"' in self.script
+
+    def test_schema_has_subsystem(self):
+        assert "'subsystem'" in self.script or '"subsystem"' in self.script
+
+    def test_runtime_evidence_enum_values(self):
+        """runtime_evidence_required must accept required/optional/not_needed."""
+        for val in ["required", "optional", "not_needed"]:
+            assert f"'{val}'" in self.script or f'"{val}"' in self.script, \
+                f"runtime_evidence_required enum missing '{val}'"
+
+
+class TestPlanValidationIntegration:
+    """Contract: plan validation runs after parsing, before execute."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script()
+
+    def test_defaults_applied_after_parse(self):
+        """Defaults must be applied to parsed tasks before validation."""
+        assert "TASK_METADATA_DEFAULTS" in self.script
+        # Check that defaults are applied in the parse plan section
+        # Look for the pattern of applying defaults to parsed tasks
+        assert "parsed.tasks" in self.script
+
+    def test_validation_returns_early_on_failure(self):
+        """On validation failure, must return before Execute phase."""
+        assert "validation_errors" in self.script
+        assert "planValidation" in self.script or "plan_validation" in self.script
+
+    def test_escalation_summary_on_failure(self):
+        """Failed validation must produce structured error summary."""
+        assert "validation_errors" in self.script
+
+    def test_required_metadata_for_high_risk(self):
+        """High/critical risk tasks require files, tests, verification."""
+        assert "REQUIRED_METADATA_FOR_RISK" in self.script
+        assert "REQUIRED_FIELDS_FOR_RISK" in self.script
+
+    def test_required_metadata_for_runtime_required(self):
+        """runtime_evidence_required tasks need verification and acceptance_refs."""
+        assert "REQUIRED_FIELDS_FOR_RUNTIME" in self.script

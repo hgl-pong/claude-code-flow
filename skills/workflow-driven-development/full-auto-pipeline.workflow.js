@@ -219,6 +219,26 @@ const PLAN_SCHEMA = {
 }
 
 // Structured task extraction — used by parse-plan agent
+const TASK_ITEM_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: {
+    id: { type: 'string', pattern: '^task-' },
+    description: { type: 'string', minLength: 1 },
+    depends_on: { type: 'array', items: { type: 'string' } },
+    files: { type: 'array', items: { type: 'string' } },
+    tests: { type: 'array', items: { type: 'string' } },
+    verification: { type: 'array', items: { type: 'string' } },
+    acceptance_refs: { type: 'array', items: { type: 'string' } },
+    runtime_evidence_required: {
+      type: 'string',
+      enum: ['required', 'optional', 'not_needed'],
+    },
+    risk: { type: 'string', enum: TASK_RISKS },
+    subsystem: { type: 'string' },
+  },
+  required: ['id', 'description'],
+}
+
 const TASKS_SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: {
@@ -230,12 +250,183 @@ const TASKS_SCHEMA = {
     },
     tasks: {
       type: 'object',
-      additionalProperties: true,
+      additionalProperties: false,
       propertyNames: { pattern: '^task-' },
-      description: 'Object keyed by task ID, each with {id, description}',
+      properties: {}, // per-task shape defined by TASK_ITEM_SCHEMA, enforced in validation
+      description: 'Object keyed by task ID, each with rich metadata',
     },
   },
   required: ['groups', 'tasks'],
+}
+
+// ── Plan validation ───────────────────────────────────────────────────
+
+const REQUIRED_METADATA_FOR_RISK = ['high', 'critical']
+const REQUIRED_FIELDS_FOR_RISK = ['files', 'tests', 'verification']
+const REQUIRED_FIELDS_FOR_RUNTIME = ['verification', 'acceptance_refs']
+
+function validateParsedPlan(parsed) {
+  const errors = []
+  const { groups, tasks } = parsed
+  const allIds = Object.keys(tasks)
+  const idSet = new Set(allIds)
+
+  // 1. Check for duplicate IDs (within tasks object keys)
+  const seenIds = new Set()
+  for (const tid of allIds) {
+    if (seenIds.has(tid)) {
+      errors.push({ code: 'duplicate_id', task: tid, detail: `Duplicate task ID: ${tid}` })
+    }
+    seenIds.add(tid)
+    // Also check id field matches key
+    const task = tasks[tid]
+    if (task.id && task.id !== tid) {
+      errors.push({ code: 'id_mismatch', task: tid, detail: `Task key ${tid} has id field ${task.id}` })
+    }
+  }
+
+  // 2. Empty descriptions
+  for (const tid of allIds) {
+    const desc = tasks[tid].description
+    if (!desc || desc.trim().length === 0) {
+      errors.push({ code: 'empty_description', task: tid, detail: `Task ${tid} has empty description` })
+    }
+  }
+
+  // 3. Unknown deps
+  for (const tid of allIds) {
+    const deps = tasks[tid].depends_on || []
+    for (const dep of deps) {
+      if (!idSet.has(dep)) {
+        errors.push({ code: 'unknown_dep', task: tid, detail: `Task ${tid} depends on unknown task ${dep}` })
+      }
+    }
+  }
+
+  // 4. Cycle detection via DFS
+  const WHITE = 0, GRAY = 1, BLACK = 2
+  const color = Object.fromEntries(allIds.map(id => [id, WHITE]))
+  function dfs(node) {
+    color[node] = GRAY
+    for (const dep of (tasks[node].depends_on || [])) {
+      if (!idSet.has(dep)) continue // unknown dep already reported
+      if (color[dep] === GRAY) {
+        errors.push({ code: 'cycle', detail: `Dependency cycle involving ${node} and ${dep}` })
+        return
+      }
+      if (color[dep] === WHITE) dfs(dep)
+    }
+    color[node] = BLACK
+  }
+  for (const tid of allIds) {
+    if (color[tid] === WHITE) dfs(tid)
+  }
+
+  // 5. Empty groups
+  for (let i = 0; i < groups.length; i++) {
+    if (groups[i].length === 0) {
+      errors.push({ code: 'empty_group', detail: `Group ${i} is empty` })
+    }
+  }
+
+  // 6. Skipped groups (empty group between non-empty groups)
+  let firstNonEmpty = -1, lastNonEmpty = -1
+  for (let i = 0; i < groups.length; i++) {
+    if (groups[i].length > 0) {
+      if (firstNonEmpty === -1) firstNonEmpty = i
+      lastNonEmpty = i
+    }
+  }
+  for (let i = firstNonEmpty; i <= lastNonEmpty; i++) {
+    if (groups[i].length === 0) {
+      errors.push({ code: 'skipped_group', detail: `Group ${i} is empty between non-empty groups` })
+    }
+  }
+
+  // 7. Duplicate group membership
+  const groupMembership = new Map()
+  for (let i = 0; i < groups.length; i++) {
+    for (const tid of groups[i]) {
+      if (groupMembership.has(tid)) {
+        errors.push({ code: 'duplicate_group_membership', task: tid,
+          detail: `Task ${tid} appears in groups ${groupMembership.get(tid)} and ${i}` })
+      }
+      groupMembership.set(tid, i)
+    }
+  }
+
+  // 8. Tasks not in any group
+  const grouped = new Set(groups.flat())
+  for (const tid of allIds) {
+    if (!grouped.has(tid)) {
+      errors.push({ code: 'ungrouped_task', task: tid, detail: `Task ${tid} not in any group` })
+    }
+  }
+
+  // 9. Group IDs not in tasks
+  for (const tid of grouped) {
+    if (!idSet.has(tid)) {
+      errors.push({ code: 'unknown_group_task', detail: `Group references unknown task ${tid}` })
+    }
+  }
+
+  // 10. Intra-group dependencies
+  for (let i = 0; i < groups.length; i++) {
+    const groupSet = new Set(groups[i])
+    for (const tid of groups[i]) {
+      for (const dep of (tasks[tid].depends_on || [])) {
+        if (groupSet.has(dep)) {
+          errors.push({ code: 'intra_group_dep', task: tid, detail:
+            `Task ${tid} depends on ${dep} within same group ${i}` })
+        }
+      }
+    }
+  }
+
+  // 11. Forward dependencies (task depends on a task in a later group)
+  const taskGroup = new Map()
+  for (let i = 0; i < groups.length; i++) {
+    for (const tid of groups[i]) taskGroup.set(tid, i)
+  }
+  for (const tid of allIds) {
+    for (const dep of (tasks[tid].depends_on || [])) {
+      if (!taskGroup.has(dep) || !taskGroup.has(tid)) continue
+      if (taskGroup.get(dep) > taskGroup.get(tid)) {
+        errors.push({ code: 'forward_dep', task: tid, detail:
+          `Task ${tid} (group ${taskGroup.get(tid)}) depends on ${dep} (group ${taskGroup.get(dep)})` })
+      }
+    }
+  }
+
+  // 12. Required metadata for high/critical risk tasks
+  for (const tid of allIds) {
+    const risk = tasks[tid].risk || TASK_METADATA_DEFAULTS.risk
+    if (REQUIRED_METADATA_FOR_RISK.includes(risk)) {
+      for (const field of REQUIRED_FIELDS_FOR_RISK) {
+        const val = tasks[tid][field]
+        if (!val || (Array.isArray(val) && val.length === 0)) {
+          errors.push({ code: 'missing_required_metadata', task: tid, detail:
+            `Task ${tid} (risk=${risk}) missing required field: ${field}` })
+        }
+      }
+    }
+  }
+
+  // 13. Required metadata for runtime_evidence_required tasks
+  for (const tid of allIds) {
+    const rte = tasks[tid].runtime_evidence_required || TASK_METADATA_DEFAULTS.runtime_evidence_required
+    if (rte === 'required') {
+      for (const field of REQUIRED_FIELDS_FOR_RUNTIME) {
+        const val = tasks[tid][field]
+        if (!val || (Array.isArray(val) && val.length === 0)) {
+          errors.push({ code: 'missing_runtime_metadata', task: tid, detail:
+            `Task ${tid} (runtime_evidence_required) missing field: ${field}` })
+        }
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors }
 }
 
 const GATE_RESULT = {
@@ -506,25 +697,101 @@ You will return two things:
    Level 0 = tasks with no dependencies.
    Level 1 = tasks that depend only on Level 0 tasks.
    Level N = tasks that depend only on earlier levels.
-2. \`tasks\`: object keyed by task ID. Each task has {id, description}.
+2. \`tasks\`: object keyed by task ID. Each task has rich metadata:
 
-Task IDs should be "task-1", "task-2", etc. matching the plan.
-Descriptions should be the FULL task text from the plan (all details).
+Required fields per task:
+- id: "task-N"
+- description: FULL task text from the plan (all details, must not be empty)
+
+Extracted from plan where present, inferred otherwise:
+- depends_on: array of task IDs this task depends on (empty if none)
+- files: array of file paths the task touches
+- tests: array of test file paths
+- verification: array of verification commands
+- acceptance_refs: array of acceptance criteria identifiers from the spec
+- runtime_evidence_required: "required" | "optional" | "not_needed"
+- risk: "low" | "medium" | "high" | "critical"
+- subsystem: which part of the codebase this task affects
+
+If the plan does not explicitly provide a field, omit it — defaults will be applied.
+Risk inference: tasks touching shared/util code = "high"; tasks with runtime
+behavior changes = default "medium"; docs-only = "low".
 
 Example output for a 3-task plan where task-3 depends on task-1:
 
 {
   "groups": [["task-1", "task-2"], ["task-3"]],
   "tasks": {
-    "task-1": {"id": "task-1", "description": "## Task 1: Create Add Function\\n\\n**Depends on:** none\\n\\nCreate a function..."},
-    "task-2": {"id": "task-2", "description": "## Task 2: Create Greet Function\\n\\n**Depends on:** none\\n\\n..."},
-    "task-3": {"id": "task-3", "description": "## Task 3: Integration\\n\\n**Depends on:** task-1\\n\\n..."}
+    "task-1": {
+      "id": "task-1",
+      "description": "## Task 1: Create Add Function\\n\\n**Depends on:** none\\n\\nCreate a function...",
+      "depends_on": [],
+      "files": ["src/math.js"],
+      "tests": ["tests/test_math.js"],
+      "verification": ["node tests/test_math.js"],
+      "risk": "low",
+      "subsystem": "core"
+    },
+    "task-2": {
+      "id": "task-2",
+      "description": "## Task 2: Create Greet Function\\n\\n**Depends on:** none\\n\\n...",
+      "depends_on": [],
+      "files": ["src/greet.js"],
+      "tests": ["tests/test_greet.js"],
+      "verification": ["node tests/test_greet.js"],
+      "risk": "low",
+      "subsystem": "core"
+    },
+    "task-3": {
+      "id": "task-3",
+      "description": "## Task 3: Integration\\n\\n**Depends on:** task-1\\n\\n...",
+      "depends_on": ["task-1"],
+      "files": ["src/main.js"],
+      "tests": ["tests/test_integration.js"],
+      "verification": ["node tests/test_integration.js"],
+      "risk": "medium",
+      "subsystem": "core"
+    }
   }
 }`,
   agentOpts('parse-plan', 'Parse Plan', TASKS_SCHEMA),
 )
 
 log(`Parsed: ${parsed.groups.length} groups, ${Object.keys(parsed.tasks).length} tasks`)
+
+// ── Validate parsed plan ──────────────────────────────────────────────
+
+// Apply defaults for missing metadata fields
+for (const tid of Object.keys(parsed.tasks)) {
+  const t = parsed.tasks[tid]
+  if (!t.depends_on) t.depends_on = TASK_METADATA_DEFAULTS.depends_on
+  if (!t.files) t.files = TASK_METADATA_DEFAULTS.files
+  if (!t.tests) t.tests = TASK_METADATA_DEFAULTS.tests
+  if (!t.verification) t.verification = TASK_METADATA_DEFAULTS.verification
+  if (!t.acceptance_refs) t.acceptance_refs = TASK_METADATA_DEFAULTS.acceptance_refs
+  if (!t.risk) t.risk = TASK_METADATA_DEFAULTS.risk
+  if (!t.subsystem) t.subsystem = TASK_METADATA_DEFAULTS.subsystem
+  if (!t.runtime_evidence_required) t.runtime_evidence_required = TASK_METADATA_DEFAULTS.runtime_evidence_required
+}
+
+const planValidation = validateParsedPlan(parsed)
+if (!planValidation.valid) {
+  const errorSummary = planValidation.errors.map(e => `[${e.code}] ${e.detail}`).join('\n')
+  log(`Plan validation FAILED — ${planValidation.errors.length} error(s):\n${errorSummary}`)
+  return {
+    spec: { path: spec.spec_path, review_passed: specReview.passed },
+    plan: { path: planResult.plan_path, review_passed: planReview.passed, task_count: planResult.task_count },
+    execute: { completed: [], blocked: [] },
+    gates: CANONICAL_GATES.map((_, i) => ({
+      gate: i + 1, passed: false,
+      detail: 'Skipped — plan validation failed',
+      fix_applied: '',
+    })),
+    all_passed: false,
+    validation_errors: planValidation.errors,
+  }
+}
+log('Plan validation passed')
 
 // ── Phase 8: Execute ─────────────────────────────────────────────────
 
