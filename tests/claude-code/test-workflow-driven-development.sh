@@ -63,7 +63,7 @@ output=$(run_claude "What does the workflow return in workflow-driven-developmen
 
 assert_contains "$output" "completed\|results.completed" "Mentions results.completed" || true
 assert_contains "$output" "blocked\|results.blocked" "Mentions results.blocked" || true
-assert_contains "$output" "final_review\|cross-task" "Mentions final review" || true
+assert_contains "$output" "code_review\|final_review\|cross-task\|passed\|failed_review\|needs_escalation" "Mentions review/partition structure" || true
 
 echo ""
 
