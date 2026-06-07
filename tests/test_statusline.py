@@ -8,12 +8,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (ROOT / "scripts" / "statusline.sh").resolve()
 
 
+def bash_path(path: Path) -> str:
+    text = str(path)
+    if os.name == "nt" and len(text) >= 3 and text[1:3] == ":\\":
+        drive = text[0].lower()
+        rest = text[3:].replace("\\", "/")
+        return f"/mnt/{drive}/{rest}"
+    return text
+
+
 def run_statusline(stdin_json=None, cwd=None, extra_env=None):
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
     proc = subprocess.run(
-        ["rtk", "bash", str(SCRIPT)],
+        ["rtk", "bash", bash_path(SCRIPT)],
         input=json.dumps(stdin_json).encode() if stdin_json is not None else None,
         cwd=cwd or ROOT,
         env=env,

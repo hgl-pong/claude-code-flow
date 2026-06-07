@@ -786,7 +786,10 @@ def cmd_resume(args):
     # Identify passed tasks for replay (result_replay)
     task_states = state.get("task_states", {})
     replay_tasks = []
+    invalidated_task_ids = set(stale_report.get("invalidated_tasks", {}).keys())
     for tid, ts in task_states.items():
+        if tid in invalidated_task_ids:
+            continue
         if isinstance(ts, dict) and ts.get("status") in ("passed", "done"):
             replay_tasks.append(tid)
 
@@ -836,6 +839,12 @@ def cmd_validate(args):
     task_states = state.get("task_states", {})
     if isinstance(task_states, dict):
         total_ts = len(task_states)
+        for tid, ts in task_states.items():
+            if not isinstance(ts, dict):
+                all_errors.append(f"task_states.{tid} must be an object")
+                continue
+            if "status" not in ts:
+                all_errors.append(f"task_states.{tid}.status missing")
         if total_ts > 0 and progress.get("tasks_total", 0) != total_ts:
             all_errors.append(
                 f"tasks_total ({progress.get('tasks_total', 0)}) != "

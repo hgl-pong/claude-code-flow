@@ -3,12 +3,13 @@
 Tests cover arg parsing, env validation, and API call via subprocess + mock HTTP server.
 """
 
+import contextlib
+import importlib.util
+import io
 import json
 import os
-import subprocess
 import sys
 import threading
-import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
@@ -17,19 +18,35 @@ import pytest
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "generate-image.py"
 
 
+def load_script_module():
+    spec = importlib.util.spec_from_file_location("generate_image_script", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def run_script(*args, env_extra=None):
-    env = os.environ.copy()
-    env.pop("NINEROUTER_URL", None)
-    env.pop("NINEROUTER_KEY", None)
-    if env_extra:
-        env.update(env_extra)
-    proc = subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-    return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
+    old_argv = sys.argv[:]
+    old_env = os.environ.copy()
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    code = 0
+    try:
+        os.environ.pop("NINEROUTER_URL", None)
+        os.environ.pop("NINEROUTER_KEY", None)
+        if env_extra:
+            os.environ.update(env_extra)
+        sys.argv = [str(SCRIPT), *args]
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            try:
+                load_script_module().main()
+            except SystemExit as e:
+                code = int(e.code or 0)
+    finally:
+        sys.argv = old_argv
+        os.environ.clear()
+        os.environ.update(old_env)
+    return code, stdout.getvalue().strip(), stderr.getvalue().strip()
 
 
 def test_missing_prompt_exits_2():

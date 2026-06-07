@@ -173,6 +173,7 @@ def generate_resume_prompt(state_file: str) -> str:
     task_states = data.get("task_states", {})
     ts_summary = ", ".join(
         f"{k}={v.get('status', '?')}" for k, v in task_states.items()
+        if isinstance(v, dict)
     ) or "none"
 
     # Active agents summary
@@ -263,7 +264,7 @@ def has_pending_tasks(state_file: str) -> bool:
     if not data:
         return False
     return any(
-        v.get("status") not in ("done", "failed", "passed")
+        isinstance(v, dict) and v.get("status") not in ("done", "failed", "passed")
         for v in data.get("task_states", {}).values()
     )
 

@@ -322,7 +322,7 @@ The workflow script embeds all prompt content (behavioral guards, self-review ch
 
 ## Image Generation
 
-For tasks that generate or edit images, set the task model to artist. The workflow handles image tasks in the same implement → review chain. Artist agents return output paths plus a manifest. Tasks with missing output files or BLOCKED status appear in `results.blocked[]`.
+For tasks that generate or edit images, set the task model to artist. The workflow handles image generation and image editing tasks in the same implement → review chain. Artist agents follow `artist-prompt.md` and return output paths plus a manifest. Tasks with missing output files or BLOCKED status appear in `results.blocked[]`.
 
 ## UI Implementation
 

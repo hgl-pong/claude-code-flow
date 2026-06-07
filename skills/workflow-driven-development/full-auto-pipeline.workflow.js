@@ -30,7 +30,8 @@ export const meta = {
     },
     allowed_escalation_models: { type: 'array', items: { type: 'string' } },
     allow_commit: { type: 'boolean' },
-    flow_state_script_path: { type: 'string', description: 'Path to flow-state.py CLI' },
+    flow_state_script_path: { type: 'string', description: 'Path to flow-state-adapter.workflow.js' },
+    flow_state_cli_path: { type: 'string', description: 'Path to hooks/scripts/flow-state.py CLI' },
   },
   result_schema: {
     state_file: { type: 'string' },
@@ -68,11 +69,28 @@ const {
   allowed_escalation_models,
   allow_commit,
   flow_state_script_path,
+  flow_state_cli_path,
 } = args
+
+const REVIEW_RETRY_CAP_DEFAULT = 5
+const GATE_RETRY_CAP_DEFAULT = 10
+
+const specId = task
+  .replace(/[^a-z0-9]+/gi, '-')
+  .replace(/^-+|-+$/g, '')
+  .toLowerCase()
+  .slice(0, 60)
+const specPath = `${specs_dir}/${specId}.md`
+const planPath = `${plans_dir}/${specId}-plan.md`
 
 const RETRIES = max_retries || 5
 const REVIEW_RETRY_CAP = (retry_policy && retry_policy.review_cap) || REVIEW_RETRY_CAP_DEFAULT
 const GATE_RETRIES = (retry_policy && retry_policy.gate_retries) || GATE_RETRY_CAP_DEFAULT
+
+const PHASE_ORDER = [
+  'scope', 'research', 'synthesize_spec', 'review_spec',
+  'write_plan', 'review_plan', 'parse_plan', 'execute', 'gates', 'finalize',
+]
 
 // ── Resume from state ─────────────────────────────────────────────────
 // When resume_from is provided, determine which phases to skip based on cursor.
@@ -80,9 +98,33 @@ const GATE_RETRIES = (retry_policy && retry_policy.gate_retries) || GATE_RETRY_C
 // are already complete and should be skipped. result_replay lists task IDs
 // that were already passed and should not be re-run.
 
-const resumePhase = (resume_from && resume_from.cursor && resume_from.cursor.phase) || null
+const resumeCursor = (resume_from && resume_from.cursor) || {}
+const resumeSummary = (resume_from && resume_from.summary) || {}
+const resumePhase = resumeCursor.phase || null
 const resumePhaseIndex = resumePhase ? PHASE_ORDER.indexOf(resumePhase) : -1
-const resumeTaskReplay = (resume_from && resume_from.result_replay) || []
+const resumeInvalidatedTasks = Object.keys((resume_from && resume_from.invalidated_tasks) || {})
+const resumeTaskReplay = ((resume_from && resume_from.result_replay) || [])
+  .filter(taskId => !resumeInvalidatedTasks.includes(taskId))
+
+let scope = resumeSummary.scope || null
+let allFindings = resumeSummary.research_findings || []
+let spec = { spec_path: resumeCursor.spec_path || resumeSummary.spec_path || specPath, summary: '' }
+let specReview = { passed: true, issues: [], summary: 'Replayed from resume state' }
+let planResult = {
+  plan_path: resumeCursor.plan_path || resumeSummary.plan_path || planPath,
+  task_count: resumeSummary.progress && resumeSummary.progress.tasks_total || 0,
+  dependency_groups: resumeSummary.groups && resumeSummary.groups.length || 0,
+  summary: 'Replayed from resume state',
+}
+let planReview = { passed: true, issues: [], summary: 'Replayed from resume state' }
+let parsed = {
+  groups: resumeSummary.groups || [],
+  tasks: resumeSummary.tasks || {},
+}
+let executeResult = resumeSummary.execute_result || { completed: [], blocked: [], final_review: null }
+if (resumeTaskReplay.length && Object.keys(parsed.tasks).length === 0) {
+  parsed.tasks = Object.fromEntries(resumeTaskReplay.map(id => [id, { id, description: `Replayed task ${id}` }]))
+}
 
 function shouldSkipPhase(phaseName) {
   if (!resumePhase) return false
@@ -103,6 +145,7 @@ function isTaskReplayed(taskId) {
 
 let currentRevision = (resume_from && resume_from.revision) || 0
 const flowStateScriptPath = flow_state_script_path || null
+const flowStateCliPath = flow_state_cli_path || null
 
 async function flowState(cmd, payload) {
   if (!flowStateScriptPath) return { ok: true }
@@ -111,6 +154,7 @@ async function flowState(cmd, payload) {
     state_file: state_file,
     payload_json: JSON.stringify(payload),
     expected_revision: currentRevision,
+    flow_state_cli_path: flowStateCliPath,
   })
   if (result && result.ok && typeof result.revision === 'number') {
     currentRevision = result.revision
@@ -121,11 +165,6 @@ async function flowState(cmd, payload) {
 const auditEvents = []
 
 // ── Contract constants ────────────────────────────────────────────────
-
-const PHASE_ORDER = [
-  'scope', 'research', 'synthesize_spec', 'review_spec',
-  'write_plan', 'review_plan', 'parse_plan', 'execute', 'gates', 'finalize',
-]
 
 const EXECUTE_SUBFLOW_STAGES = ['Implement', 'Spec Review', 'Code Review']
 
@@ -163,9 +202,6 @@ const ESCALATION_ATTEMPTS = {
 
 const REVIEW_SEVERITIES = ['Critical', 'High', 'Important', 'Minor', 'Info']
 const TASK_RISKS = ['low', 'medium', 'high', 'critical']
-
-const REVIEW_RETRY_CAP_DEFAULT = 5
-const GATE_RETRY_CAP_DEFAULT = 10
 
 // Gate name constants matching CANONICAL_GATES order
 const GATE_TASKS_EXECUTED = 'tasks_executed'
@@ -558,14 +594,6 @@ const GATE_RESULT = {
 
 // ── Helper: spec file name ───────────────────────────────────────────
 
-const specId = task
-  .replace(/[^a-z0-9]+/gi, '-')
-  .replace(/^-+|-+$/g, '')
-  .toLowerCase()
-  .slice(0, 60)
-const specPath = `${specs_dir}/${specId}.md`
-const planPath = `${plans_dir}/${specId}-plan.md`
-
 // ── Phase 1: Scope ───────────────────────────────────────────────────
 // Resume: if scope already completed, skip entirely.
 
@@ -575,7 +603,7 @@ if (shouldSkipPhase('scope')) {
 } else {
 phase('Scope')
 await flowState('event', { type: 'phase_start', phase: 'scope' })
-const scope = await agent(
+scope = await agent(
   `Explore the codebase to understand existing architecture, then define research
 angles for this task.
 
@@ -646,7 +674,7 @@ feed directly into the specification.`,
   ),
 )
 
-const allFindings = researchResults.filter(Boolean)
+allFindings = researchResults.filter(Boolean)
 log(`Research done: ${allFindings.length}/${scope.angles.length} angles`)
 await flowState('update', { phase: 'research' })
 auditEvents.push({ phase: 'research', event: 'phase_complete', findings: allFindings.length })
@@ -669,7 +697,7 @@ const openQuestionsText = allFindings
   .flatMap(r => r.open_questions).filter(Boolean)
   .map(q => `- ${q}`).join('\n')
 
-let spec = await agent(
+spec = await agent(
   `Write a complete, implementable development spec based on this research.
 
 ## Task
@@ -732,7 +760,7 @@ if (shouldSkipPhase('review_spec')) {
 } else {
 phase('Review Spec')
 await flowState('event', { type: 'phase_start', phase: 'review_spec' })
-let specReview = await agent(
+specReview = await agent(
   `Adversarially review the spec. Read ${spec.spec_path} and find every gap.
 
 Challenge every assumption. If the spec says "should support X", ask: is X
@@ -799,7 +827,7 @@ if (shouldSkipPhase('write_plan')) {
 } else {
 phase('Write Plan')
 await flowState('event', { type: 'phase_start', phase: 'write_plan' })
-const planResult = await agent(
+planResult = await agent(
   `Decompose the spec into an implementation plan. Write to ${planPath}.
 
 1. Read the spec at ${spec.spec_path}
@@ -843,7 +871,7 @@ if (shouldSkipPhase('review_plan')) {
 } else {
 phase('Review Plan')
 await flowState('event', { type: 'phase_start', phase: 'review_plan' })
-let planReview = await agent(
+planReview = await agent(
   `Review the plan at ${planResult.plan_path} against the spec at ${specPath}.
 
 Verify: every spec requirement covered, dependencies correct (no cycles,
@@ -905,7 +933,7 @@ if (shouldSkipPhase('parse_plan')) {
 } else {
 phase('Parse Plan')
 await flowState('event', { type: 'phase_start', phase: 'parse_plan' })
-const parsed = await agent(
+parsed = await agent(
   `Read the plan at ${planResult.plan_path} and extract its tasks into structured form.
 
 You will return two things:
@@ -975,7 +1003,14 @@ Example output for a 3-task plan where task-3 depends on task-1:
 
 log(`Parsed: ${parsed.groups.length} groups, ${Object.keys(parsed.tasks).length} tasks`)
 await flowState('update', { phase: 'parse_plan', groups: parsed.groups,
-  task_states: Object.fromEntries(Object.keys(parsed.tasks).map(k => [k, 'queued'])) })
+  task_states: Object.fromEntries(Object.keys(parsed.tasks).map(k => [k, {
+    task_id: k,
+    status: 'queued',
+    attempts: 0,
+    files_modified: [],
+    evidence_paths: [],
+    commit_sha: '',
+  }])) })
 auditEvents.push({ phase: 'parse_plan', event: 'phase_complete',
   groups: parsed.groups.length, tasks: Object.keys(parsed.tasks).length })
 } // end parse_plan skip guard
@@ -1022,7 +1057,7 @@ phase('Execute')
 await flowState('event', { type: 'phase_start', phase: 'execute' })
 log('Delegating to execute-plan workflow...')
 
-const executeResult = await workflow(
+executeResult = await workflow(
   { scriptPath: execute_plan_script_path },
   {
     groups: parsed.groups,
@@ -1062,13 +1097,13 @@ function priorGatePassed() {
   return gateCursor === 0 || (gateStates[GATE_NAMES[gateCursor - 1]] && gateStates[GATE_NAMES[gateCursor - 1]].passed)
 }
 
-function recordGate(gateName, passed, detail, extra) {
+async function recordGate(gateName, passed, detail, extra) {
   const record = makeGateRecord(gateName, passed, detail, extra)
   gateStates[gateName] = record
   gateCursor = GATE_NAMES.indexOf(gateName) + 1
   const gatesArray = GATE_NAMES.map(n => gateStates[n] || makeGateRecord(n, false, 'Pending'))
   const passedCount = gatesArray.filter(g => g.passed).length
-  flowState('update', {
+  await flowState('update', {
     gate_states: gatesArray,
     progress: { gates_passed: passedCount, gates_total: 7 },
     resume_cursor: { phase: 'gates', gate_cursor: gateCursor, gate_states: gateStates },
@@ -1089,7 +1124,7 @@ if (isGateAlreadyPassed(GATE_TASKS_EXECUTED, 0)) {
     last_failure: g1Passed ? null : g1Detail,
     next_action: g1Passed ? 'proceed' : 'retry_tasks',
   }
-  recordGate(GATE_TASKS_EXECUTED, g1Passed, g1Detail, g1Extra)
+  await recordGate(GATE_TASKS_EXECUTED, g1Passed, g1Detail, g1Extra)
   log(`Gate 1 (tasks_executed): ${g1Passed ? 'PASSED' : 'FAILED'}`)
 }
 
@@ -1107,10 +1142,10 @@ if (isGateAlreadyPassed(GATE_REVIEWS_PASSED, 1)) {
     last_failure: g2Passed ? null : g2Detail,
     next_action: g2Passed ? 'proceed' : 'fix_reviews',
   }
-  recordGate(GATE_REVIEWS_PASSED, g2Passed, g2Detail, g2Extra)
+  await recordGate(GATE_REVIEWS_PASSED, g2Passed, g2Detail, g2Extra)
   log(`Gate 2 (reviews_passed): ${g2Passed ? 'PASSED' : 'FAILED'}`)
 } else {
-  recordGate(GATE_REVIEWS_PASSED, false, 'Skipped — tasks_executed not passed', { iterations: 0, next_action: 'unblock_gate_1' })
+  await recordGate(GATE_REVIEWS_PASSED, false, 'Skipped — tasks_executed not passed', { iterations: 0, next_action: 'unblock_gate_1' })
   log('Gate 2 (reviews_passed): SKIPPED — gate 1 not passed')
 }
 
@@ -1143,7 +1178,7 @@ Report: passed (all green) or failed.`,
     iters++
   }
 
-  recordGate(GATE_TESTS_PASS, passed, detail, {
+  await recordGate(GATE_TESTS_PASS, passed, detail, {
     iterations: iters,
     last_failure: lastFailure,
     last_fix: lastFix,
@@ -1152,7 +1187,7 @@ Report: passed (all green) or failed.`,
   })
   log(`Gate 3 (tests_pass): ${passed ? 'PASSED' : `FAILED after ${iters} attempts`}`)
 } else {
-  recordGate(GATE_TESTS_PASS, false, 'Skipped — reviews_passed not passed', { iterations: 0, next_action: 'unblock_gate_2' })
+  await recordGate(GATE_TESTS_PASS, false, 'Skipped — reviews_passed not passed', { iterations: 0, next_action: 'unblock_gate_2' })
   log('Gate 3 (tests_pass): SKIPPED — gate 2 not passed')
 }
 
@@ -1201,7 +1236,11 @@ Report what you observed.`,
     generated_at: new Date().toISOString(),
   }
 
-  recordGate(GATE_RUNTIME_EVIDENCE, passed, detail, {
+  if (evidence_dir) {
+    await flowState('manifest', { artifacts: [], summary: manifest })
+  }
+
+  await recordGate(GATE_RUNTIME_EVIDENCE, passed, detail, {
     iterations: iters,
     last_failure: lastFailure,
     last_fix: lastFix,
@@ -1212,7 +1251,7 @@ Report what you observed.`,
   })
   log(`Gate 4 (runtime_evidence): ${passed ? 'PASSED' : `FAILED after ${iters} attempts`}`)
 } else {
-  recordGate(GATE_RUNTIME_EVIDENCE, false, 'Skipped — tests_pass not passed', { iterations: 0, next_action: 'unblock_gate_3' })
+  await recordGate(GATE_RUNTIME_EVIDENCE, false, 'Skipped — tests_pass not passed', { iterations: 0, next_action: 'unblock_gate_3' })
   log('Gate 4 (runtime_evidence): SKIPPED — gate 3 not passed')
 }
 
@@ -1244,7 +1283,7 @@ Report: passed (every requirement verified) or failed with specific gaps.`,
     iters++
   }
 
-  recordGate(GATE_SPEC_VERIFIED, passed, detail, {
+  await recordGate(GATE_SPEC_VERIFIED, passed, detail, {
     iterations: iters,
     last_failure: lastFailure,
     last_fix: lastFix,
@@ -1254,7 +1293,7 @@ Report: passed (every requirement verified) or failed with specific gaps.`,
   })
   log(`Gate 5 (spec_verified): ${passed ? 'PASSED' : `FAILED after ${iters} attempts`}`)
 } else {
-  recordGate(GATE_SPEC_VERIFIED, false, 'Skipped — runtime_evidence not passed', { iterations: 0, next_action: 'unblock_gate_4' })
+  await recordGate(GATE_SPEC_VERIFIED, false, 'Skipped — runtime_evidence not passed', { iterations: 0, next_action: 'unblock_gate_4' })
   log('Gate 5 (spec_verified): SKIPPED — gate 4 not passed')
 }
 
@@ -1312,7 +1351,7 @@ Minimal fixes — do not refactor.`,
     }
   }
 
-  recordGate(GATE_FINAL_REVIEW, passed, detail, {
+  await recordGate(GATE_FINAL_REVIEW, passed, detail, {
     iterations: iters + (executeHadFinalReview ? 1 : 0),
     last_failure: lastFailure,
     last_fix: lastFix,
@@ -1321,7 +1360,7 @@ Minimal fixes — do not refactor.`,
   })
   log(`Gate 6 (final_review): ${passed ? 'PASSED' : `FAILED after ${iters} fix rounds`}`)
 } else {
-  recordGate(GATE_FINAL_REVIEW, false, 'Skipped — spec_verified not passed', { iterations: 0, next_action: 'unblock_gate_5' })
+  await recordGate(GATE_FINAL_REVIEW, false, 'Skipped — spec_verified not passed', { iterations: 0, next_action: 'unblock_gate_5' })
   log('Gate 6 (final_review): SKIPPED — gate 5 not passed')
 }
 
@@ -1352,7 +1391,7 @@ If dirty: list the dirty files. The pipeline does not require commits.`,
   passed = r.passed
   detail = r.detail
 
-  recordGate(GATE_GIT_CLEAN, passed, detail, {
+  await recordGate(GATE_GIT_CLEAN, passed, detail, {
     iterations: 1,
     last_failure: passed ? null : detail,
     evidence_paths: cleanedPaths,
@@ -1361,7 +1400,7 @@ If dirty: list the dirty files. The pipeline does not require commits.`,
   })
   log(`Gate 7 (git_clean): ${passed ? 'PASSED' : 'FAILED'}`)
 } else {
-  recordGate(GATE_GIT_CLEAN, false, 'Skipped — final_review not passed', { iterations: 0, next_action: 'unblock_gate_6' })
+  await recordGate(GATE_GIT_CLEAN, false, 'Skipped — final_review not passed', { iterations: 0, next_action: 'unblock_gate_6' })
   log('Gate 7 (git_clean): SKIPPED — gate 6 not passed')
 }
 

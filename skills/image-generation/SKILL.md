@@ -1,4 +1,4 @@
-﻿---
+---
 name: image-generation
 description: Use when the user wants to generate, draw, render, create, or edit images; delegates focused image work to artist subagents and supports bounded parallel batches
 ---
