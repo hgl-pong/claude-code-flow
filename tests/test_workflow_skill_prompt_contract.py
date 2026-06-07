@@ -287,6 +287,58 @@ class TestTaskStatusesInDocs:
 # ── Task metadata fields in docs ───────────────────────────────────────
 
 
+class TestGameWorkflowGuidance:
+    """Workflow docs and prompts must cover 2D browser game development."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.wdd_skill = _read(WDD_SKILL)
+        self.oracle_prompt = _read(SKILLS_DIR / "workflow-driven-development" / "oracle-planner-prompt.md")
+        self.implementer_prompt = _read(SKILLS_DIR / "workflow-driven-development" / "implementer-prompt.md")
+        self.spec_reviewer_prompt = _read(SKILLS_DIR / "workflow-driven-development" / "spec-reviewer-prompt.md")
+        self.code_reviewer_prompt = _read(SKILLS_DIR / "workflow-driven-development" / "code-quality-reviewer-prompt.md")
+
+    @pytest.mark.parametrize("text", [
+        "2d-game-workflow.md",
+        "Phaser",
+        "simulation",
+        "renderer",
+        "DOM",
+        "sprite",
+        "image-generation",
+        "playtest",
+    ])
+    def test_2d_game_guidance_in_workflow_docs(self, text):
+        assert text in self.wdd_skill
+
+    @pytest.mark.parametrize("text", [
+        "src/game/simulation",
+        "src/game/assets/manifest",
+        "src/phaser/scenes",
+        "src/ui",
+        "camera model",
+        "input action map",
+        "playtest",
+        "image-generation",
+    ])
+    def test_2d_game_reference_exists(self, text):
+        ref = _read(SKILLS_DIR / "workflow-driven-development" / "references" / "2d-game-workflow.md")
+        assert text in ref
+
+    @pytest.mark.parametrize("text", ["Phaser", "simulation", "renderer", "DOM HUD", "sprite", "image-generation", "playtest", "asset manifest"])
+    def test_2d_game_guidance_in_planner_prompt(self, text):
+        assert text in self.oracle_prompt
+
+    @pytest.mark.parametrize("text", ["Phaser", "simulation", "renderer", "DOM HUD", "image-generation", "asset manifest", "playtest"])
+    def test_2d_game_guidance_in_implementer_prompt(self, text):
+        assert text in self.implementer_prompt
+
+    @pytest.mark.parametrize("text", ["Phaser", "simulation", "renderer", "DOM", "asset", "image-generation", "playtest"])
+    def test_2d_game_guidance_in_reviewer_prompts(self, text):
+        assert text in self.spec_reviewer_prompt
+        assert text in self.code_reviewer_prompt
+
+
 class TestTaskMetadataInDocs:
     """Docs must document all task metadata fields."""
 

@@ -65,6 +65,10 @@ Task tool (general-purpose):
     - Files that change together should live together
     - In existing codebases, follow established patterns
 
+    ## 2D Game Planning
+
+    For 2D browser-game requests, default to Phaser unless the spec names another engine. Use `skills/workflow-driven-development/references/2d-game-workflow.md` as the planning reference. Preserve a simulation/renderer boundary: simulation owns rules, collisions, progression, turns, timers, combat, inventory, objectives, and saveable state; Phaser scenes adapt state into sprites, camera, animation, FX, and input plumbing. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Plan the camera model, input action map, and stable asset manifest keys. Prefer the reference layout (`src/game/simulation`, `src/game/assets/manifest`, `src/phaser/scenes`, `src/ui`) unless existing project structure says otherwise. For sprite or image asset generation/editing, create separate artist/image tasks that use claude-code-flow:image-generation, then make implementation tasks consume the returned files and manifests. Include a browser smoke/playtest verification task for runnable game deliverables.
+
     ## Task Granularity
 
     Each step is one action (2-5 minutes):

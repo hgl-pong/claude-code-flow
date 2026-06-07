@@ -22,4 +22,12 @@ Task tool (general-purpose):
 - Is the implementation following the file structure from the plan?
 - Did this implementation create new files that are already large, or significantly grow existing files? (Don't flag pre-existing file sizes — focus on what this change contributed.)
 
+**For 2D game work, also check:**
+- simulation and renderer responsibilities are separated.
+- Phaser scenes orchestrate rendering/input but do not own gameplay rules.
+- DOM HUD/menu surfaces are used for dense text and accessibility-sensitive controls.
+- Asset references stay behind a stable asset manifest.
+- Sprite/image generation is delegated to claude-code-flow:image-generation, not a duplicate provider path.
+- playtest/smoke evidence exists for runnable game changes, or unverifiable runtime acceptance is called out.
+
 **Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment

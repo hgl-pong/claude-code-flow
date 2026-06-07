@@ -54,6 +54,10 @@ Task tool (general-purpose):
     - In existing codebases, follow established patterns. Improve code you're touching
       the way a good developer would, but don't restructure things outside your task.
 
+    ## 2D Game Implementation
+
+    For 2D browser games, follow `skills/workflow-driven-development/references/2d-game-workflow.md` when it applies. Keep Phaser scenes thin and keep simulation state outside the renderer. Simulation owns rules, collisions, progression, timers, turns, combat, inventory, objectives, and saveable state; Phaser adapts that state into sprites, camera, animation, FX, scene lifecycle, and input. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Keep asset references behind a stable asset manifest. If the task needs sprites or image assets, use claude-code-flow:image-generation through the planned artist/image task path; do not invent a second image provider path. For runnable game changes, gather smoke/playtest evidence or record why it is unverifiable.
+
     ## When You're in Over Your Head
 
     It is always OK to stop and say "this is too hard for me." Bad work is worse than

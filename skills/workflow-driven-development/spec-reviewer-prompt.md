@@ -53,6 +53,14 @@ Task tool (general-purpose):
     - Did they solve the wrong problem?
     - Did they implement the right feature but wrong way?
 
+    **2D game checks when applicable:**
+    - Phaser scenes stay thin; gameplay rules live in simulation code, not renderer callbacks
+    - saveable state is serializable simulation state, not sprites/tweens/cameras/DOM nodes
+    - dense HUD/menu/settings/inventory surfaces use DOM unless the spec requires canvas UI
+    - asset paths go through a stable manifest layer
+    - sprite/image work goes through claude-code-flow:image-generation and only existing output files are wired
+    - runnable game changes include smoke/playtest evidence or an explicit unverifiable note
+
     **Verify by reading code, not by trusting report.**
 
     Report:

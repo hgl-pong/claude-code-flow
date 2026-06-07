@@ -324,6 +324,19 @@ The workflow script embeds all prompt content (behavioral guards, self-review ch
 
 For tasks that generate or edit images, set the task model to artist. The workflow handles image generation and image editing tasks in the same implement → review chain. Artist agents follow `artist-prompt.md` and return output paths plus a manifest. Tasks with missing output files or BLOCKED status appear in `results.blocked[]`.
 
+## 2D Game Development
+
+For 2D browser-game tasks, default to Phaser unless the spec names another engine. Use `references/2d-game-workflow.md` when planning, implementing, or reviewing game work.
+
+Minimum workflow expectations:
+- Keep simulation state outside the renderer: simulation owns rules, progression, collisions, turns, timers, combat, inventory, objectives, and saveable state.
+- Keep Phaser scenes thin: scenes adapt simulation state into sprites, cameras, animation, FX, input plumbing, and scene lifecycle.
+- Define the camera model and input action map before coding gameplay.
+- Prefer a DOM HUD or menu layer for dense text, settings, inventory, command panels, and accessibility-sensitive controls.
+- Use stable asset manifest keys instead of scattering file paths through gameplay code.
+- For sprite or visual asset creation/editing, route image work through `claude-code-flow:image-generation`; do not duplicate image provider logic in game tasks. Implementers should consume generated image manifests and wire assets only after files exist.
+- For runnable game deliverables, require browser smoke/playtest evidence when possible; otherwise record why runtime verification is unverifiable.
+
 ## UI Implementation
 
 For tasks involving visible UI, read the root `DESIGN.md` and include relevant design content (tokens, layout rules, component states, accessibility requirements) directly in the task's `description` text before building args. The workflow's spec review stage verifies that UI output matches the task description.

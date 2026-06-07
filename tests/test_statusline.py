@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -21,8 +22,9 @@ def run_statusline(stdin_json=None, cwd=None, extra_env=None):
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
+    command = ["rtk", "bash", bash_path(SCRIPT)] if shutil.which("rtk") else ["bash", bash_path(SCRIPT)]
     proc = subprocess.run(
-        ["rtk", "bash", bash_path(SCRIPT)],
+        command,
         input=json.dumps(stdin_json).encode() if stdin_json is not None else None,
         cwd=cwd or ROOT,
         env=env,
@@ -70,7 +72,7 @@ def run_statusline_with_states(states, cwd=None):
     states: dict mapping dir_name -> state dict (or None for corrupt file content)
     Returns (returncode, stdout, stderr)
     """
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         auto_dir = Path(tmp) / ".claude" / "auto"
         auto_dir.mkdir(parents=True)
 
@@ -223,7 +225,7 @@ def test_corrupt_newest_shows_error_and_fallback():
 
 def test_corrupt_newest_with_timestamp_shows_state_error():
     """Corrupt file with valid structure up front but invalid JSON body."""
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         auto_dir = Path(tmp) / ".claude" / "auto"
         auto_dir.mkdir(parents=True)
 
@@ -264,7 +266,7 @@ def test_all_corrupt_shows_state_error():
 
 def test_no_auto_dir_no_auto_output():
     """Without .claude/auto directory, no auto: output should appear."""
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         code, out, _ = run_statusline(
             stdin_json={"model": {"display_name": "Test"}},
             cwd=tmp,
