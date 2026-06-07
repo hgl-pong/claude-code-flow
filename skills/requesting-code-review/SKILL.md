@@ -5,99 +5,61 @@ description: Use when completing tasks, implementing major features, or before m
 
 # Requesting Code Review
 
-Dispatch a code reviewer subagent to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history. This keeps the reviewer focused on the work product, not your thought process, and preserves your own context for continued work.
+Dispatch a fresh reviewer with bounded context: what changed, what it should satisfy, and the exact diff range. Do not hand over session history.
 
-**Core principle:** Review early, review often.
+**Core principle:** Review work product, not the conversation.
 
-## When to Request Review
+## When
 
-**Mandatory:**
+Mandatory:
+
 - After each task in workflow-driven development
-- After completing major feature
+- After major feature/bugfix completion
 - Before merge to main
 
-**Optional but valuable:**
-- When stuck (fresh perspective)
-- Before refactoring (baseline check)
+Useful:
+
+- When stuck
+- Before risky refactor
 - After fixing complex bug
 
-## How to Request
+For automated plan execution, use **claude-code-flow:workflow-driven-development**; it owns the review/fix loop. This skill is the manual review primitive.
 
-**1. Get git SHAs:**
+## How
+
+1. Identify diff range:
+
 ```bash
-BASE_SHA=$(git rev-parse HEAD~1)  # or origin/main
+BASE_SHA=$(git rev-parse origin/main)  # or task start SHA
 HEAD_SHA=$(git rev-parse HEAD)
 ```
 
-**2. Dispatch code reviewer subagent:**
+2. Dispatch reviewer subagent with `requesting-code-review/code-reviewer.md`.
 
-Use Task tool with `general-purpose` type, fill template at `code-reviewer.md`
+Required context:
 
-**Placeholders:**
-- `{DESCRIPTION}` - Brief summary of what you built
-- `{PLAN_OR_REQUIREMENTS}` - What it should do
-- `{BASE_SHA}` - Starting commit
-- `{HEAD_SHA}` - Ending commit
+- `{DESCRIPTION}` — concise summary of work
+- `{PLAN_OR_REQUIREMENTS}` — spec/plan/acceptance criteria
+- `{BASE_SHA}` — starting commit
+- `{HEAD_SHA}` — ending commit
 
-**3. Act on feedback:**
-- Fix Critical issues immediately
-- Fix Important issues before proceeding
-- Note Minor issues for later
-- Push back if reviewer is wrong (with reasoning)
+3. Act on feedback:
 
-## Example
+- Critical → fix before anything else
+- Important → fix before proceeding/merge
+- Minor → fix if cheap; otherwise note
+- Wrong/unclear → push back with code/tests/evidence
 
-```
-[Just completed Task 2: Add verification function]
+If feedback reports a bug or failing behavior, use **claude-code-flow:systematic-debugging** before implementing the fix.
 
-You: Let me request code review before proceeding.
-
-BASE_SHA=$(git log --oneline | grep "Task 1" | head -1 | awk '{print $1}')
-HEAD_SHA=$(git rev-parse HEAD)
-
-[Dispatch code reviewer subagent]
-  DESCRIPTION: Added verifyIndex() and repairIndex() with 4 issue types
-  PLAN_OR_REQUIREMENTS: Task 2 from .claude/plans/deployment-plan.md
-  BASE_SHA: a7981ec
-  HEAD_SHA: 3df7661
-
-[Subagent returns]:
-  Strengths: Clean architecture, real tests
-  Issues:
-    Important: Missing progress indicators
-    Minor: Magic number (100) for reporting interval
-  Assessment: Ready to proceed
-
-You: [Fix progress indicators]
-[Continue to Task 3]
-```
-
-## Integration with Workflows
-
-**Subagent-Driven Development:**
-- Review after EACH task
-- Catch issues before they compound
-- Fix before moving to next task
-
-**Executing Plans:**
-- Review after each task or at natural checkpoints
-- Get feedback, apply, continue
-
-**Ad-Hoc Development:**
-- Review before merge
-- Review when stuck
+Before claiming done after fixes, use **claude-code-flow:verification-before-completion**. For merge/PR/cleanup choices, use **claude-code-flow:finishing-a-development-branch**.
 
 ## Red Flags
 
-**Never:**
-- Skip review because "it's simple"
-- Ignore Critical issues
-- Proceed with unfixed Important issues
-- Argue with valid technical feedback
+Never:
 
-**If reviewer wrong:**
-- Push back with technical reasoning
-- Show code/tests that prove it works
-- Request clarification
-
-See template at: requesting-code-review/code-reviewer.md
+- Skip review because the change is small
+- Review without a clear SHA range
+- Give reviewer only vague context
+- Ignore Critical/Important findings
+- Blindly apply questionable feedback

@@ -8,7 +8,6 @@ __pycache__/
 !.agents/plugins/
 .agents/plugins/*
 !.agents/plugins/marketplace.json
-.gitnexus
 
 .worktrees/
 .private-journal/

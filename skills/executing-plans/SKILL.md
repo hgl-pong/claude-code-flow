@@ -1,70 +1,50 @@
-﻿---
+---
 name: executing-plans
 description: Inline fallback for trivial tasks (config-only, no logic) — workflow-driven-development is the default
 ---
 
 # Executing Plans
 
-## Overview
+Fallback path for trivial/config-only plans created by **claude-code-flow:writing-plans**, or harnesses without `Workflow`/subagents. For any non-trivial plan, use **claude-code-flow:workflow-driven-development** instead.
 
-Load plan, review critically, execute all tasks, report when complete.
+**Announce at start:** "I'm using the executing-plans skill as a fallback to implement this trivial plan inline."
 
-**Announce at start:** "I'm using the executing-plans skill to implement this plan."
+## Use Only When
 
-**Note:** Tell your human partner that Claude Code Flow works much better with access to subagents. The quality of its work will be significantly higher if run on a platform with subagent support (such as Claude Code or Codex). If subagents are available, use claude-code-flow:workflow-driven-development instead of this skill.
+- Plan is config-only/docs-only/mechanical
+- No new behavior or tests needed
+- No parallel subtasks/review loop needed
+- `Workflow` or subagents are unavailable
 
-## The Process
+Otherwise: invoke **workflow-driven-development**.
 
-### Step 1: Load and Review Plan
-1. Read plan file
-2. Review critically - identify any questions or concerns about the plan
-3. If concerns: Raise them with your human partner before starting
-4. If no concerns: Create TodoWrite and proceed
+## Process
 
-### Step 2: Execute Tasks
+1. Read the plan once.
+2. Critically check for blockers, ambiguity, missing verification.
+3. Create todos for plan tasks.
+4. Execute tasks in order; follow each step exactly.
+5. Run stated verification.
+6. Before claiming done, invoke **claude-code-flow:verification-before-completion**.
+7. If development branch needs integration/cleanup, invoke **claude-code-flow:finishing-a-development-branch**.
 
-For each task:
-1. Mark as in_progress
-2. Follow each step exactly (plan has bite-sized steps)
-3. Run verifications as specified
-4. Mark as completed
+## Stop and Ask
 
-### Step 3: Complete Development
+Stop immediately when:
 
-After all tasks complete and verified:
-- Announce: "I'm using the finishing-a-development-branch skill to complete this work."
-- **REQUIRED SUB-SKILL:** Use claude-code-flow:finishing-a-development-branch
-- Follow that skill to verify tests, present options, execute choice
-
-## When to Stop and Ask for Help
-
-**STOP executing immediately when:**
-- Hit a blocker (missing dependency, test fails, instruction unclear)
-- Plan has critical gaps preventing starting
-- You don't understand an instruction
+- Plan has critical gaps
+- Instruction is unclear
+- Dependency/tooling missing
 - Verification fails repeatedly
+- Task stops being trivial
 
-**Ask for clarification rather than guessing.**
+Do not guess through blockers. Do not continue inline once the task needs workflow orchestration.
 
-## When to Revisit Earlier Steps
+## Red Flags
 
-**Return to Review (Step 1) when:**
-- Partner updates the plan based on your feedback
-- Fundamental approach needs rethinking
+Never:
 
-**Don't force through blockers** - stop and ask.
-
-## Remember
-- Review plan critically first
-- Follow plan steps exactly
-- Don't skip verifications
-- Reference skills when plan says to
-- Stop when blocked, don't guess
-- Never start implementation on main/master branch without explicit user consent
-
-## Integration
-
-**Required workflow skills:**
-- **claude-code-flow:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
-- **claude-code-flow:writing-plans** - Creates the plan this skill executes
-- **claude-code-flow:finishing-a-development-branch** - Complete development after all tasks
+- Use this to avoid workflow-driven-development for real implementation work
+- Start implementation on main/master without explicit consent
+- Skip verification because the change is small
+- Continue after failed verification without diagnosing cause
