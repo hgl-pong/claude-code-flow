@@ -494,6 +494,24 @@ class TestCommitPolicyInDocs:
 # ── Final summary in docs ──────────────────────────────────────────────
 
 
+class TestAutoModeFinalizationInDocs:
+    """Auto-mode must document autonomous final delivery after gates pass."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.auto_skill = _read(AUTO_SKILL)
+
+    @pytest.mark.parametrize("text", [
+        "Do not ask",
+        "all seven completion gates pass",
+        "proceed directly to final delivery",
+        "Commit before git_clean",
+        "No post-pass approval prompt",
+    ])
+    def test_auto_mode_finalizes_without_extra_user_prompt(self, text):
+        assert text in self.auto_skill
+
+
 class TestFinalSummaryInDocs:
     """Docs must document the final summary disclosure fields."""
 

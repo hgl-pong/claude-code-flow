@@ -44,8 +44,10 @@ Preferred when `Workflow` exists.
 2. Create `.claude/auto/<task-name>/state.json` immediately.
 3. Run `skills/workflow-driven-development/full-auto-pipeline.workflow.js` with args for task, worktree, specs/plans dirs, audit/evidence dirs, retry policy, and `execute-plan.workflow.js` path.
 4. Inspect `result.all_passed` and `result.gates`.
-5. If all passed, use **finishing-a-development-branch**.
+5. If all passed, use **finishing-a-development-branch** and proceed directly to final delivery.
 6. Write final state: `DONE`, `STOPPED_ASK_USER`, `FAILED_FATAL`, or `CANCELLED`.
+
+No post-pass approval prompt: when all seven completion gates pass, Do not ask whether to finish, commit, merge, or deliver. The user already chose auto-mode. Continue until final summary unless a Stop Condition applies.
 
 The workflow owns phase execution, task dispatch, review/fix loops, retry handling, and completion gates. Do not duplicate manual pool/state management.
 
@@ -83,7 +85,7 @@ Run before finishing. All must pass; each failure triggers fix/retry until cap.
 | 4 | `runtime_evidence` | Runnable deliverables smoke-tested; non-runnable auto-pass/unverifiable | 10 |
 | 5 | `spec_verified` | Spec requirements checked against code | 10 |
 | 6 | `final_review` | Full-diff final reviewer approved | 5/issue |
-| 7 | `git_clean` | `git status --porcelain` empty; validation only, no commit instruction | 10 |
+| 7 | `git_clean` | `git status --porcelain` empty after planned commits/cleanup | 10 |
 
 Runtime evidence manifest fields: `commands`, `exit_codes`, `logs`, `screenshots`, `artifacts`, `crash`, `hang`, `unverified_acceptance_items`, `blocking_risks`, `generated_at`.
 
@@ -101,6 +103,12 @@ Only one non-terminal auto-mode run may be active per worktree.
 - On resume, use `resume_cursor`; do not re-run completed phases/tasks blindly.
 - Cursor fields include `gate_cursor`, `spec_path`, `plan_path`, and `result_replay`.
 - Preserve worktree on interruption; resume from recorded `worktree_path`.
+
+## Finalization Rule
+
+Auto-mode means finalization is autonomous. After all seven completion gates pass, proceed directly to final delivery and write `DONE`. Do not ask for another approval step, status check, or "should I continue?" confirmation.
+
+Commit before git_clean when changes are part of the auto-mode task and tests/reviews have passed. Gate 7 verifies the result; it is not a reason to stop and ask. If the harness blocks commit/merge, record `STOPPED_ASK_USER` with the exact blocked command and one focused recovery question.
 
 ## Stop Conditions
 
@@ -138,6 +146,8 @@ Never:
 - Skip or reorder completion gates
 - Proceed to finishing with any gate failing
 - Ask the human partner outside stop conditions
+- Ask for post-pass approval after gates are green
+- Treat `git_clean` failure as a question instead of committing/cleaning planned task changes
 - Re-run destructive resume steps without checking prior success
 - Modify existing skill files as part of auto-mode output
 - Skip audit trail writes
