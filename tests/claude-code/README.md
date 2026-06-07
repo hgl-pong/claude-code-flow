@@ -80,34 +80,180 @@ echo "=== All tests passed ==="
 
 ## Current Tests
 
-### Fast Tests (run by default)
+### Static Tests (zero-cost, run first)
+
+These tests are instant — no Claude Code invocation needed.
+
+#### test-plugin-health.sh
+Comprehensive plugin health check:
+- All 16 skill SKILL.md files exist with valid YAML frontmatter (name + description)
+- All 4 hook scripts have valid Python syntax
+- Hook configuration files (hooks.json) are valid JSON
+- Workflow scripts (execute-plan, full-auto-pipeline) have balanced brackets + meta blocks
+- Prompt template files (implementer, spec-reviewer, code-reviewer, designer, researcher, forge, oracle, prism, artist, code-reviewer, plan-reviewer) all exist
+- Support scripts (render-hooks.py, statusline.sh, server.cjs) exist
+- Cross-skill references resolve to existing SKILL.md files
+- Documentation files (README.md, CLAUDE.md, AGENTS.md, PR template) exist
+
+#### test-pipeline-chain.sh
+Full pipeline chain integrity verification:
+- brainstorming → writing-plans → workflow-driven-development → finishing chain references
+- Workflow-driven-development prerequisite skills
+- Auto-mode skill integration references
+- Executing-plans chain references
+- Cross-skill reference consistency (no broken links)
+- Harmonized WFD/auto-mode execution flow
+
+#### test-workflow-driven-development-structure.sh
+Workflow script static checks:
+- File existence and SKILL.md title
+- JS structure: balanced braces/parens/brackets, meta block, required fields
+- Schema definitions: IMPLEMENT_RESULT + REVIEW_RESULT with correct enum values
+- Behavioral content embedded in workflow scripts
+- Canonical prompt files exist, WF duplicates correctly removed
+- Pipeline/parallel/retry/blocked handling in script logic
+
+#### test-designer-prompt-content.sh
+Designer prompt content verification:
+- Source provenance in synthesize step
+- Format reference source requirements
+- DESIGN.md traceability
+- Web tools present (WebSearch, WebFetch)
+- Phase 1 structure preserved
+- Format reference wired correctly
+
+#### test-researcher-prompt-content.sh
+Researcher prompt content verification:
+- Local tools section (Glob, Grep, CodeGraph)
+- Web tools section (WebSearch, WebFetch)
+- Source provenance tags (source: local/web/both)
+- Cross-verification step
+- Conflict resolution with confidence downgrade
+- Cross-reference table
+- Dual-source quality checklist
+- 6-step research method
+
+### Behavioral Tests (use claude -p, ~2 min each)
+
+Each test verifies skill behavior through Claude Code CLI prompts.
+
+#### test-bootstrap-e2e.sh
+Bootstrap skill verification:
+- Skill recognition by name
+- Skill-check-before-response instruction
+- Red Flags rationalization table completeness
+- Skill priority order (process first, then implementation)
+- Skill tool invocation instruction
+
+#### test-brainstorming-e2e.sh
+Brainstorming skill activation:
+- Skill name and purpose (design/requirements gathering)
+- Design section presentation
+- 2-3 approach evaluation with selection criteria
+- Visual companion / brainstorm server behavior
+- Spec document reviewer integration
+- Design-before-code mandate
+
+#### test-writing-plans-e2e.sh
+Writing plans skill:
+- Skill name and task decomposition purpose
+- Task granularity (2-5 minutes per task)
+- Task dependency management and parallelism
+- Plan reviewer integration
+- Spec/design document prerequisite
 
 #### test-workflow-driven-development.sh
-Tests skill content and requirements (~2 minutes):
-- Skill loading and name recognition
+WFD skill behavior:
 - Four-step process: Prepare Context → Build Args → Launch → Handle Results
-- Pipeline stage ordering (implement → spec review → code review)
-- Retry behavior (up to 5 iterations per review stage)
+- Pipeline stages (implement → spec review → code review)
+- Retry behavior (up to 5 iterations)
 - Reviewer independence and skepticism
 - Results structure (completed/blocked/final_review)
 - Blocked task handling (re-dispatch, split, escalate)
 - Model selection (forge/oracle/prism/artist)
-- Red Flags (Never/Always rules)
+- Red Flags rules
 - Integration with required skills
+
+#### test-git-worktrees-e2e.sh
+Git worktrees skill:
+- Skill name and isolation/workspace purpose
+- Worktree creation process (EnterWorktree tool)
+- Clean baseline verification requirement
+- Main/master branch protection
+- Finishing skill integration
+
+#### test-tdd-e2e.sh
+TDD skill enforcement:
+- RED-GREEN-REFACTOR cycle recognition
+- Test-first mandate
+- RED phase: watch test fail before implementing
+- GREEN phase: minimal implementation
+- Testing anti-patterns reference
+- Code-before-test prohibition (must delete)
+
+#### test-finishing-e2e.sh
+Finishing a development branch:
+- Skill name and merge/PR/cleanup purpose
+- Four completion options
+- Pre-finish verification requirement
+- Worktree cleanup after finishing
+
+#### test-verification-e2e.sh
+Verification before completion:
+- Skill name and verification/validation purpose
+- What to verify checklist
+- Evidence/proof requirement (not just claims)
+
+#### test-debugging-e2e.sh
+Systematic debugging:
+- Skill name and structured process
+- Root cause vs symptoms focus
+- Hypothesis-driven approach
+- Post-fix verification and regression checks
+
+#### test-worktree-native-preference.sh
+Tool preference verification:
+- Agent uses EnterWorktree (not raw git worktree add)
+- Configurable run count for statistical significance
 
 ### Integration Tests (use --integration flag)
 
 #### test-requesting-code-review.sh
-Behavioral test for the code reviewer subagent (~5 minutes):
-- Builds a tiny project with a baseline commit
-- Adds a second commit that plants two real bugs (SQL injection, plaintext password handling)
-- Dispatches the code reviewer via the requesting-code-review skill
-- Verifies the reviewer flags the planted bugs at Critical/Important severity and refuses to approve
+Code reviewer behavioral test (~5 minutes):
+- Plants real bugs (SQL injection, plaintext password)
+- Verifies reviewer catches bugs at Critical/Important severity
+- Verifies reviewer does not approve diff with planted bugs
 
-**What it tests:**
-- The skill actually dispatches a working code reviewer subagent
-- The reviewer template produces reviewers that catch obvious security bugs
-- The reviewer is not sycophantic — it does not approve a diff with planted Critical issues
+#### test-hook-interception.sh
+Hook interception test:
+- plan-mode-guard blocks EnterPlanMode
+- 9router-intercept handles WebSearch
+- 9router-intercept handles WebFetch
+
+#### test-auto-mode-hooks.sh
+Auto-mode hook lifecycle (Python-based):
+- Stop hook blocks active tasks
+- SubagentStart injects context
+- SubagentStop handles empty/gave-up/untracked/reviewer output
+- PreCompact writes snapshot
+- SessionStart detects dangling tasks
+- TeammateIdle with/without team
+- Corrupt state.json handling
+- Multiple active task selection
+- hooks.json structure validation
+
+#### test-document-review-system.sh
+Document review system:
+- Provides spec with intentional errors (TODO, deferred content)
+- Verifies reviewer catches all errors
+- Verifies reviewer does not approve flawed spec
+
+#### test-research-pipeline.sh
+Research pipeline E2E (long-running, 5-10 min):
+- Brainstorming triggers on naive prompt
+- Research output directory verification
+- Writing-plans dispatches researcher
+- Source provenance in research files
 
 ## Adding New Tests
 

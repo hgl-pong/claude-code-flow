@@ -56,8 +56,24 @@ while [[ $# -gt 0 ]]; do
             echo "  --integration, -i    Run integration tests (slow, 10-30 min)"
             echo "  --help, -h           Show this help"
             echo ""
-            echo "Tests:"
-            echo "  test-workflow-driven-development.sh  Test skill loading and requirements"
+            echo "Static Tests (always run, zero-cost):"
+            echo "  test-plugin-health.sh                  All skill/hook/script files valid"
+            echo "  test-workflow-driven-development-structure.sh  Workflow script JS validity"
+            echo "  test-designer-prompt-content.sh        Designer prompt content checks"
+            echo "  test-researcher-prompt-content.sh      Researcher prompt content checks"
+            echo "  test-pipeline-chain.sh                 Full pipeline cross-references"
+            echo ""
+            echo "Behavioral Tests (use claude -p):"
+            echo "  test-workflow-driven-development.sh    WFD skill behavior"
+            echo "  test-bootstrap-e2e.sh                  Bootstrap skill loading"
+            echo "  test-brainstorming-e2e.sh              Brainstorming skill activation"
+            echo "  test-git-worktrees-e2e.sh              Git worktrees skill"
+            echo "  test-tdd-e2e.sh                        TDD skill RED-GREEN-REFACTOR"
+            echo "  test-finishing-e2e.sh                  Finishing branch options"
+            echo "  test-writing-plans-e2e.sh              Writing plans task breakdown"
+            echo "  test-verification-e2e.sh               Verification before completion"
+            echo "  test-debugging-e2e.sh                  Systematic debugging process"
+            echo "  test-worktree-native-preference.sh     EnterWorktree tool preference"
             echo ""
             echo "Integration Tests (use --integration):"
             exit 0
@@ -70,16 +86,40 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# List of skill tests to run (fast unit tests)
-tests=(
-    "test-workflow-driven-development.sh"
+# Zero-cost static tests (no Claude Code invocation)
+static_tests=(
+    "test-plugin-health.sh"
+    "test-workflow-driven-development-structure.sh"
+    "test-designer-prompt-content.sh"
+    "test-researcher-prompt-content.sh"
+    "test-pipeline-chain.sh"
 )
 
-# Integration tests (slow, full execution)
+# Fast behavioral tests (use claude -p, ~2 min each)
+fast_tests=(
+    "test-workflow-driven-development.sh"
+    "test-bootstrap-e2e.sh"
+    "test-brainstorming-e2e.sh"
+    "test-git-worktrees-e2e.sh"
+    "test-tdd-e2e.sh"
+    "test-finishing-e2e.sh"
+    "test-writing-plans-e2e.sh"
+    "test-verification-e2e.sh"
+    "test-debugging-e2e.sh"
+    "test-worktree-native-preference.sh"
+)
+
+# Integration tests (slow, full subagent dispatch / hook verification)
 integration_tests=(
     "test-requesting-code-review.sh"
     "test-hook-interception.sh"
+    "test-auto-mode-hooks.sh"
+    "test-document-review-system.sh"
+    "test-research-pipeline.sh"
 )
+
+# Run static tests first (always), then behavioral tests
+tests=("${static_tests[@]}" "${fast_tests[@]}")
 
 # Add integration tests if requested
 if [ "$RUN_INTEGRATION" = true ]; then

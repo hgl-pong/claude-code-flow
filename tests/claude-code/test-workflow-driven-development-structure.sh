@@ -79,11 +79,11 @@ else
     errors=$((errors + 1))
 fi
 
-# Check that all async functions have await inside, and no orphaned 'return results'
-if grep -q "return results" "$SKILL_DIR/execute-plan.workflow.js"; then
-    pass "Has return results (valid in workflow runtime)"
+# Check that workflow has a return statement at the end (modern pattern: return {...}
+if grep -q "^return {" "$SKILL_DIR/execute-plan.workflow.js"; then
+    pass "Has return statement (workflow result object)"
 else
-    fail "Missing return results"
+    fail "Missing return statement"
     errors=$((errors + 1))
 fi
 
