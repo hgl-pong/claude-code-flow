@@ -1,198 +1,60 @@
-﻿---
+---
 name: brainstorming
 description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
 ---
 
 # Brainstorming Ideas Into Designs
 
-Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
-
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+Turn ideas into approved specs before implementation.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+Do NOT invoke implementation skills, write/scaffold code, or modify behavior until you present a design and the user approves it. Applies even to “simple” work.
 </HARD-GATE>
-
-## Anti-Pattern: "This Is Too Simple To Need A Design"
-
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
 
 ## Checklist
 
-You MUST create a task for each of these items and complete them in order:
+Create tasks for these and complete in order:
 
-1. **Explore project context** — check files, docs, recent commits
-2. **Offer visual companion** (if topic will involve visual questions) — this is its own message, not combined with a clarifying question. See the Visual Companion section below.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Dispatch researcher for product/market/feasibility research** — after requirements are clear, dispatch researcher subagent using `skills/workflow-driven-development/researcher-prompt.md`. Specify research type (`product-research`, `market-research`, `feasibility-research`) based on task needs. Researcher saves to `.claude/research/<task-name>/<type>-research.md`. Read report before step 6.
-5. **Run frontend/UI design path** (if task involves pages, components, styling, layout, interaction, visual states, or visible UI) — designer writes `.claude/research/<task-name>/ui-research.md`, produces `DESIGN.md`, and design reviewer approves it
-6. **Propose 2-3 approaches** — with trade-offs and your recommendation, citing research artifacts
-7. **Present design** — in sections scaled to their complexity, get user approval after each section
-8. **Write design doc** — save draft to `.claude/specs/YYYY-MM-DD-<topic>-design.md`
-9. **Review design doc** — reviewer loop: draft → reviewer → revise → re-review until approved
-10. **Commit reviewed design doc** — commit only after reviewer approval
-11. **User reviews written spec** — ask user to review the spec file before proceeding
-12. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+1. Explore project context: files/docs/recent commits.
+2. If upcoming questions are visual, offer Visual Companion in its own message only.
+3. Ask clarifying questions one at a time; understand purpose, constraints, success criteria.
+4. After requirements are clear, dispatch researcher with `skills/workflow-driven-development/researcher-prompt.md`; save `.claude/research/<task-name>/<type>-research.md` (`product-research`, `market-research`, or `feasibility-research`). Read before approaches.
+5. If visible UI/pages/components/styling/layout/interaction/states: designer writes `.claude/research/<task-name>/ui-research.md` + root `DESIGN.md`; design reviewer (`skills/workflow-driven-development/design-reviewer-prompt.md`) approves; loop until approved.
+6. Propose 2-3 approaches with tradeoffs; recommend one; cite research artifacts.
+7. Present design in complexity-scaled sections; get approval after each section.
+8. Write spec: `.claude/specs/YYYY-MM-DD-<topic>-design.md` unless user preference overrides.
+9. Spec reviewer loop: check placeholders, contradictions, ambiguity, scope creep, missing citations, research alignment. Revise until approved.
+10. Commit reviewed design doc.
+11. Ask user to review spec file before planning.
+12. Only after user approves spec, invoke `claude-code-flow:writing-plans`.
 
-## Process Flow
+Terminal state: `writing-plans`. Do not invoke other implementation skills from brainstorming.
 
-```dot
-digraph brainstorming {
-    "Explore project context" [shape=box];
-    "Visual questions ahead?" [shape=diamond];
-    "Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "Ask clarifying questions" [shape=box];
-    "Dispatch researcher subagent\n.claude/research/<task-name>/" [shape=box];
-    "Frontend/UI task?" [shape=diamond];
-    "Designer writes ui-research.md + DESIGN.md" [shape=box];
-    "Design reviewer approves?" [shape=diamond];
-    "Designer revises DESIGN.md" [shape=box];
-    "Propose 2-3 approaches" [shape=box];
-    "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
-    "Write spec doc" [shape=box];
-    "Reviewer approves spec?" [shape=diamond];
-    "Revise spec" [shape=box];
-    "User reviews spec?" [shape=diamond];
-    "Invoke writing-plans skill" [shape=doublecircle];
+## Scope Guard
 
-    "Explore project context" -> "Visual questions ahead?";
-    "Visual questions ahead?" -> "Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "Visual questions ahead?" -> "Ask clarifying questions" [label="no"];
-    "Offer Visual Companion\n(own message, no other content)" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Dispatch researcher subagent\n.claude/research/<task-name>/";
-    "Dispatch researcher subagent\n.claude/research/<task-name>/" -> "Frontend/UI task?";
-    "Frontend/UI task?" -> "Designer writes ui-research.md + DESIGN.md" [label="yes"];
-    "Designer writes ui-research.md + DESIGN.md" -> "Design reviewer approves?";
-    "Design reviewer approves?" -> "Designer revises DESIGN.md" [label="no"];
-    "Designer revises DESIGN.md" -> "Design reviewer approves?";
-    "Design reviewer approves?" -> "Propose 2-3 approaches" [label="yes"];
-    "Frontend/UI task?" -> "Propose 2-3 approaches" [label="no"];
-    "Propose 2-3 approaches" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write spec doc" [label="yes"];
-    "Write spec doc" -> "Reviewer approves spec?";
-    "Reviewer approves spec?" -> "Revise spec" [label="no"];
-    "Revise spec" -> "Reviewer approves spec?";
-    "Reviewer approves spec?" -> "User reviews spec?" [label="yes"];
-    "User reviews spec?" -> "Write spec doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
-}
-```
+If request spans independent subsystems (chat + storage + billing + analytics, etc.), stop early and decompose. Brainstorm first sub-project through normal spec → plan → implementation.
 
-**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans. Required research/design/reviewer subagents inside brainstorming are allowed before that terminal state.
+## Question Rules
 
-## The Process
+- One question per message.
+- Multiple choice preferred when useful.
+- Focus on purpose/constraints/success criteria.
+- If research reveals conflicts or unresolved ambiguity, ask before continuing.
 
-**Understanding the idea:**
+## Design Content
 
-- Check out the current project state first (files, docs, recent commits)
-- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
-- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
-- Focus on understanding: purpose, constraints, success criteria
-**Research artifacts:**
+Cover only what matters for the task: architecture, components, data flow, error handling, tests. Scale: a few sentences for straightforward work; 200-300 words for nuanced sections.
 
-- Once requirements are clear, dispatch a researcher subagent using `skills/workflow-driven-development/researcher-prompt.md` before proposing approaches or drafting the spec.
-- Specify research type: `product-research`, `market-research`, or `feasibility-research`. (UI research is handled separately by the designer subagent in step 5.)
-- Researcher uses dual-source tools (local codebase + web search) and saves to `.claude/research/<task-name>/<type>-research.md`.
-- All research files go to `.claude/research/<task-name>/` with source provenance on every finding.
-- Read the research report before step 6 "Propose 2-3 approaches." Specs must cite the research document paths that informed them and summarize the conclusions that shaped the design.
-- If research reveals requirement conflicts or unresolved ambiguity, stop and ask the user before continuing.
-
-**Frontend/UI design path:**
-
-- If the task involves pages, components, styling, layout, interaction, visual states, or any visible UI, dispatch a designer before proposing approaches.
-- The designer must save UI research to `.claude/research/<task-name>/ui-research.md` before producing root `DESIGN.md`.
-- Dispatch the design reviewer using `skills/workflow-driven-development/design-reviewer-prompt.md`.
-- If the design reviewer finds issues, the designer revises and the same reviewer re-reviews. Repeat until approved.
-- Do not proceed to the general design/spec or implementation planning until `DESIGN.md` is approved.
-- The approved `DESIGN.md` is binding for downstream UI implementation.
-
-**Exploring approaches:**
-
-- Propose 2-3 different approaches with trade-offs
-- Present options conversationally with your recommendation and reasoning
-- Lead with your recommended option and explain why
-
-**Presenting the design:**
-
-- Once you believe you understand what you're building, present the design
-- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
-- Ask after each section whether it looks right so far
-- Cover: architecture, components, data flow, error handling, testing
-- Be ready to go back and clarify if something doesn't make sense
-
-**Design for isolation and clarity:**
-
-- Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
-- For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
-- Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
-- Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
-
-**Working in existing codebases:**
-
-- Explore the current structure before proposing changes. Follow existing patterns.
-- Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
-- Don't propose unrelated refactoring. Stay focused on what serves the current goal.
-
-## After the Design
-
-**Documentation:**
-
-- Write the validated design (spec) to `.claude/specs/YYYY-MM-DD-<topic>-design.md`
-  - (User preferences for spec location override this default)
-- Use elements-of-style:writing-clearly-and-concisely skill if available
-- Commit the design document to git only after the spec reviewer approves it
-
-**Spec Review Loop:**
-After writing the spec document, run a reviewer loop:
-
-1. Dispatch a reviewer with the spec, research document paths, and approved `DESIGN.md` path if applicable.
-2. Reviewer checks placeholders, contradictions, ambiguity, scope creep, missing research citations, and whether the spec reflects research conclusions.
-3. If the reviewer finds issues, revise the spec and send it back to the same reviewer for re-review.
-4. Repeat until the reviewer approves.
-5. If the loop exposes unresolved requirement conflicts, stop and ask the user.
-
-**User Review Gate:**
-After the reviewer loop passes, ask the user to review the written spec before proceeding:
-
-> "Spec written and reviewed at `<path>`. Please review it and let me know if you want changes before we start writing the implementation plan."
-
-Wait for the user's response. If they request changes, make them and re-run the reviewer loop. Only proceed once the user approves.
-
-**Implementation:**
-
-- Invoke the writing-plans skill to create a detailed implementation plan
-- Do NOT invoke any other skill. writing-plans is the next step.
-
-## Key Principles
-
-- **One question at a time** - Don't overwhelm with multiple questions
-- **Multiple choice preferred** - Easier to answer than open-ended when possible
-- **YAGNI ruthlessly** - Remove unnecessary features from all designs
-- **Explore alternatives** - Always propose 2-3 approaches before settling
-- **Incremental validation** - Present design, get approval before moving on
-- **Be flexible** - Go back and clarify when something doesn't make sense
+Design for isolation: small units, clear interfaces, explicit dependencies, testable boundaries. In existing code, follow patterns; include only targeted cleanup needed for the goal.
 
 ## Visual Companion
 
-A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+The visual companion is also called the brainstorm server / design viewer and may use localhost browser views. Offer only when visual content will help (mockups, wireframes, layout comparisons, architecture diagrams):
 
-**Offering the companion:** When you anticipate that upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
-> "Some of what we're working on might be easier to explain if I can show it to you in a web browser. I can put together mockups, diagrams, comparisons, and other visuals as we go. This feature is still new and can be token-intensive. Want to try it? (Requires opening a local URL)"
+> Some of what we're working on might be easier to explain if I can show it to you in a web browser. I can put together mockups, diagrams, comparisons, and other visuals as we go. This feature is still new and can be token-intensive. Want to try it? (Requires opening a local URL)
 
-**This offer MUST be its own message.** Do not combine it with clarifying questions, context summaries, or any other content. The message should contain ONLY the offer above and nothing else. Wait for the user's response before continuing. If they decline, proceed with text-only brainstorming.
+The offer must be the entire message. If accepted, use browser only per-question when seeing beats reading. UI topic ≠ automatically visual. For details only then read `skills/brainstorming/visual-companion.md`.
 
-**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
+## Key Principles
 
-- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
-- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
-
-A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
-
-If they agree to the companion, read the detailed guide before proceeding:
-`skills/brainstorming/visual-companion.md`
+YAGNI ruthlessly. Explore alternatives. Validate incrementally. Ask when confusing. Research before approaches. Approved `DESIGN.md` binds downstream UI implementation.

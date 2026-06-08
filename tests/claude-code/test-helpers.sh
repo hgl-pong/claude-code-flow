@@ -32,9 +32,11 @@ run_claude() {
     local timeout="${2:-120}"
     local allowed_tools="${3:-}"
     local output_file=$(mktemp)
+    local repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-    # Build command
-    local cmd="claude -p \"$prompt\""
+    # Build command. Load the plugin from this checkout so E2E tests exercise
+    # current worktree skill content, not an installed/cache copy.
+    local cmd="claude -p --plugin-dir \"$repo_root\" \"$prompt\""
     if [ -n "$allowed_tools" ]; then
         cmd="$cmd --allowed-tools=$allowed_tools"
     fi

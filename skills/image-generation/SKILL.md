@@ -5,68 +5,38 @@ description: Use when the user wants to generate, draw, render, create, or edit 
 
 # Image Generation
 
-Generate or edit images through a dedicated `artist` subagent instead of doing ad hoc image work in the coordinator.
+Generate/edit images via dedicated artist subagents; coordinator does not do ad hoc image work.
 
-## When to use
+## Use When
 
-Use this skill when the user asks to:
+User asks to generate/draw/render/create/make images, icons, illustrations, concept art, diagrams, posters, mockups, sprites, visual assets; edit/vary existing images with refs/masks; or produce multiple independent image briefs.
 
-- generate, draw, render, create, or make an image
-- create icons, illustrations, concept art, diagrams, posters, mockups, sprites, or visual assets
-- edit or vary an existing image with reference images or masks
-- produce multiple independent images from a list of briefs
+Do not use for screenshot/chart analysis; use vision/OCR/diagram tools.
 
-Do not use this for analyzing an existing screenshot or chart. Use the relevant vision/OCR/diagram tool instead.
+## Inputs
 
-## Inputs to collect or infer
+Infer defaults unless missing detail fundamentally changes output: prompt/brief, count, aspect/size, quality (`draft`/`normal`/`final`), output path, refs/masks, named provider/tool.
 
-For each image job, identify:
+## Dispatch
 
-- prompt or creative brief
-- number of images
-- aspect ratio or size
-- quality target: draft, normal, or final
-- output directory or filename
-- reference images and masks, if editing
-- provider/tool preference, if the user named one
+Use `skills/workflow-driven-development/artist-prompt.md`.
 
-If a detail is unspecified, choose the simplest reasonable default. Ask only when the missing detail changes the result fundamentally.
-
-## Dispatch model
-
-Delegate generation to `skills/workflow-driven-development/artist-prompt.md`.
-
-For one image or one tightly-coupled set, dispatch one artist subagent.
-
-For many independent images:
-
-1. Split the request into independent image jobs.
-2. Dispatch artist subagents concurrently — the Workflow runtime manages parallelism automatically.
-3. Use lower concurrency if the provider has known rate limits, quota limits, or high cost.
-4. Do not parallelize jobs that depend on earlier generated images.
-5. Merge the returned manifests into one final summary.
+One image/tightly coupled set → one artist. Independent batch → split jobs, dispatch concurrently with bounded concurrency for rate/quota/cost, don't parallelize dependent jobs, merge manifests.
 
 ## Provider
 
-Use the `generate-image.py` script which calls 9Router with model `cx/gpt-5.5-image` (hardcoded).
+Use `scripts/generate-image.py` (9Router, hardcoded `cx/gpt-5.5-image`):
 
 ```bash
 python scripts/generate-image.py --prompt "watercolor mountains at sunrise" --output out.png
 ```
 
-Required env: `NINEROUTER_URL` and `NINEROUTER_KEY`. The script creates output directories, saves the image, and prints a JSON manifest to stdout.
+Requires `NINEROUTER_URL` + `NINEROUTER_KEY`. Missing env → exit 2; artist returns `BLOCKED`. Script creates dirs, saves image, prints JSON manifest.
 
-If env vars are missing, the script exits with code 2. Artist should return `BLOCKED`.
+## Artist Output
 
-## Artist output contract
-
-Each artist subagent must return:
-
-- status: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`
-- output paths for generated files
-- a manifest containing prompt, tool/provider, model if known, params, refs/masks, failures, and retry notes
-- concerns for partial success, provider rejection, rate limit, or quality limitations
+Return status (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`), output paths, manifest (prompt/provider/model/params/refs/masks/failures/retries), and concerns (partial success, rejection, rate limit, quality).
 
 ## Completion
 
-Summarize generated images by path. Include blocked or failed jobs separately. Never describe missing files as generated.
+Summarize generated paths. Separate blocked/failed jobs. Never describe missing files as generated.
