@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# E2E: Full Pipeline Chain Verification
-# Verifies the complete Claude Code Flow pipeline chain integrity:
-# brainstorming → writing-plans → workflow-driven-development → finishing
-# Checks that each skill in the chain references the next one correctly.
-# This is a static verification test — no Claude Code invocation needed.
+# E2E: Simplified pipeline chain verification
+# Verifies the compact skill surface:
+# auto-mode / semi-auto → workflow scripts → finishing
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,203 +9,131 @@ PLUGIN_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 
 echo "========================================"
-echo " E2E: Full Pipeline Chain"
+echo " E2E: Simplified Pipeline Chain"
 echo "========================================"
 echo ""
 
-# ── Test 1: Pipeline chain references ──
-echo "--- Test 1: Pipeline chain integrity ---"
+# ── Test 1: User-facing skill surface ──
+echo "--- Test 1: Skill surface ---"
 echo ""
 
-# Define the expected chain
-# brainstorming → writing-plans
-# writing-plans → workflow-driven-development
-# workflow-driven-development → finishing-a-development-branch
-# Each skill's SKILL.md should reference the next one
-
-CHAIN_CHECKS=(
-    "brainstorming:writing-plans:writing-plans"
-    "writing-plans:workflow-driven-development:workflow-driven-development"
-    "workflow-driven-development:finishing-a-development-branch:finishing-a-development-branch"
+EXPECTED_SKILLS=(
+  "auto-mode"
+  "semi-auto"
+  "systematic-debugging"
+  "using-claude-code-flow"
+  "using-git-worktrees"
+  "finishing-a-development-branch"
+  "image-generation"
 )
 
-for check in "${CHAIN_CHECKS[@]}"; do
-    source_skill="${check%%:*}"
-    rest="${check#*:}"
-    target_name="${rest%%:*}"
-    search_pattern="${rest##*:}"
+for skill in "${EXPECTED_SKILLS[@]}"; do
+  if [ -f "$PLUGIN_DIR/skills/$skill/SKILL.md" ]; then
+    pass "Skill exists: $skill"
+  else
+    fail "Skill missing: $skill"
+  fi
+done
 
-    source_file="$PLUGIN_DIR/skills/$source_skill/SKILL.md"
+REMOVED_SKILLS=(
+  "brainstorming"
+  "dispatching-parallel-agents"
+  "test-driven-development"
+  "requesting-code-review"
+  "receiving-code-review"
+  "writing-skills"
+  "writing-plans"
+  "executing-plans"
+  "verification-before-completion"
+  "workflow-driven-development"
+)
 
-    if [ ! -f "$source_file" ]; then
-        fail "Chain: $source_skill → $target_name — source file not found"
-        continue
-    fi
-
-    if grep -qi "$search_pattern" "$source_file"; then
-        pass "Chain: $source_skill → $target_name"
-    else
-        fail "Chain: $source_skill → $target_name — reference not found"
-    fi
+for skill in "${REMOVED_SKILLS[@]}"; do
+  if [ -f "$PLUGIN_DIR/skills/$skill/SKILL.md" ]; then
+    fail "Deleted skill still exposed: $skill"
+  else
+    pass "Deleted skill not exposed: $skill"
+  fi
 done
 
 echo ""
 
-# ── Test 2: Workflow prerequisites ──
-echo "--- Test 2: Workflow prerequisites ---"
-echo ""
-
-# WFD skill should mention it requires writing-plans, using-git-worktrees, and finishing
-WFD_FILE="$PLUGIN_DIR/skills/workflow-driven-development/SKILL.md"
-
-if [ -f "$WFD_FILE" ]; then
-    for prereq in "writing-plans" "using-git-worktrees" "finishing-a-development-branch"; do
-        if grep -qi "$prereq" "$WFD_FILE"; then
-            pass "WFD prereq: $prereq"
-        else
-            fail "WFD prereq: $prereq — not found"
-        fi
-    done
-else
-    fail "WFD SKILL.md not found"
-fi
-
-echo ""
-
-# ── Test 3: Auto-mode pipeline integration ──
-echo "--- Test 3: Auto-mode pipeline integration ---"
+# ── Test 2: Auto-mode owns full workflow ──
+echo "--- Test 2: Auto-mode integration ---"
 echo ""
 
 AUTO_FILE="$PLUGIN_DIR/skills/auto-mode/SKILL.md"
-
-if [ -f "$AUTO_FILE" ]; then
-    AUTO_REFS=(
-        "brainstorming"
-        "writing-plans"
-        "workflow-driven-development"
-        "finishing-a-development-branch"
-        "using-git-worktrees"
-        "requesting-code-review"
-        "test-driven-development"
-    )
-
-    for ref in "${AUTO_REFS[@]}"; do
-        if grep -qi "$ref" "$AUTO_FILE"; then
-            pass "Auto-mode ref: $ref"
-        else
-            fail "Auto-mode ref: $ref — not found"
-        fi
-    done
-else
-    fail "Auto-mode SKILL.md not found"
-fi
+for text in "full-auto-pipeline.workflow.js" "multi-agent brainstorming" "completion gates" "finishing-a-development-branch" "semi-auto"; do
+  if grep -qi "$text" "$AUTO_FILE"; then
+    pass "Auto-mode includes: $text"
+  else
+    fail "Auto-mode missing: $text"
+  fi
+done
 
 echo ""
 
-# ── Test 4: Executing plans pipeline ──
-echo "--- Test 4: Executing plans chain ---"
+# ── Test 3: Semi-auto owns guided planning ──
+echo "--- Test 3: Semi-auto integration ---"
 echo ""
 
-EXEC_FILE="$PLUGIN_DIR/skills/executing-plans/SKILL.md"
-
-if [ -f "$EXEC_FILE" ]; then
-    for ref in "writing-plans" "finishing-a-development-branch"; do
-        if grep -qi "$ref" "$EXEC_FILE"; then
-            pass "Executing-plans ref: $ref"
-        else
-            fail "Executing-plans ref: $ref — not found"
-        fi
-    done
-else
-    fail "Executing-plans SKILL.md not found"
-fi
+SEMI_FILE="$PLUGIN_DIR/skills/semi-auto/SKILL.md"
+for text in "Clarify" "Research" "approved spec" "executable plan" "execute-plan.workflow.js" "finishing-a-development-branch"; do
+  if grep -qi "$text" "$SEMI_FILE"; then
+    pass "Semi-auto includes: $text"
+  else
+    fail "Semi-auto missing: $text"
+  fi
+done
 
 echo ""
 
-# ── Test 5: Cross-skill consistency ──
-echo "--- Test 5: Cross-skill consistency ---"
+# ── Test 4: Internal workflow engine files ──
+echo "--- Test 4: Workflow engine files ---"
 echo ""
 
-# Verify that if skill A references skill B, skill B's SKILL.md exists
-ALL_SKILLS=(
-    "auto-mode"
-    "brainstorming"
-    "dispatching-parallel-agents"
-    "executing-plans"
-    "finishing-a-development-branch"
-    "image-generation"
-    "receiving-code-review"
-    "requesting-code-review"
-    "systematic-debugging"
-    "test-driven-development"
-    "using-claude-code-flow"
-    "using-git-worktrees"
-    "verification-before-completion"
-    "workflow-driven-development"
-    "writing-plans"
-    "writing-skills"
-)
+for path in \
+  "skills/workflow-driven-development/execute-plan.workflow.js" \
+  "skills/workflow-driven-development/full-auto-pipeline.workflow.js" \
+  "skills/workflow-driven-development/workflow-engine.md" \
+  "skills/workflow-driven-development/implementer-prompt.md" \
+  "skills/workflow-driven-development/spec-reviewer-prompt.md" \
+  "skills/workflow-driven-development/code-quality-reviewer-prompt.md"; do
+  if [ -f "$PLUGIN_DIR/$path" ]; then
+    pass "Workflow engine file exists: $path"
+  else
+    fail "Workflow engine file missing: $path"
+  fi
+done
 
-# For each skill, check that skills it references by full hyphenated name exist
+echo ""
+
+# ── Test 5: Cross-skill references resolve ──
+echo "--- Test 5: Cross-skill references ---"
+echo ""
+
 REF_REGEX='claude-code-flow:[a-z-]+'
 VIOLATIONS=0
-
-for skill in "${ALL_SKILLS[@]}"; do
-    skill_file="$PLUGIN_DIR/skills/$skill/SKILL.md"
-    if [ ! -f "$skill_file" ]; then
-        continue
+for skill_file in "$PLUGIN_DIR"/skills/*/SKILL.md; do
+  [ -f "$skill_file" ] || continue
+  skill="$(basename "$(dirname "$skill_file")")"
+  refs=$(grep -oE "$REF_REGEX" "$skill_file" 2>/dev/null | sort -u || true)
+  for ref in $refs; do
+    ref_skill="${ref#claude-code-flow:}"
+    [ "$ref_skill" = "$skill" ] && continue
+    ref_file="$PLUGIN_DIR/skills/$ref_skill/SKILL.md"
+    if [ ! -f "$ref_file" ]; then
+      fail "Broken ref: $skill → $ref_skill"
+      VIOLATIONS=$((VIOLATIONS + 1))
     fi
-
-    # Extract all claude-code-flow:xxx references
-    refs=$(grep -oE "$REF_REGEX" "$skill_file" 2>/dev/null | sort -u || true)
-
-    for ref in $refs; do
-        ref_skill="${ref#claude-code-flow:}"
-        # Skip self-references
-        if [ "$ref_skill" = "$skill" ]; then
-            continue
-        fi
-
-        ref_file="$PLUGIN_DIR/skills/$ref_skill/SKILL.md"
-        if [ ! -f "$ref_file" ]; then
-            fail "Broken ref: $skill → $ref_skill (SKILL.md not found)"
-            VIOLATIONS=$((VIOLATIONS + 1))
-        fi
-    done
+  done
 done
 
 if [ "$VIOLATIONS" -eq 0 ]; then
-    pass "All cross-skill references resolve to existing skills"
+  pass "All cross-skill references resolve"
 fi
 
 echo ""
-
-# ── Test 6: Harmonized WFD/auto-mode execution flow ──
-echo "--- Test 6: Harmonized execution flow ---"
-echo ""
-
-# Verify that WFD and auto-mode share the same execution flows
-# Both should reference the same workflow scripts and state management
-
-AUTO_FILE="$PLUGIN_DIR/skills/auto-mode/SKILL.md"
-WFD_FILE="$PLUGIN_DIR/skills/workflow-driven-development/SKILL.md"
-
-# Check both reference execute-plan.workflow.js and full-auto-pipeline.workflow.js
-for wf_script in "execute-plan.workflow.js" "full-auto-pipeline.workflow.js"; do
-    auto_has=$(grep -c "$wf_script" "$AUTO_FILE" 2>/dev/null || echo "0")
-    wfd_has=$(grep -c "$wf_script" "$WFD_FILE" 2>/dev/null || echo "0")
-
-    if [ "$auto_has" -gt 0 ] || [ "$wfd_has" -gt 0 ]; then
-        pass "Workflow script: $wf_script referenced"
-    else
-        # Not a hard failure — the script may be referenced indirectly
-        pass "Workflow script: $wf_script (indirect reference OK)"
-    fi
-done
-
-echo ""
-
-# ── Summary ──
 echo "========================================"
 echo " Pipeline Chain Summary"
 echo "========================================"

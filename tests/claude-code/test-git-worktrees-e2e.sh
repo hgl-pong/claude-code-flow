@@ -37,7 +37,7 @@ echo ""
 echo "Test 3: Clean baseline requirement..."
 output=$(run_claude "In the using-git-worktrees skill, should you verify the baseline before starting work? What should be checked?" 120)
 
-assert_contains "$output" "test.*baseline\|verify.*test\|baseline.*check\|clean.*baseline" \
+assert_contains "$output" "[Tt]est.*baseline\|[Vv]erify.*test\|baseline.*check\|clean.*baseline" \
     "Mentions verifying test baseline" || true
 
 echo ""

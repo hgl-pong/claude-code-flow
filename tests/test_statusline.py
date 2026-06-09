@@ -40,7 +40,7 @@ def _make_state(
     updated_at="2026-06-04T12:00:00",
     phase="execute",
     tasks_total=5,
-    tasks_completed=2,
+    tasks_passed=2,
     gates_passed=3,
     task_states=None,
     runtime_verification=None,
@@ -54,7 +54,7 @@ def _make_state(
         "progress": {
             "phase": phase,
             "tasks_total": tasks_total,
-            "tasks_completed": tasks_completed,
+            "tasks_passed": tasks_passed,
             "gates_passed": gates_passed,
         },
     }
@@ -128,7 +128,7 @@ def test_active_run_shown():
         status="ACTIVE",
         phase="execute",
         tasks_total=10,
-        tasks_completed=3,
+        tasks_passed=3,
         gates_passed=2,
         task_states={
             "1": {"status": "done"},
@@ -277,7 +277,7 @@ def test_no_auto_dir_no_auto_output():
 
 def test_phase_from_progress_nest():
     """Phase should be read from progress.phase when top-level phase missing."""
-    state = _make_state(phase="plan", tasks_total=7, tasks_completed=1)
+    state = _make_state(phase="plan", tasks_total=7, tasks_passed=1)
     del state["progress"]["phase"]  # remove nested
     state["phase"] = "plan"  # add top-level
     # Actually our jq uses: .phase // .progress.phase, so top-level wins
@@ -286,8 +286,8 @@ def test_phase_from_progress_nest():
     assert "plan/ACTIVE" in out
 
 
-def test_tasks_passed_fallback():
-    """progress.tasks_passed should work as fallback for tasks_completed."""
+def test_tasks_passed_canonical():
+    """progress.tasks_passed is the canonical task progress field."""
     state = {
         "task_name": "passed-run",
         "status": "ACTIVE",

@@ -251,7 +251,7 @@ if chosen:
     phase = str(chosen.get('phase', '') or (chosen.get('progress') or {}).get('phase', '') or 'unknown')
     prog = chosen.get('progress') or {}
     t_total = prog.get('tasks_total', 0)
-    t_done = prog.get('tasks_completed', prog.get('tasks_passed', 0))
+    t_done = prog.get('tasks_passed', prog.get('tasks_completed', 0))
     gates = prog.get('gates_passed', 0)
     ts = chosen.get('task_states') or {}
     blocked = sum(1 for v in ts.values() if isinstance(v, dict) and v.get('status') == 'blocked')

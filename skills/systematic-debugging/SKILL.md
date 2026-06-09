@@ -35,7 +35,7 @@ This is a four-phase process; complete each phase in order. When summarizing thi
    - If wrong, remove/undo and form a new hypothesis. Do not pile fixes.
 
 4. **Implementation**
-   - Create failing repro/test first; use `claude-code-flow:test-driven-development`.
+   - Create failing repro/test first for behavior bugs.
    - Implement one root-cause fix only.
    - Verify original failure + regression suite; explicitly check for regressions, new bugs, broken other tests, and side effects.
    - If fix fails: return to Phase 1. After 3 failed fixes, stop and question architecture with the user.
@@ -73,4 +73,4 @@ All → return to Phase 1. 3+ failed fixes → architecture discussion.
 - `root-cause-tracing.md` — trace backward through call stack.
 - `defense-in-depth.md` — add validation after root cause.
 - `condition-based-waiting.md` — replace sleeps/timeouts with condition polling.
-- Related: `claude-code-flow:verification-before-completion` before success claims.
+- Before success claims: include concrete verification evidence.

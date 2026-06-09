@@ -25,13 +25,13 @@ Non-CC tool mappings live in references: `copilot-tools.md`, `codex-tools.md`, `
 
 Invoke relevant/requested skills before doing anything. If invoked skill is irrelevant after reading, ignore it.
 
-Before `EnterPlanMode`, use `brainstorming` unless already brainstormed.
+Before `EnterPlanMode`, use `semi-auto` unless the user requested `auto-mode`.
 
 Priority when multiple apply:
-1. Process skills first (`brainstorming`, `systematic-debugging`).
-2. Implementation/domain skills second.
+1. Orchestration skills first (`auto-mode`, `semi-auto`, `systematic-debugging`).
+2. Domain/tool skills second.
 
-Examples: “Build X” → brainstorming first. “Fix bug” → systematic-debugging first.
+Examples: “Build X” → semi-auto first. “全自动做 X” → auto-mode. “Fix bug” → systematic-debugging first.
 
 ## After Invoking
 
@@ -43,6 +43,6 @@ These are rationalizations: “simple question”, “need context first”, “
 
 ## Skill Types
 
-Rigid skills (TDD/debugging/verification) must be followed exactly. Flexible pattern skills may be adapted.
+Rigid skills (auto-mode/semi-auto/debugging) must be followed exactly. Flexible domain skills may be adapted.
 
 Instructions say what; skills say how.

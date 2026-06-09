@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / "skills"
 
 # Doc paths
-WDD_SKILL = SKILLS_DIR / "workflow-driven-development" / "SKILL.md"
+WDD_SKILL = SKILLS_DIR / "workflow-driven-development" / "workflow-engine.md"
 AUTO_SKILL = SKILLS_DIR / "auto-mode" / "SKILL.md"
 STATE_MACHINE_REF = SKILLS_DIR / "auto-mode" / "references" / "state-machine.md"
 AUDIT_TRAIL_REF = SKILLS_DIR / "auto-mode" / "references" / "audit-trail.md"
@@ -505,10 +505,20 @@ class TestAutoModeFinalizationInDocs:
         "Do not ask",
         "all seven completion gates pass",
         "proceed directly to final delivery",
-        "Commit before git_clean",
+        "Gate 7 validates cleanliness only",
         "No post-pass approval prompt",
     ])
     def test_auto_mode_finalizes_without_extra_user_prompt(self, text):
+        assert text in self.auto_skill
+
+    @pytest.mark.parametrize("text", [
+        "research → multi-agent brainstorming",
+        "multi-agent brainstorming",
+        "Semi-Auto Boundary",
+        "human approves spec/plan",
+        "reviewers replace approval gates",
+    ])
+    def test_auto_mode_documents_autonomous_and_semi_auto_boundaries(self, text):
         assert text in self.auto_skill
 
 

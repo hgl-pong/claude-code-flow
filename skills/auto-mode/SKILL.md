@@ -5,9 +5,9 @@ description: Fully automatic development pipeline — brainstorming to merge, no
 
 # Auto Mode
 
-Run autonomously: `brainstorming → writing-plans → workflow-driven-development → completion gates → finishing-a-development-branch`.
+Run autonomously: `research → multi-agent brainstorming → spec → plan → workflow scripts → completion gates → finishing-a-development-branch`.
 
-Core: automate decisions, log decisions, stop only when genuinely blocked.
+Core: investigate first, fan out when useful, automate decisions, log decisions, stop only when genuinely blocked.
 
 Announce: “I'm using the auto-mode skill to run the full development pipeline autonomously. All decisions will be logged to `.claude/auto/<task-name>/`. Ctrl+C to interrupt at any time.”
 
@@ -17,7 +17,7 @@ Announce: “I'm using the auto-mode skill to run the full development pipeline 
 
 ## Required Skills
 
-Invoke, don't restate: `claude-code-flow:using-git-worktrees`, `brainstorming`, `writing-plans`, `workflow-driven-development`, `finishing-a-development-branch`. Subagents use `test-driven-development`; reviewers use `requesting-code-review`.
+Invoke, don't restate: `claude-code-flow:using-git-worktrees`, `finishing-a-development-branch`. Full-auto embeds research, brainstorming, planning, TDD discipline, review loops, and workflow execution.
 
 ## Workflow Mode
 
@@ -25,18 +25,22 @@ Preferred when `Workflow` exists.
 
 1. Create/enter isolated worktree; record `worktree_path`.
 2. Create `.claude/auto/<task-name>/state.json` immediately.
-3. Run `skills/workflow-driven-development/full-auto-pipeline.workflow.js` with task/worktree/specs/plans/audit/evidence dirs, retry policy, `execute-plan.workflow.js`, state file, and flow-state helper path.
+3. Run `skills/workflow-driven-development/full-auto-pipeline.workflow.js`; it owns research, multi-agent brainstorming, spec, plan, reviews, execution, and gates.
 4. Inspect `result.all_passed` and `result.gates`.
 5. If all passed, finish directly.
 6. Write terminal state: `DONE`, `STOPPED_ASK_USER`, `FAILED_FATAL`, or `CANCELLED`.
 
-No post-pass approval prompt: when all seven completion gates pass, Do not ask whether to finish, commit, merge, or deliver. The user already chose auto-mode. proceed directly to final delivery.
+No post-pass approval prompt: when all seven completion gates pass, do not ask whether to finish, commit, merge, or deliver. The user already chose auto-mode. Proceed directly to final delivery.
 
-Manual fallback only if `Workflow` unavailable: brainstorm with logged defaults, write/review plan, use `executing-plans` only for trivial/config-only work, then gates + finish.
+Manual fallback only if `Workflow` unavailable: brainstorm with logged defaults, write/review plan inline, run trivial/config-only steps inline, then gates + finish.
+
+## Semi-Auto Boundary
+
+Semi-auto is `semi-auto → workflow scripts`: human approves spec/plan first, then dynamic workflow owns implementation/review/fixes. Auto-mode skips those approval pauses after initial `/auto` consent; reviewers replace approval gates and every inferred choice is logged.
 
 ## Auto Decisions
 
-Clarifications → infer/log. Visual companion → skip text-only/log. Approach → existing patterns > community standard > minimal viable. Spec/plan approval → reviewer loop. Finishing → default merge back to base branch. Apply YAGNI.
+Clarifications → infer/log. Visual companion → skip text-only/log. Approach → existing patterns > community standard > minimal viable. Spec/plan approval → reviewer loop. Finishing → local branch finalization; no PR unless user explicitly asks and reviews the diff. Apply YAGNI.
 
 ## Completion Gates
 
@@ -68,7 +72,7 @@ Write `state.json` before transitions. Log choices under `.claude/auto/<task-nam
 
 Auto-mode finalizes autonomously. After all seven completion gates pass, proceed directly to final delivery and write `DONE`. Do not ask for another approval/status step.
 
-Commit before git_clean when changes are part of the task and checks passed. Gate 7 validates; it is not a question. If harness blocks commit/merge, write `STOPPED_ASK_USER` with exact command and one recovery question.
+Commit during execution only when allowed by workflow args and part of the task. Gate 7 validates cleanliness only; it never creates commits. If harness blocks an allowed commit/merge, write `STOPPED_ASK_USER` with exact command and one recovery question.
 
 ## Stop Conditions
 

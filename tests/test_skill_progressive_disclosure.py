@@ -15,22 +15,10 @@ SKILLS = ROOT / "skills"
 MAX_SKILL_WORDS = 1000
 
 EXPECTED_REFERENCE_LINKS = {
-    "brainstorming": ["visual-companion.md"],
     "systematic-debugging": [
         "root-cause-tracing.md",
         "defense-in-depth.md",
         "condition-based-waiting.md",
-    ],
-    "test-driven-development": ["testing-anti-patterns.md"],
-    "workflow-driven-development": [
-        "artist-prompt.md",
-        "references/2d-game-workflow.md",
-    ],
-    "writing-plans": ["plan-document-reviewer-prompt.md"],
-    "writing-skills": [
-        "anthropic-best-practices.md",
-        "persuasion-principles.md",
-        "testing-skills-with-subagents.md",
     ],
 }
 

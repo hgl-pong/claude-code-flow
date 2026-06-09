@@ -85,7 +85,7 @@ Task tool (general-purpose):
     ```markdown
     # [Feature Name] Implementation Plan
 
-    > **For agentic workers:** REQUIRED SUB-SKILL: Use claude-code-flow:workflow-driven-development to implement this plan task-by-task.
+    > **For agentic workers:** Use `skills/workflow-driven-development/execute-plan.workflow.js` to implement this plan task-by-task.
 
     **Goal:** [One sentence describing what this builds]
 

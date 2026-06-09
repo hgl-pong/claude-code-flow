@@ -8,7 +8,7 @@ Use this template when dispatching a code quality reviewer subagent.
 
 ```
 Task tool (general-purpose):
-  Use template at requesting-code-review/code-reviewer.md
+  Review the diff from BASE_SHA to HEAD_SHA against PLAN_OR_REQUIREMENTS.
 
   DESCRIPTION: [task summary, from implementer's report]
   PLAN_OR_REQUIREMENTS: Task N from [plan-file]

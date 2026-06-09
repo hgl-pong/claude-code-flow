@@ -25,11 +25,11 @@ check_file() {
 check_file "execute-plan.workflow.js"
 check_file "full-auto-pipeline.workflow.js"
 
-echo "Test 1b: SKILL.md contains Workflow-Driven Development title..."
-if grep -q "Workflow-Driven Development" "$SKILL_DIR/SKILL.md"; then
-    pass "SKILL.md has correct title"
+echo "Test 1b: workflow-engine.md documents internal workflow engine..."
+if grep -q "Workflow Engine" "$SKILL_DIR/workflow-engine.md"; then
+    pass "workflow-engine.md has correct title"
 else
-    fail "SKILL.md missing Workflow-Driven Development title"
+    fail "workflow-engine.md missing Workflow Engine title"
 fi
 
 echo ""

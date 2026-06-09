@@ -90,23 +90,23 @@ Comprehensive plugin health check:
 - All 4 hook scripts have valid Python syntax
 - Hook configuration files (hooks.json) are valid JSON
 - Workflow scripts (execute-plan, full-auto-pipeline) have balanced brackets + meta blocks
-- Prompt template files (implementer, spec-reviewer, code-reviewer, designer, researcher, forge, oracle, prism, artist, code-reviewer, plan-reviewer) all exist
-- Support scripts (render-hooks.py, statusline.sh, server.cjs) exist
+- Prompt template files (implementer, spec-reviewer, code-reviewer, designer, researcher, forge, oracle, prism, artist) all exist
+- Support scripts (render-hooks.py, statusline.sh) exist
 - Cross-skill references resolve to existing SKILL.md files
 - Documentation files (README.md, CLAUDE.md, AGENTS.md, PR template) exist
 
 #### test-pipeline-chain.sh
-Full pipeline chain integrity verification:
-- brainstorming → writing-plans → workflow-driven-development → finishing chain references
-- Workflow-driven-development prerequisite skills
-- Auto-mode skill integration references
-- Executing-plans chain references
+Simplified pipeline chain integrity verification:
+- User-facing skill surface is compact
+- Deleted skills are not exposed
+- Auto-mode owns full workflow
+- Semi-auto owns guided planning
+- Internal workflow engine files exist
 - Cross-skill reference consistency (no broken links)
-- Harmonized WFD/auto-mode execution flow
 
 #### test-workflow-driven-development-structure.sh
 Workflow script static checks:
-- File existence and SKILL.md title
+- File existence and workflow-engine.md title
 - JS structure: balanced braces/parens/brackets, meta block, required fields
 - Schema definitions: IMPLEMENT_RESULT + REVIEW_RESULT with correct enum values
 - Behavioral content embedded in workflow scripts
@@ -145,35 +145,6 @@ Bootstrap skill verification:
 - Skill priority order (process first, then implementation)
 - Skill tool invocation instruction
 
-#### test-brainstorming-e2e.sh
-Brainstorming skill activation:
-- Skill name and purpose (design/requirements gathering)
-- Design section presentation
-- 2-3 approach evaluation with selection criteria
-- Visual companion / brainstorm server behavior
-- Spec document reviewer integration
-- Design-before-code mandate
-
-#### test-writing-plans-e2e.sh
-Writing plans skill:
-- Skill name and task decomposition purpose
-- Task granularity (2-5 minutes per task)
-- Task dependency management and parallelism
-- Plan reviewer integration
-- Spec/design document prerequisite
-
-#### test-workflow-driven-development.sh
-WFD skill behavior:
-- Four-step process: Prepare Context → Build Args → Launch → Handle Results
-- Pipeline stages (implement → spec review → code review)
-- Retry behavior (up to 5 iterations)
-- Reviewer independence and skepticism
-- Results structure (completed/blocked/final_review)
-- Blocked task handling (re-dispatch, split, escalate)
-- Model selection (forge/oracle/prism/artist)
-- Red Flags rules
-- Integration with required skills
-
 #### test-git-worktrees-e2e.sh
 Git worktrees skill:
 - Skill name and isolation/workspace purpose
@@ -182,27 +153,12 @@ Git worktrees skill:
 - Main/master branch protection
 - Finishing skill integration
 
-#### test-tdd-e2e.sh
-TDD skill enforcement:
-- RED-GREEN-REFACTOR cycle recognition
-- Test-first mandate
-- RED phase: watch test fail before implementing
-- GREEN phase: minimal implementation
-- Testing anti-patterns reference
-- Code-before-test prohibition (must delete)
-
 #### test-finishing-e2e.sh
 Finishing a development branch:
 - Skill name and merge/PR/cleanup purpose
 - Four completion options
 - Pre-finish verification requirement
 - Worktree cleanup after finishing
-
-#### test-verification-e2e.sh
-Verification before completion:
-- Skill name and verification/validation purpose
-- What to verify checklist
-- Evidence/proof requirement (not just claims)
 
 #### test-debugging-e2e.sh
 Systematic debugging:
@@ -217,12 +173,6 @@ Tool preference verification:
 - Configurable run count for statistical significance
 
 ### Integration Tests (use --integration flag)
-
-#### test-requesting-code-review.sh
-Code reviewer behavioral test (~5 minutes):
-- Plants real bugs (SQL injection, plaintext password)
-- Verifies reviewer catches bugs at Critical/Important severity
-- Verifies reviewer does not approve diff with planted bugs
 
 #### test-hook-interception.sh
 Hook interception test:

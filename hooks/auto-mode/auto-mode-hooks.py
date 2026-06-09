@@ -160,7 +160,7 @@ def generate_resume_prompt(state_file: str) -> str:
     status = data.get("status", "unknown")
     progress = data.get("progress", {})
     tasks_total = progress.get("tasks_total", 0)
-    tasks_completed = progress.get("tasks_completed", 0)
+    tasks_completed = progress.get("tasks_passed", progress.get("tasks_completed", 0))
 
     runtime = data.get("runtime_verification", {})
     runtime_status = runtime.get("status", "unknown")
@@ -224,7 +224,7 @@ Current state summary:
 - Evidence dir: {evidence_dir or 'none'}
 {resume_section}
 Instructions by phase:
-- brainstorming / writing-plans: Continue from current_step={step}. Auto-decide everything. Log to audit trail. Proceed to next phase when done.
+- brainstorming / semi-auto planning: Continue from current_step={step}. Auto-decide everything. Log to audit trail. Proceed to next phase when done.
 - workflow-driven-development: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter completion-gates.
 - completion-gates: Run gates in order ({failing}). Do NOT re-check passed gates. After all 7 pass, enter finishing.
 - finishing: Complete the merge, set status to DONE.

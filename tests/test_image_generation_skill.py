@@ -61,8 +61,8 @@ def test_artist_prompt_status_protocol_and_manifest_contract():
     assert "rate limit" in prompt.lower()
 
 
-def test_workflow_driven_development_lists_artist_prompt():
-    skill = read("skills/workflow-driven-development/SKILL.md")
+def test_workflow_engine_lists_artist_prompt():
+    skill = read("skills/workflow-driven-development/workflow-engine.md")
 
     assert "artist-prompt.md" in skill
     assert "image generation" in skill.lower()

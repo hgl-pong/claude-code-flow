@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Test runner for Claude Code skills
 # Tests skills by invoking Claude Code CLI and verifying behavior
 set -euo pipefail
@@ -64,14 +64,9 @@ while [[ $# -gt 0 ]]; do
             echo "  test-pipeline-chain.sh                 Full pipeline cross-references"
             echo ""
             echo "Behavioral Tests (use claude -p):"
-            echo "  test-workflow-driven-development.sh    WFD skill behavior"
             echo "  test-bootstrap-e2e.sh                  Bootstrap skill loading"
-            echo "  test-brainstorming-e2e.sh              Brainstorming skill activation"
             echo "  test-git-worktrees-e2e.sh              Git worktrees skill"
-            echo "  test-tdd-e2e.sh                        TDD skill RED-GREEN-REFACTOR"
             echo "  test-finishing-e2e.sh                  Finishing branch options"
-            echo "  test-writing-plans-e2e.sh              Writing plans task breakdown"
-            echo "  test-verification-e2e.sh               Verification before completion"
             echo "  test-debugging-e2e.sh                  Systematic debugging process"
             echo "  test-worktree-native-preference.sh     EnterWorktree tool preference"
             echo ""
@@ -97,21 +92,15 @@ static_tests=(
 
 # Fast behavioral tests (use claude -p, ~2 min each)
 fast_tests=(
-    "test-workflow-driven-development.sh"
     "test-bootstrap-e2e.sh"
-    "test-brainstorming-e2e.sh"
     "test-git-worktrees-e2e.sh"
-    "test-tdd-e2e.sh"
     "test-finishing-e2e.sh"
-    "test-writing-plans-e2e.sh"
-    "test-verification-e2e.sh"
     "test-debugging-e2e.sh"
     "test-worktree-native-preference.sh"
 )
 
 # Integration tests (slow, full subagent dispatch / hook verification)
 integration_tests=(
-    "test-requesting-code-review.sh"
     "test-hook-interception.sh"
     "test-auto-mode-hooks.sh"
     "test-document-review-system.sh"

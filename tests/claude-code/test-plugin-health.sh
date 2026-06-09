@@ -23,21 +23,12 @@ echo ""
 # Define expected skills and their key characteristics
 declare -A SKILL_TITLES=(
     ["auto-mode"]="Auto Mode"
-    ["brainstorming"]="Brainstorming"
-    ["dispatching-parallel-agents"]="Dispatching Parallel Agents"
-    ["executing-plans"]="Executing Plans"
     ["finishing-a-development-branch"]="Finishing a Development Branch"
     ["image-generation"]="Image Generation"
-    ["receiving-code-review"]="Receiving Code Review"
-    ["requesting-code-review"]="Requesting Code Review"
+    ["semi-auto"]="Semi-Auto"
     ["systematic-debugging"]="Systematic Debugging"
-    ["test-driven-development"]="Test-Driven Development"
     ["using-claude-code-flow"]="Using Claude Code Flow"
     ["using-git-worktrees"]="Using Git Worktrees"
-    ["verification-before-completion"]="Verification Before Completion"
-    ["workflow-driven-development"]="Workflow-Driven Development"
-    ["writing-plans"]="Writing Plans"
-    ["writing-skills"]="Writing Skills"
 )
 
 SKILL_COUNT=0
@@ -205,9 +196,6 @@ PROMPT_TEMPLATES=(
     "skills/workflow-driven-development/oracle-planner-prompt.md"
     "skills/workflow-driven-development/prism-verifier-prompt.md"
     "skills/workflow-driven-development/artist-prompt.md"
-    "skills/brainstorming/spec-document-reviewer-prompt.md"
-    "skills/requesting-code-review/code-reviewer.md"
-    "skills/writing-plans/plan-document-reviewer-prompt.md"
 )
 
 for template in "${PROMPT_TEMPLATES[@]}"; do
@@ -228,7 +216,6 @@ echo ""
 SUPPORT_SCRIPTS=(
     "scripts/render-hooks.py"
     "scripts/statusline.sh"
-    "skills/brainstorming/scripts/server.cjs"
 )
 
 for script in "${SUPPORT_SCRIPTS[@]}"; do
@@ -267,16 +254,10 @@ echo ""
 
 # Verify each skill that references another skill actually points to an existing one
 REFERENCE_CHECKS=(
-    "auto-mode:brainstorming"
-    "auto-mode:writing-plans"
-    "auto-mode:workflow-driven-development"
     "auto-mode:finishing-a-development-branch"
     "auto-mode:using-git-worktrees"
-    "workflow-driven-development:using-git-worktrees"
-    "workflow-driven-development:writing-plans"
-    "workflow-driven-development:finishing-a-development-branch"
-    "workflow-driven-development:test-driven-development"
-    "writing-plans:brainstorming"
+    "auto-mode:semi-auto"
+    "semi-auto:finishing-a-development-branch"
 )
 
 for ref in "${REFERENCE_CHECKS[@]}"; do

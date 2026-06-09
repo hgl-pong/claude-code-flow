@@ -47,13 +47,13 @@ echo ""
 # ── Test 4: Skill priority order ──
 echo "Test 4: Skill priority..."
 
-# The bootstrap says: process skills first (brainstorming, debugging), then implementation skills
+# The bootstrap says orchestration skills first, then domain/tool skills.
 output=$(run_claude "According to the using-claude-code-flow skill, what is the skill priority order? Which skills should be checked first?" 120)
 
-assert_contains "$output" "process\|[Pp]rocess.*first\|brainstorming\|debugging" \
-    "Process skills have priority" || true
-assert_contains "$output" "implementation\|[Ii]mplementation.*second" \
-    "Implementation skills come second" || true
+assert_contains "$output" "orchestration\|auto-mode\|semi-auto\|debugging" \
+    "Orchestration skills have priority" || true
+assert_contains "$output" "domain/tool\|domain.*second\|tool.*second" \
+    "Domain/tool skills come second" || true
 
 echo ""
 

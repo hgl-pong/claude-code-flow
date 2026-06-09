@@ -17,7 +17,7 @@ The pipeline progresses through these phases in order:
 | `gates` | Gates | 7 completion gates |
 | `finalize` | Finalize | Merge, cleanup |
 
-In `state.json`, the legacy `phase` field uses the user-facing names from the brainstorming/writing-plans/workflow-driven-development/completion-gates/finishing pipeline. The `current_phase` field uses the canonical enum above when running via `full-auto-pipeline.workflow.js`.
+In `state.json`, `phase` uses the canonical enum above. Older state files may contain user-facing phase names; readers should tolerate them, but new writers must emit canonical values.
 
 ## Canonical Status Values
 
@@ -38,8 +38,8 @@ These statuses indicate the pipeline is mid-flight and may be resumed.
 
 | Status | Meaning | Resume Action |
 |--------|---------|---------------|
-| `ACTIVE` | Pipeline is actively running | Check `current_phase` and `current_step` to determine what is in progress. |
-| `PAUSED_COMPACTING` | Pipeline paused during context compaction | Resume from `current_phase` and `current_step`. |
+| `ACTIVE` | Pipeline is actively running | Check `phase` and `current_step` to determine what is in progress. |
+| `PAUSED_COMPACTING` | Pipeline paused during context compaction | Resume from `phase` and `current_step`. |
 | `BLOCKED_ESCALATING` | A task is blocked and the escalation ladder is being climbed | Check `task_states` for which task is blocked and which escalation rung was reached. |
 
 ### Legacy Statuses (state.json backward compat)
@@ -57,9 +57,9 @@ These statuses indicate the pipeline is mid-flight and may be resumed.
 
 ```json
 {
-  "schema_version": 1,
+  "state_schema_version": 1,
   "task_name": "<sanitized task name slug>",
-  "phase": "<brainstorming|writing-plans|workflow-driven-development|completion-gates|finishing>",
+  "phase": "<scope|research|synthesize_spec|review_spec|write_plan|review_plan|parse_plan|execute|gates|finalize>",
   "status": "<TERMINAL or NONTERMINAL status value>",
   "status_detail": {
     "agent_id": "<subagent id, if AWAITING_SUBAGENT (legacy)>",
@@ -70,16 +70,12 @@ These statuses indicate the pipeline is mid-flight and may be resumed.
     "active_count": 0,
     "completed_count": 0
   },
-  "current_phase": "<canonical phase enum value from above>",
   "current_step": "<legal current_step value>",
   "progress": {
-    "phase_order": ["scope", "research", "synthesize_spec", "review_spec", "write_plan", "review_plan", "parse_plan", "execute", "gates", "finalize"],
-    "completed": [],
-    "current": "scope",
-    "pending": ["research", "synthesize_spec", "review_spec", "write_plan", "review_plan", "parse_plan", "execute", "gates", "finalize"],
+    "tasks_passed": 0,
     "tasks_total": 0,
-    "tasks_completed": 0,
-    "tasks_reviewed": 0
+    "gates_passed": 0,
+    "gates_total": 7
   },
   "active_agents": [
     {
@@ -227,10 +223,10 @@ The state file does not store git state directly. Instead:
 | brainstorming | `present-design` |
 | brainstorming | `write-spec` |
 | brainstorming | `spec-review-loop` |
-| writing-plans | `scope-check` |
-| writing-plans | `technical-research` |
-| writing-plans | `write-plan` |
-| writing-plans | `plan-review-loop` |
+| semi-auto | `scope-check` |
+| semi-auto | `technical-research` |
+| semi-auto | `write-plan` |
+| semi-auto | `plan-review-loop` |
 | workflow-driven-development | `dispatch-implementer` |
 | workflow-driven-development | `dispatch-parallel` |
 | workflow-driven-development | `spec-review-loop` |
@@ -247,7 +243,7 @@ Update `state.json` BEFORE every state transition. Key moments:
 - After each subagent completes: remove from `active_agents`, update `task_states` entry
 - Before running shell command: set `AWAITING_SHELL` + `last_command`
 - Before entering a decision: set `DECIDING` + `current_step`
-- Between pipeline phases: update `phase`, `progress`, `current_phase`
+- Between pipeline phases: update `phase` and `progress`
 - When stopped to ask user: set `STOPPED_ASK_USER` + `stopped_question`
 - After each completion gate: update `gate_states`, increment `gate_cursor`
 - Via flow-state helper: every `flowState('update', ...)` call writes state atomically
@@ -276,7 +272,7 @@ When resuming (`/auto --resume` or `CCF_AUTO_MODE=1` on startup):
 1. Read `.claude/auto/<task-name>/state.json`
 2. Read `status`
 3. Switch on status (see Status Values tables above)
-4. Set `current_phase` to the canonical phase from `state.json`. Set `current_step` to the stored value if valid for that phase. If invalid or missing, use the first step of that phase.
+4. Use canonical `phase` from `state.json`. Set `current_step` to the stored value if valid for that phase. If invalid or missing, use the first step of that phase.
 5. If `resume_cursor` exists, use `gate_cursor` to skip already-passed gates and `result_replay` to skip already-passed tasks.
 6. Update `state.json` BEFORE every subsequent state change
 

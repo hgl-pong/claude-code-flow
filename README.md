@@ -65,19 +65,13 @@ Reinstall from scratch:
 
 ## The Basic Workflow
 
-1. **brainstorming** — Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document and serves it via a local brainstorm server for visual review.
+1. **auto-mode** — Fully autonomous research, multi-agent brainstorming, spec, plan, implementation, reviews, gates, and finalization.
 
-2. **using-git-worktrees** — Activates after design approval. Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
+2. **semi-auto** — Human-approved discovery/spec/plan, then dynamic workflow execution with built-in review and verification gates.
 
-3. **writing-plans** — Activates with approved design. Breaks work into bite-sized tasks (2–5 minutes each). Every task has exact file paths, complete code, verification steps.
+3. **using-git-worktrees** — Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
 
-4. **workflow-driven-development** or **executing-plans** — Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
-
-5. **test-driven-development** — Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
-
-6. **requesting-code-review** — Activates between tasks. Reviews against plan, reports issues by severity. Critical issues block progress.
-
-7. **finishing-a-development-branch** — Activates when tasks complete. Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
+4. **finishing-a-development-branch** — Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
 
 **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
 
@@ -85,27 +79,20 @@ Reinstall from scratch:
 
 ### Skills Library
 
-**Testing**
-- **test-driven-development** — RED-GREEN-REFACTOR cycle (includes testing anti-patterns reference)
+**Orchestration**
+- **auto-mode** — Fully autonomous dynamic workflow.
+- **semi-auto** — Human-approved planning followed by dynamic workflow execution.
 
 **Debugging**
-- **systematic-debugging** — 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques)
-- **verification-before-completion** — Ensure it's actually fixed
+- **systematic-debugging** — 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques).
 
-**Collaboration**
-- **brainstorming** — Socratic design refinement with visual review server
-- **writing-plans** — Detailed implementation plans
-- **executing-plans** — Batch execution with checkpoints
-- **dispatching-parallel-agents** — Concurrent subagent workflows
-- **requesting-code-review** — Pre-review checklist
-- **receiving-code-review** — Responding to feedback
-- **using-git-worktrees** — Parallel development branches
-- **finishing-a-development-branch** — Merge/PR decision workflow
-- **workflow-driven-development** — Fast iteration with two-stage review (spec compliance, then code quality)
+**Workflow Support**
+- **using-git-worktrees** — Parallel development branches.
+- **finishing-a-development-branch** — Merge/PR decision workflow.
+- **image-generation** — Image generation/editing via artist workflow.
 
 **Meta**
-- **writing-skills** — Create new skills following best practices (includes testing methodology)
-- **using-claude-code-flow** — Bootstrap that teaches the agent how to find and use skills
+- **using-claude-code-flow** — Bootstrap that teaches the agent how to find and use skills.
 
 ### Hooks
 
@@ -122,10 +109,6 @@ Hook manifests are generated from `scripts/render-hooks.py`. Edit the registry t
 python scripts/render-hooks.py claude --write
 python scripts/render-hooks.py codex --write
 ```
-
-### Brainstorm Server
-
-A lightweight HTTP server in `skills/brainstorming/scripts/server.cjs` serves pushed HTML screens with live reload via WebSocket. The design viewer at `/design-viewer` renders DESIGN.md tokens visually.
 
 ### Statusline
 
@@ -144,7 +127,5 @@ The general contribution process is below. Keep in mind that we don't generally 
 
 1. Fork the repository
 2. Create a branch for your work
-3. Follow the `writing-skills` skill for creating and testing new and modified skills
+3. Use `semi-auto` to create a spec/plan and capture eval evidence for skill changes
 4. Submit a PR, being sure to fill in the pull request template
-
-See `skills/writing-skills/SKILL.md` for the complete guide.

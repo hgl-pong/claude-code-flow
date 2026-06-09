@@ -231,6 +231,17 @@ class TestResumePromptGeneration:
         assert "CRITICAL RULES" in prompt
         assert "DO NOT STOP" in prompt
 
+    def test_prompt_uses_tasks_passed_progress(self, tmp_path, capsys):
+        """Resume prompt uses canonical tasks_passed progress field."""
+        _, state_file = _init_run(tmp_path, task_name="prompt-progress")
+        _update_state(state_file, {
+            "progress": {"tasks_passed": 2, "tasks_total": 3, "gates_passed": 0, "gates_total": 7},
+        })
+
+        capsys.readouterr()
+        prompt = hooks.generate_resume_prompt(state_file)
+        assert "Tasks: 2/3 completed" in prompt
+
 
 # ========================================================================
 # 3. Stop hook state integration

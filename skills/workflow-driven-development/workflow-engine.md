@@ -1,15 +1,6 @@
----
-name: workflow-driven-development
-description: Use when executing implementation plans via Claude Code Dynamic Workflows — implement, review, fix pipeline runs in the background while your session stays responsive
----
+# Workflow Engine
 
-# Workflow-Driven Development
-
-Execute implementation plans with Claude Code Dynamic Workflows. You prepare complete task data once; `Workflow` handles dispatch, review, retries, evidence, progress.
-
-## Use / Don't Use
-
-Default for non-trivial plans. Use `claude-code-flow:executing-plans` only for trivial config-only work. No plan → brainstorm/write plan first. Do not pause between tasks; stop only for blocked tasks, true ambiguity, or completion.
+Internal Dynamic Workflow engine used by `auto-mode` and `semi-auto`. Not a user-facing skill.
 
 ## Boundary
 
@@ -27,19 +18,6 @@ Workflow({ scriptPath: '<execute-plan.workflow.js>' }, args) → result
 2. **Build args** — construct `groups`, `tasks`, `worktree`, `model_tasks`.
 3. **Launch** — call `Workflow()` once.
 4. **Handle results** — inspect result partitions, evidence, and final review.
-
-## Prerequisites
-
-Requires `claude-code-flow:using-git-worktrees` for isolated workspace, `claude-code-flow:writing-plans` for the plan, and `claude-code-flow:finishing-a-development-branch` after success.
-
-## Build Args
-
-1. Read plan once.
-2. Extract `id`, full `description`, `depends_on`, `complexity`.
-3. Topologically group deps: `groups[0]` no deps; later groups depend only on earlier groups.
-4. UI tasks: read root `DESIGN.md`; paste relevant tokens/layout/states/accessibility into `description`.
-5. Read workflow script path; do not modify it.
-6. Launch once. Announce: “Using workflow-driven development: N tasks in M dependency groups.”
 
 Task metadata fields:
 
@@ -141,5 +119,3 @@ Image generation and image editing: route through `claude-code-flow:image-genera
 Never: implement on main/master without explicit consent; skip plan read; make workflow read plan files; edit workflow scripts at launch; ignore blocked tasks; proceed with blocking final-review issues; cancel mid-workflow; manually implement blocked tasks.
 
 Always: build dependency graph; include full task descriptions; include `DESIGN.md` content for UI; inspect blocked tasks after completion; finish only after all pass.
-
-Required related skills: `claude-code-flow:using-git-worktrees`, `claude-code-flow:writing-plans`, `claude-code-flow:requesting-code-review`, `claude-code-flow:finishing-a-development-branch`. Subagents use `claude-code-flow:test-driven-development`.

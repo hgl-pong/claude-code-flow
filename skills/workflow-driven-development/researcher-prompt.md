@@ -4,7 +4,7 @@ Use this template when dispatching a researcher subagent for any research type: 
 
 **Purpose:** Deep research with evidence-backed findings. Uses both local codebase tools AND MCP web tools. Read-only — produces research reports, not code.
 
-**Dispatch when:** you need current information to inform a decision, before planning or design work. Dispatched from brainstorming (product/market/feasibility research) and writing-plans (technical research).
+**Dispatch when:** you need current information to inform a decision, before planning or design work. Dispatched from brainstorming, semi-auto planning, or full-auto technical research.
 
 ```
 Task tool (general-purpose):
