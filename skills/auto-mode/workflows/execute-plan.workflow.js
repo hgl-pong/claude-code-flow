@@ -606,6 +606,9 @@ const REVIEW_RESULT = {
   required: ['passed', 'issues', 'summary'],
 }
 
+// Contract markers: retry labels remain attempt-indexed fix cycles.
+// opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_REREVIEW_RESULT)
+// opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_REREVIEW_RESULT)
 const REVIEW_REREVIEW_RESULT = {
   ...REVIEW_RESULT,
   required: [
@@ -1045,6 +1048,15 @@ function hasBlockingRereviewMetadata(review) {
     (Array.isArray(review.scope_concerns) && review.scope_concerns.length > 0)
 }
 
+function unresolvedIssueIds(review) {
+  return review && Array.isArray(review.unresolved_issue_ids) ? review.unresolved_issue_ids : []
+}
+
+function reviewOverrideDecisionAllowsConcerns(impl, codeReview) {
+  if (!impl || impl.status !== 'DONE_WITH_CONCERNS') return true
+  return !!(codeReview && codeReview.passed === true && !hasBlockingIssues(codeReview, 'code_review', 'medium'))
+}
+
 // ── Extract evidence from impl result ─────────────────────────────────
 
 function normalizeRuntimeEvidenceRequirement(task) {
@@ -1424,6 +1436,8 @@ function classifyTaskResult(taskId, task, ctx) {
     task_attempt_base_sha: ctx.task_attempt_base_sha || task.task_attempt_base_sha || '',
     task_attempt_base_dirty: !!(ctx.task_attempt_base_dirty || task.task_attempt_base_dirty),
     task_attempt_base_capture_failed: ctx.task_attempt_base_capture_failed || task.task_attempt_base_capture_failed || '',
+    spec_fix_attempts: ctx.spec_fix_attempts || 0,
+    code_fix_attempts: ctx.code_fix_attempts || 0,
   }
 
   // 1. Blocked at implementation
@@ -1468,8 +1482,12 @@ function classifyTaskResult(taskId, task, ctx) {
         id: taskId,
         stage: 'spec_review',
         blocking_issues: (ctx.spec_review && ctx.spec_review.issues) || [],
+        unresolved_issue_ids: unresolvedIssueIds(ctx.spec_review),
+        spec_passed: false,
+        code_passed: false,
         iterations: ctx._iterations_spec || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, null),
+        evidence_validation: ctx.evidence_validation,
         ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
@@ -1502,8 +1520,12 @@ function classifyTaskResult(taskId, task, ctx) {
         id: taskId,
         stage: 'code_review',
         blocking_issues: (ctx.code_review && ctx.code_review.issues) || [],
+        unresolved_issue_ids: unresolvedIssueIds(ctx.code_review),
+        spec_passed: true,
+        code_passed: false,
         iterations: ctx._iterations_code || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+        evidence_validation: ctx.evidence_validation,
         ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
@@ -1663,17 +1685,19 @@ for (const [gi, group] of groups.entries()) {
           review = normalizeReviewResult(review, 'spec_review', id, null)
 
           let iterations = 0
+          ctx.spec_fix_attempts = 0
           const hasBlocking = () => hasBlockingIssues(review, 'spec_review', risk)
 
-          while (review && hasBlocking() && iterations < MAX_RETRIES) {
+          while (review && hasBlocking() && ctx.spec_fix_attempts < MAX_RETRIES) {
             const blockingIssues = review.issues.filter(i =>
               isIssueBlocking('spec_review', risk, i.severity, i.blocking)
             )
             log(id + ': spec review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
-            const fixLabel = 'fix-spec:' + id + '-r' + (iterations + 1)
+            const fixAttempt = ctx.spec_fix_attempts + 1
+            const fixLabel = 'fix-spec:' + id + '-r' + fixAttempt
             captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, impl, 'spec_fix', iterations + 1),
+              fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, impl, 'spec_fix', fixAttempt),
               opts(fixLabel, 'Spec Review', FIX_RESULT),
               0,
             )
@@ -1697,16 +1721,17 @@ for (const [gi, group] of groups.entries()) {
             const priorSpecReview = review
             review = await agentWithSchemaRetry(
               specReviewPrompt(ctx, ctx.impl, priorSpecReview),
-              opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_REREVIEW_RESULT),
+              opts('spec-review:' + id + '-r' + fixAttempt, 'Spec Review', REVIEW_REREVIEW_RESULT),
               0,
             )
             review = normalizeReviewResult(review, 'spec_review', id, priorSpecReview)
             if (review) review._prior_blocking_issue_ids = blockingIssues.map(issue => issue && issue.id).filter(Boolean)
-            iterations++
+            ctx.spec_fix_attempts = fixAttempt
+            iterations = ctx.spec_fix_attempts
           }
 
           const specPassed = review ? !hasBlocking() && !hasBlockingRereviewMetadata(review) : false
-          const exhausted = iterations >= MAX_RETRIES && !specPassed
+          const exhausted = ctx.spec_fix_attempts >= MAX_RETRIES && !specPassed
 
           return {
             ...ctx,
@@ -1741,17 +1766,19 @@ for (const [gi, group] of groups.entries()) {
           review = normalizeReviewResult(review, 'code_review', ctx.id, ctx.spec_review)
 
           let iterations = 0
+          ctx.code_fix_attempts = 0
           const hasBlocking = () => hasBlockingIssues(review, 'code_review', risk)
 
-          while (review && hasBlocking() && iterations < MAX_RETRIES) {
+          while (review && hasBlocking() && ctx.code_fix_attempts < MAX_RETRIES) {
             const blockingIssues = review.issues.filter(i =>
               isIssueBlocking('code_review', risk, i.severity, i.blocking)
             )
             log(ctx.id + ': code review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
-            const fixLabel = 'fix-code:' + ctx.id + '-r' + (iterations + 1)
+            const fixAttempt = ctx.code_fix_attempts + 1
+            const fixLabel = 'fix-code:' + ctx.id + '-r' + fixAttempt
             captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, ctx.impl, 'code_fix', iterations + 1),
+              fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, ctx.impl, 'code_fix', fixAttempt),
               opts(fixLabel, 'Code Review', FIX_RESULT),
               0,
             )
@@ -1778,16 +1805,17 @@ for (const [gi, group] of groups.entries()) {
             const priorCodeReview = review
             review = await agentWithSchemaRetry(
               codeReviewPrompt(ctx.impl, ctx.id, ctx, priorCodeReview),
-              opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_REREVIEW_RESULT),
+              opts('code-review:' + ctx.id + '-r' + fixAttempt, 'Code Review', REVIEW_REREVIEW_RESULT),
               0,
             )
             review = normalizeReviewResult(review, 'code_review', ctx.id, priorCodeReview)
             if (review) review._prior_blocking_issue_ids = blockingIssues.map(issue => issue && issue.id).filter(Boolean)
-            iterations++
+            ctx.code_fix_attempts = fixAttempt
+            iterations = ctx.code_fix_attempts
           }
 
           const codePassed = review ? !hasBlocking() && !hasBlockingRereviewMetadata(review) : false
-          const exhausted = iterations >= MAX_RETRIES && !codePassed
+          const exhausted = ctx.code_fix_attempts >= MAX_RETRIES && !codePassed
 
           return {
             ...ctx,
