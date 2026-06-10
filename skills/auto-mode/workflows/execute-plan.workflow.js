@@ -728,6 +728,50 @@ function diffEvidencePrompt(task, impl, stage) {
     diffAnchorPrompt(task, impl, stage)
 }
 
+function collectFinalBranchDiffEvidence(args, finalTask, finalImpl) {
+  const git = (args && args.git) || {}
+  const final = git.final || git.branch_diff || {}
+  const anchor = {
+    ...resolveDiffAnchors(workflowArgs, finalTask, finalImpl, 'final'),
+    stage: 'final',
+    head_sha: final.head_sha || git.head_sha || '',
+    dirty: final.dirty !== undefined ? final.dirty : !!git.dirty,
+    command: final.command || 'git diff --name-status BASE...HEAD && git diff BASE...HEAD',
+    committed: final.committed || {},
+    worktree: final.worktree || {},
+    anchor_error: final.anchor_error || null,
+    max_diff_chars: final.max_diff_chars,
+  }
+  return collectDiffEvidence(anchor)
+}
+
+function finalReviewPrompt(completed, finalTask, finalImpl) {
+  const branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
+  const completedSummary = (completed || []).map(entry => ({ id: entry.id, files: entry.files || [] }))
+  return `Final cross-task review after all tasks passed.
+
+## Completed Tasks
+
+${JSON.stringify(completedSummary, null, 2)}
+
+## Branch Diff Evidence
+
+${JSON.stringify(branchDiffEvidence, null, 2)}
+
+Inspect branch-level diff evidence first. Prefer controller metadata for changed files. Expected commands are git diff --name-status BASE...HEAD and git diff BASE...HEAD, or explicit BASE_SHA..HEAD when applicable.
+
+Review only cross-task integration bugs, conflicts, duplicated changes, missing shared tests, regression risk, and branch-wide consistency issues.
+Do not propose or apply final fixes. Report blocking findings only as review issues.
+
+Blocking severities: Critical, High, Important. Minor/Info are non-blocking.
+If any blocking issue exists, passed must be false even if an optimistic pass seems tempting.
+Require issue file/line where available; if omitted, include location_unavailable_reason.
+
+## Structured Output
+
+Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(finalTask, finalImpl, 'final')
+}
+
 function specReviewPrompt(task, impl, priorReview) {
   const concerns = (impl.concerns || []).join('\n') || 'None reported'
   const evidenceValidation = impl.evidence_validation ? JSON.stringify(impl.evidence_validation, null, 2) : 'Not provided'
@@ -1050,6 +1094,18 @@ function hasBlockingRereviewMetadata(review) {
 
 function unresolvedIssueIds(review) {
   return review && Array.isArray(review.unresolved_issue_ids) ? review.unresolved_issue_ids : []
+}
+
+function normalizeFinalReview(review, branchDiffEvidence) {
+  const normalized = normalizeReviewResult(review, 'final_review', 'final', null) || { passed: false, issues: [], summary: 'Final review returned invalid output' }
+  const blockingIssues = (normalized.issues || []).filter(issue => isIssueBlocking('final_review', 'medium', issue.severity, issue.blocking))
+  const unresolved = [...new Set([...(normalized.unresolved_issue_ids || []), ...blockingIssues.map(issue => issue.id).filter(Boolean)])]
+  return {
+    ...normalized,
+    passed: blockingIssues.length === 0 && normalized.passed === true,
+    unresolved_issue_ids: unresolved,
+    branch_diff_evidence: branchDiffEvidence,
+  }
 }
 
 function reviewOverrideDecisionAllowsConcerns(impl, codeReview) {
@@ -1879,16 +1935,15 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
   phase('Final Review')
   const allFiles = partitions.completed.flatMap(r => r.files || r.evidence?.files_modified || []).filter(Boolean)
   const allIds = partitions.completed.map(r => r.id).join(', ')
+  const finalTask = { id: 'final', description: 'Final review for ' + allIds, files: allFiles }
+  const finalImpl = { summary: 'Entire implementation: ' + allIds, files_modified: allFiles }
+  const branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
 
   finalReview = await agent(
-    codeReviewPrompt(
-      { summary: 'Entire implementation: ' + allIds, files_modified: allFiles },
-      'final',
-      { id: 'final', description: 'Final review for ' + allIds, attempt_diff_evidence: partitions.completed.flatMap(e => e.attempt_diff_evidence || []) },
-    ),
+    finalReviewPrompt(partitions.completed, finalTask, finalImpl),
     opts('final-review', 'Final Review', REVIEW_RESULT),
   )
-  finalReview = normalizeReviewResult(finalReview, 'final_review', 'final', null)
+  finalReview = normalizeFinalReview(finalReview, branchDiffEvidence)
 }
 
 // ── Build state_patch for resume support ──────────────────────────────
@@ -1915,6 +1970,7 @@ const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha ||
   task_attempt_base_dirty: !!e.task_attempt_base_dirty,
   task_attempt_base_capture_failed: e.task_attempt_base_capture_failed || '',
 }))
+const finalReviewBlocked = !!(finalReview && finalReview.passed === false)
 
 const state_patch = {
   task_attempt_bases: attemptBaseEvidence,
@@ -1930,6 +1986,8 @@ const state_patch = {
   },
   total_tasks: totalTasks,
   final_review_run: finalReview !== null,
+  final_review_blocked: finalReviewBlocked,
+  final_review_unresolved_issue_ids: finalReviewBlocked ? unresolvedIssueIds(finalReview) : [],
 }
 
 return {

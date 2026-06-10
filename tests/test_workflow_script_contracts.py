@@ -560,6 +560,49 @@ class TestExecutePlanConstants:
         ]:
             assert text in self.script
 
+    def test_final_review_uses_dedicated_branch_diff_prompt(self):
+        """Contract: final review uses branch-level diff evidence, not task attempt diffs."""
+        for text in [
+            "function finalReviewPrompt", "resolveDiffAnchors(workflowArgs, finalTask, finalImpl, 'final')",
+            "## Branch Diff Evidence", "git diff --name-status BASE...HEAD",
+            "git diff BASE...HEAD", "BASE_SHA..HEAD", "cross-task integration bugs",
+            "conflicts", "duplicated changes", "missing shared tests", "regression risk",
+        ]:
+            assert text in self.script
+
+    def test_final_review_block_without_fixes_is_canonical(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-final']],
+              tasks: { 'task-final': { id: 'task-final', description: 'Do final block task' } },
+              worktree: 'C:/tmp/worktree',
+              git: {
+                controller_commands_available: true,
+                head_sha: '2222222',
+                final: {
+                  head_sha: '3333333', dirty: false,
+                  command: 'git diff --name-status main...HEAD && git diff main...HEAD',
+                  committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: '+change\n' },
+                  worktree: { ok: true, name_status: '', diff: '' }
+                }
+              },
+              __agent_results: {
+                'implement:task-final': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-final': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-final': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [{ severity: 'High', file: 'src/a.js', description: 'cross-task break' }], summary: 'blocked despite optimistic pass' }
+              }
+            }
+        ''')
+        assert result["final_review"]["passed"] is False
+        assert result["final_review"]["unresolved_issue_ids"] == [result["final_review"]["issues"][0]["id"]]
+        assert result["state_patch"]["final_review_blocked"] is True
+        assert result["state_patch"]["final_review_unresolved_issue_ids"] == result["final_review"]["unresolved_issue_ids"]
+        assert result["state_patch"]["partitions"]["failed_review"] == []
+        assert result["failed_review"] == []
+        assert result["completed"][0]["id"] == "task-final"
+        assert result["final_review"]["branch_diff_evidence"]["diff_verified"] is True
+
     def _eval_evidence_helper(self, expression):
         helper_prefix = self.script.split("// ── Result adapter", 1)[0]
         helper_prefix = re.sub(r"export const meta", "const meta", helper_prefix)
@@ -1181,6 +1224,68 @@ WORKFLOW_SCRIPT
             ]
         ''')
         assert [item["passed"] for item in result] == [True, True, True]
+
+    def test_retry_counters_are_fix_attempts_not_initial_reviews(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-15']],
+              tasks: { 'task-15': { id: 'task-15', description: 'Do retry counter task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-15': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-15': { passed: false, issues: [{ id: 'spec-1', severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix spec' }], summary: 'needs fix', prompt_only: true },
+                'fix-spec:task-15-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['spec-1'], targeted_verification: [{ command: 'pytest', issue_ids: ['spec-1'] }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                'spec-review:task-15-r1': { passed: true, issues: [], summary: 'ok', prompt_only: true, prior_findings_verified: [{ id: 'spec-1', verified: true }], unresolved_issue_ids: [], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] },
+                'code-review:task-15': { passed: false, issues: [{ id: 'code-1', severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix code' }], summary: 'needs fix', prompt_only: true },
+                'fix-code:task-15-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '4444444', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['code-1'], targeted_verification: [{ command: 'pytest', issue_ids: ['code-1'] }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                'code-review:task-15-r1': { passed: true, issues: [], summary: 'ok', prompt_only: true, prior_findings_verified: [{ id: 'code-1', verified: true }], unresolved_issue_ids: [], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
+        ''')
+        entry = result["passed"][0]
+        assert entry["spec_fix_attempts"] == 1
+        assert entry["code_fix_attempts"] == 1
+        assert "spec_review_attempts" not in entry
+        assert "code_review_attempts" not in entry
+        labels = [e["label"] for e in entry["attempt_diff_evidence"]]
+        assert "fix-spec:task-15-r1" in labels
+        assert "fix-code:task-15-r1" in labels
+
+    def test_spec_exhaustion_preserves_unresolved_metadata_and_failed_review_partition(self):
+        spec_results = []
+        fix_results = {}
+        for i in range(1, 6):
+            spec_results.append(f"'fix-spec:task-16-r{i}': {{ status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{{ command: 'pytest', exit_code: 0 }}], base_sha: '1111111', head_sha: '333333{i}', acceptance_coverage: [{{ ref: 'task' }}], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['spec-1'], targeted_verification: [{{ command: 'pytest', issue_ids: ['spec-1'] }}], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] }}")
+            fix_results[i] = f"'spec-review:task-16-r{i}': {{ passed: false, issues: [{{ id: 'spec-1', severity: 'Critical', blocking: true, file: 'src/a.js', description: 'still broken' }}], summary: 'still failing', prompt_only: true, prior_findings_verified: [{{ id: 'spec-1', verified: false }}], unresolved_issue_ids: ['spec-1'], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] }}"
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-16']],
+              tasks: { 'task-16': { id: 'task-16', description: 'Do exhausted spec task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-16': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-16': { passed: false, issues: [{ id: 'spec-1', severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix spec' }], summary: 'needs fix', prompt_only: true },
+                PLACEHOLDER
+              }
+            }
+        '''.replace('PLACEHOLDER', ',\n                '.join(spec_results + [fix_results[i] for i in range(1, 6)])))
+        failed = result["failed_review"][0]
+        assert result["passed"] == []
+        assert failed["stage"] == "spec_review"
+        assert failed["spec_fix_attempts"] == 5
+        assert failed["unresolved_issue_ids"] == ["spec-1"]
+        assert failed["spec_passed"] is False
+        assert failed["evidence_validation"]["status"] == "pass"
+        assert failed["attempt_diff_evidence"]
+
+    def test_blocked_and_done_with_concerns_cannot_bypass_review_decisions(self):
+        assert "impl.status === 'BLOCKED'" in self.script
+        assert "implementation_blocked" in self.script
+        assert "needs_review_override" in self.script
+        assert "reviewOverrideDecisionAllowsConcerns" in self.script
 
     def test_classification_wires_implementation_evidence_validation(self):
         assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script
