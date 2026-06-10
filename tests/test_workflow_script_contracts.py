@@ -527,6 +527,11 @@ class TestExecutePlanConstants:
         assert "evidence_validation: implementationEvidence" in self.script
         assert "partition: 'blocked'" in self.script
 
+    def test_passed_classification_persists_attempt_diff_evidence(self):
+        passed_entry = re.search(r"partition: 'passed',[\s\S]+?entry: \{([\s\S]+?)\n    \}", self.script)
+        assert passed_entry, "passed classification entry not found"
+        assert "attempt_diff_evidence: ctx.attempt_diff_evidence || []" in passed_entry.group(1)
+
 
 # ── Cross-script consistency ──────────────────────────────────────────
 

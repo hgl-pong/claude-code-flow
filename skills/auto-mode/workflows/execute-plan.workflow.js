@@ -904,6 +904,7 @@ function classifyTaskResult(taskId, task, ctx) {
       evidence: implementationEvidence.evidence,
       evidence_validation: implementationEvidence,
       files: (ctx.impl && ctx.impl.files_modified) || [],
+      attempt_diff_evidence: ctx.attempt_diff_evidence || [],
     },
   }
 }
