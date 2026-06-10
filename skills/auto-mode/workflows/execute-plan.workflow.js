@@ -22,6 +22,8 @@ export const meta = {
 const { groups, tasks, worktree, model_tasks } = args
 const result_replay = args.result_replay || []
 const MAX_RETRIES = 5
+const COMMAND_EXECUTION_PRIMITIVE = 'workflow_agent_only'
+const ENFORCEMENT_MODE = 'prompt_only'
 
 // ── Contract constants (shared with full-auto-pipeline) ────────────────
 

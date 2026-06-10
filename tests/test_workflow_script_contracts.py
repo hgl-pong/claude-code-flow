@@ -156,6 +156,44 @@ class TestExecutePlanConstants:
     def test_no_external_imports(self):
         assert "require(" not in self.script
 
+    def test_prompt_builder_inventory(self):
+        """Contract: execute-plan exposes all prompt builders used by loops."""
+        for name in [
+            "implementPrompt", "specReviewPrompt", "codeReviewPrompt",
+            "fixPrompt", "selfServicePrompt",
+        ]:
+            assert f"function {name}" in self.script
+
+    def test_runtime_primitive_inventory(self):
+        """Contract: controller runtime lacks command primitive; enforcement is prompt-only."""
+        assert "const COMMAND_EXECUTION_PRIMITIVE" in self.script
+        assert "workflow_agent_only" in self.script
+        assert "const ENFORCEMENT_MODE = 'prompt_only'" in self.script
+
+    def test_state_resume_inventory(self):
+        """Contract: resume/state patch paths remain discoverable."""
+        for text in [
+            "result_replay", "state_patch", "partitions", "final_review_run",
+            "passed", "completed", "blocked", "stalled", "failed_review", "needs_escalation",
+        ]:
+            assert text in self.script
+
+    def test_review_loop_inventory(self):
+        """Contract: review/fix/re-review loops remain present."""
+        for text in [
+            "MAX_RETRIES", "fix-spec", "spec-review:", "fix-code", "code-review:",
+            "hasBlockingIssues", "_spec_review_exhausted", "_code_review_exhausted",
+        ]:
+            assert text in self.script
+
+    def test_final_review_gate6_inventory(self):
+        """Contract: final review is guarded for Gate 6 consumption."""
+        for text in [
+            "Final Review only when ALL tasks passed", "partitions.completed.length === totalTasks",
+            "allOtherPartitionsEmpty", "final_review: finalReview", "opts('final-review'",
+        ]:
+            assert text in self.script
+
 
 # ── Cross-script consistency ──────────────────────────────────────────
 
