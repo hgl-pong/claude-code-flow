@@ -5,7 +5,9 @@ description: Fully automatic Claude Code Flow development mode. Use for /auto, �
 
 # Auto Mode
 
-Core: one autonomous Claude Code Flow entrypoint: discover → spec → plan → execute → review → verify → finalize. Auto-decide routine choices, log decisions, ask only when genuinely blocked.
+**CRITICAL — READ FIRST:** This is not a normal skill. You are the orchestrator, not the implementer. Your job is to invoke the Dynamic Workflow system (`Workflow()`), which spawns subagents, runs reviews, checks gates, and manages state. The ONLY time you implement directly is a single-file, no-test, no-dependency triviality. If the task needs more than ONE file: invoke Workflow. If the task needs tests: invoke Workflow. If you are unsure: invoke Workflow.
+
+With that understood: one autonomous Claude Code Flow entrypoint: discover → spec → plan → execute → review → verify → finalize. Auto-decide routine choices, log decisions, ask only when genuinely blocked.
 
 Announce: “I'm using auto-mode to run the development workflow autonomously. Decisions and evidence will be logged under `.claude/auto/<task-name>/`. Ctrl+C to interrupt.”
 
@@ -16,12 +18,51 @@ Trigger on `/auto <task>`, `全自动模式 <task>`, `CCF_AUTO_MODE=1`, `/auto -
 **MANDATORY first step (before ANY implementation):**
 1. Create `.claude/auto/<task-name>/state.json` IMMEDIATELY. This is non-negotiable — even for trivial one-file tasks. Without `state.json`, hooks cannot protect the pipeline, and interruption recovery is impossible. Write at minimum `{"task_name":"...","phase":"execute","status":"ACTIVE","updated_at":"..."}`.
 2. Investigate existing code/patterns before implementation.
-3. Write/review spec and plan; user approval is not required after `/auto` consent.
-4. Execute via Dynamic Workflow when available: `workflows/full-auto-pipeline.workflow.js` owns parallel agents, reviews, retries, gates, and resume. Use direct implementation only for small safe tasks — but even direct implementation MUST create the audit trail first.
-5. For plan-only execution, use `workflows/execute-plan.workflow.js` with parsed task groups.
-6. Run review/fix loops, tests, runtime checks, and final gates.
-7. Finalize locally: summarize, clean planned artifacts, report git state. No PR unless user explicitly asks and reviews the diff.
-8. Write terminal state: `DONE`, `STOPPED_ASK_USER`, `FAILED_FATAL`, or `CANCELLED`.
+
+### Execution Path Selection — CRITICAL
+
+The Dynamic Workflow system (`full-auto-pipeline.workflow.js`) exists specifically to sustain long-running autonomous work through parallel subagents, structured review loops, completion gates, and interruption recovery. **You MUST use it unless the task is genuinely trivial.**
+
+**Use `Workflow({ scriptPath: "<plugin>/skills/auto-mode/workflows/full-auto-pipeline.workflow.js", args: {...} })` when the task requires ANY of:**
+- Multiple files (3+) to implement
+- Multiple subagents needed for parallel work
+- Any dependency on existing project code
+- User-facing features or backend services
+- Tests that must pass before completion
+- A spec or plan worth writing down
+- Work that would take a human more than 5 minutes
+
+**Direct implementation is ONLY acceptable when ALL of these are true:**
+- Single file, single concern (e.g., "create Readme.md", "add a one-line config change")
+- Zero dependencies on project architecture
+- No tests needed
+- No subagents needed
+- Truly obvious what to do with zero design decisions
+
+**Workflow invocation pattern:**
+```
+Workflow({
+  scriptPath: "<skills_dir>/auto-mode/workflows/full-auto-pipeline.workflow.js",
+  args: {
+    task: "<user's task description>",
+    worktree: "<current worktree path>",
+    specs_dir: ".claude/specs",
+    plans_dir: ".claude/plans",
+    state_file: ".claude/auto/<task-name>/state.json",
+    audit_dir: ".claude/auto/<task-name>/audit",
+    evidence_dir: ".claude/auto/<task-name>/evidence",
+    flow_state_script_path: "<skills_dir>/auto-mode/workflows/flow-state-adapter.workflow.js",
+    flow_state_cli_path: "<plugin>/hooks/scripts/flow-state.py",
+    allow_commit: true,
+    model_tasks: { default: "sonnet" },
+    max_retries: 5,
+  }
+})
+```
+
+If you find yourself writing more than 3 files, STOP — you should have used the workflow. Restart with Workflow invocation.
+
+**When workflow completes:** it returns `{ state_file, audit_events, evidence_dir, resume_cursor }`. Update local `state.json` with terminal status. Skip to final summary.
 
 No post-pass approval prompt: when all seven completion gates pass, do not ask whether to finish, commit, merge, or deliver. Proceed directly to final delivery.
 
@@ -75,4 +116,6 @@ Auto-mode complete. Decision trail at .claude/auto/<task-name>/
 
 ## Red Flags
 
-Never skip/reorder gates; proceed with failing gate; ask outside stop conditions; ask after gates green; treat `git_clean` failure as a question; rerun destructive resume steps; claim generated image files before they exist; skip audit trail.
+**YOU ARE THE ORCHESTRATOR, NOT THE IMPLEMENTER.** If you find yourself writing code directly (via Edit/Write tools) for more than a single trivial file, you are doing it wrong. Stop immediately and invoke `Workflow({ scriptPath: ".../full-auto-pipeline.workflow.js", args: {...} })` instead.
+
+Never skip/reorder gates; proceed with failing gate; ask outside stop conditions; ask after gates green; treat `git_clean` failure as a question; rerun destructive resume steps; claim generated image files before they exist; skip audit trail; implement multi-file tasks directly instead of using Workflow.

@@ -182,17 +182,24 @@ def generate_resume_prompt(state_file: str) -> str:
         f"{a.get('task_id', '?')}({a.get('role', '?')})" for a in active_agents
     ) or "none"
 
-    # Failing gates (supports both dict and list format)
+    # Failing gates (supports list-of-dict, list-of-str, and dict formats)
     gate_states = data.get("gate_states", {})
     if isinstance(gate_states, list):
+        failing_parts = []
+        for g in gate_states:
+            if isinstance(g, dict):
+                if not g.get("passed", False):
+                    failing_parts.append(g.get("gate", g.get("name", "?")))
+            elif isinstance(g, str):
+                failing_parts.append(g)  # plain string gate name = not passed
+        failing = ", ".join(failing_parts) or "none"
+    elif isinstance(gate_states, dict):
         failing = ", ".join(
-            g.get("gate", g.get("name", "?")) for g in gate_states
-            if isinstance(g, dict) and not g.get("passed", False)
+            k for k, v in gate_states.items()
+            if isinstance(v, dict) and not v.get("passed", False)
         ) or "none"
     else:
-        failing = ", ".join(
-            k for k, v in gate_states.items() if not v.get("passed", False)
-        ) or "none"
+        failing = "none"
 
     # Resume enrichment from flow-state.py
     resume_section = ""
