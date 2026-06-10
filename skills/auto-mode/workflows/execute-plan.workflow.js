@@ -92,6 +92,7 @@ function normalizeResumeState(saved) {
     diff_files: asArray(get('diff_files')),
     diff_verified: get('diff_verified') === true,
     diff_truncated: get('diff_truncated') === true,
+    evidence_dir: get('evidence_dir') || '',
     iterations: get('iterations') || 0,
     tasks_stale_after_final_fix: asArray(get('tasks_stale_after_final_fix')),
   }
@@ -2144,11 +2145,13 @@ const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha ||
   task_attempt_base_dirty: !!e.task_attempt_base_dirty,
   task_attempt_base_capture_failed: e.task_attempt_base_capture_failed || '',
 }))
-const finalReviewRun = finalReview !== null
-const finalReviewBlocked = !!(finalReview && finalReview.passed === false)
-const finalReviewEvidence = finalReview && finalReview.branch_diff_evidence ? [finalReview.branch_diff_evidence] : (finalBranchDiffEvidence ? [finalBranchDiffEvidence] : [])
-const finalReviewBlockingIssues = finalReviewBlocked ? (finalReview.issues || []).filter(issue => isIssueBlocking('final_review', 'medium', issue.severity, issue.blocking)) : []
-const unresolvedFinalReviewIssues = finalReviewBlocked ? unresolvedIssueIds(finalReview) : []
+const canonicalFinalReview = finalReview || resumeState.final_review
+const finalReviewRun = finalReview !== null || resumeState.final_review_run === true
+const finalReviewBlocked = canonicalFinalReview ? !!(canonicalFinalReview.passed === false || resumeState.final_review_blocked) : false
+const finalReviewEvidence = finalReview && finalReview.branch_diff_evidence ? [finalReview.branch_diff_evidence] : (finalBranchDiffEvidence ? [finalBranchDiffEvidence] : resumeState.final_review_evidence)
+const finalReviewFromResume = finalReview === null && finalBranchDiffEvidence === null
+const finalReviewBlockingIssues = finalReviewBlocked ? ((canonicalFinalReview && canonicalFinalReview.issues || []).filter(issue => isIssueBlocking('final_review', 'medium', issue.severity, issue.blocking)).concat(finalReviewFromResume ? (resumeState.final_review_blocking_issues || []) : [])) : []
+const unresolvedFinalReviewIssues = finalReviewBlocked ? [...new Set([...(canonicalFinalReview ? unresolvedIssueIds(canonicalFinalReview) : []), ...(finalReviewFromResume ? (resumeState.unresolved_final_review_issues || []) : [])])] : []
 const finalDiffEvidence = finalReviewEvidence[0] || {}
 const iterations = {
   final_fix_attempts: finalFixAttempts,
@@ -2169,19 +2172,20 @@ const state_patch = {
   },
   total_tasks: totalTasks,
   final_review_run: finalReviewRun,
-  final_review: finalReview,
+  final_review: canonicalFinalReview,
   final_review_evidence: finalReviewEvidence,
   final_review_blocking_issues: finalReviewBlockingIssues,
   unresolved_final_review_issues: unresolvedFinalReviewIssues,
   final_review_blocked: finalReviewBlocked,
-  base_ref: finalDiffEvidence.base_ref || workflowArgs.base_ref || '',
-  base_sha: finalDiffEvidence.base_sha || workflowArgs.base_sha || '',
-  head_sha: finalDiffEvidence.head_sha || '',
-  dirty: !!finalDiffEvidence.dirty,
-  diff_command: finalDiffEvidence.diff_command || '',
-  diff_files: finalDiffEvidence.diff_files || [],
-  diff_verified: finalDiffEvidence.diff_verified === true,
-  diff_truncated: finalDiffEvidence.diff_truncated === true,
+  base_ref: finalDiffEvidence.base_ref || workflowArgs.base_ref || resumeState.base_ref || '',
+  base_sha: finalDiffEvidence.base_sha || workflowArgs.base_sha || resumeState.base_sha || '',
+  head_sha: finalDiffEvidence.head_sha || resumeState.head_sha || '',
+  dirty: finalDiffEvidence.dirty !== undefined ? !!finalDiffEvidence.dirty : resumeState.dirty === true,
+  diff_command: finalDiffEvidence.diff_command || resumeState.diff_command || '',
+  diff_files: finalDiffEvidence.diff_files || resumeState.diff_files || [],
+  diff_verified: finalDiffEvidence.diff_verified === true || resumeState.diff_verified === true,
+  diff_truncated: finalDiffEvidence.diff_truncated === true || resumeState.diff_truncated === true,
+  evidence_dir: workflowArgs.evidence_dir || resumeState.evidence_dir || '',
   iterations,
   tasks_stale_after_final_fix: tasksStaleAfterFinalFixList,
   final_review_unresolved_issue_ids: unresolvedFinalReviewIssues,
@@ -2198,7 +2202,7 @@ return {
   failed_review: partitions.failed_review,
   needs_escalation: partitions.needs_escalation,
   final_review_run: finalReviewRun,
-  final_review: finalReview,
+  final_review: canonicalFinalReview,
   state_patch,
 }
 

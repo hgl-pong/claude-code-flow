@@ -556,7 +556,7 @@ class TestExecutePlanConstants:
         """Contract: final review is guarded for Gate 6 consumption."""
         for text in [
             "Final Review only when ALL tasks passed", "partitions.completed.length === totalTasks",
-            "allOtherPartitionsEmpty", "final_review: finalReview", "opts('final-review'",
+            "allOtherPartitionsEmpty", "final_review: canonicalFinalReview", "opts('final-review'",
         ]:
             assert text in self.script
 
@@ -642,6 +642,56 @@ class TestExecutePlanConstants:
         assert result["unresolved_final_review_issues"] == []
         assert "resume_state_patch_preferred: final_review_run" in result["warnings"]
         assert "resume_state_patch_preferred: diff_verified" in result["warnings"]
+
+    def test_resume_state_patch_preserves_final_review_and_evidence_dir(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [],
+              tasks: {},
+              worktree: 'C:/tmp/worktree',
+              evidence_dir: 'C:/tmp/new-evidence',
+              resume_from: {
+                result: {
+                  final_review_run: false,
+                  final_review: { passed: true, issues: [], summary: 'top stale' },
+                  final_review_evidence: [{ top: true }],
+                  state_patch: {
+                    final_review_run: true,
+                    final_review: { passed: false, issues: [{ id: 'resume-1', severity: 'High', file: 'src/a.js', description: 'resume block' }], summary: 'patch canonical', unresolved_issue_ids: ['resume-1'] },
+                    final_review_evidence: [{ base_ref: 'origin/main', base_sha: '1111111', head_sha: '2222222', dirty: true, diff_command: 'git diff saved', diff_files: ['src/a.js'], diff_verified: true, diff_truncated: true }],
+                    final_review_blocking_issues: [{ id: 'resume-1', severity: 'High', file: 'src/a.js', description: 'resume block' }],
+                    unresolved_final_review_issues: ['resume-1'],
+                    evidence_dir: 'C:/tmp/saved-evidence'
+                  }
+                }
+              }
+            }
+        ''')
+        assert result["final_review_run"] is True
+        assert result["final_review"]["summary"] == "patch canonical"
+        assert result["state_patch"]["final_review"] == result["final_review"]
+        assert result["state_patch"]["final_review_evidence"][0]["diff_command"] == "git diff saved"
+        assert result["state_patch"]["final_review_blocked"] is True
+        assert result["state_patch"]["unresolved_final_review_issues"] == ["resume-1"]
+        assert result["state_patch"]["base_ref"] == "origin/main"
+        assert result["state_patch"]["base_sha"] == "1111111"
+        assert result["state_patch"]["head_sha"] == "2222222"
+        assert result["state_patch"]["dirty"] is True
+        assert result["state_patch"]["diff_files"] == ["src/a.js"]
+        assert result["state_patch"]["diff_verified"] is True
+        assert result["state_patch"]["diff_truncated"] is True
+        assert result["state_patch"]["evidence_dir"] == "C:/tmp/new-evidence"
+
+    def test_resume_state_patch_preserves_saved_evidence_dir_without_arg(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [],
+              tasks: {},
+              worktree: 'C:/tmp/worktree',
+              resume_from: { state_patch: { evidence_dir: 'C:/tmp/saved-evidence' } }
+            }
+        ''')
+        assert result["state_patch"]["evidence_dir"] == "C:/tmp/saved-evidence"
 
     def test_final_review_severity_blocks_even_with_false_blocking_flag(self):
         result = self._eval_workflow(r'''
