@@ -281,6 +281,9 @@ function recordAttemptDiffEvidence(args, task, ctx, label) {
     worktree: attempt.worktree || {},
     anchor_error: attempt.anchor_error || null,
     max_diff_chars: attempt.max_diff_chars,
+    command_results: attempt.command_results || [],
+    evidence_paths: attempt.evidence_paths || [],
+    path_exists: attempt.path_exists || {},
   } : {
     stage: label,
     base_sha: baseSha,
@@ -290,7 +293,13 @@ function recordAttemptDiffEvidence(args, task, ctx, label) {
     worktree: { ok: false, error: 'prompt_only_no_controller_diff' },
   }
   const evidence = collectDiffEvidence(anchor)
-  const entry = { label, ...evidence }
+  const entry = {
+    label,
+    ...evidence,
+    command_results: anchor.command_results || [],
+    evidence_paths: anchor.evidence_paths || [],
+    path_exists: anchor.path_exists || {},
+  }
   if (ctx) ctx.attempt_diff_evidence = [...(ctx.attempt_diff_evidence || []), entry]
   if (task && task !== ctx) task.attempt_diff_evidence = [...(task.attempt_diff_evidence || []), entry]
   return entry
@@ -429,7 +438,7 @@ const IMPLEMENT_RESULT = {
       description: 'Agent-run verification command results used when controller evidence is prompt-only',
     },
     verification_commands: { type: 'array', items: { type: 'string' }, description: 'Commands to verify the implementation' },
-    evidence_paths: { type: 'array', items: { type: 'string' }, description: 'Paths to evidence artifacts' },
+    evidence_paths: { type: 'array', items: { type: 'string' }, description: 'Paths to evidence artifacts checked by controller when available' },
   },
   required: ['status', 'summary', 'files_modified'],
   allOf: [{
@@ -799,8 +808,11 @@ function controllerEvidenceFromAttempts(ctx) {
   const attempts = (ctx && ctx.attempt_diff_evidence) || []
   const verified = attempts.filter(e => e && e.diff_verified)
   return {
-    prompt_only: verified.length === 0,
+    prompt_only: verified.length === 0 && attempts.every(e => !(e.command_results || []).length && !(e.evidence_paths || []).length),
     diff_evidence: attempts,
+    command_results: attempts.flatMap(e => e.command_results || []),
+    evidence_paths: attempts.flatMap(e => e.evidence_paths || []),
+    path_exists: attempts.reduce((acc, e) => ({ ...acc, ...((e && e.path_exists) || {}) }), {}),
   }
 }
 

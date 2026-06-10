@@ -103,7 +103,7 @@ Task tool (general-purpose):
 
     ## Report Format
 
-    When done, report structured evidence. For DONE/DONE_WITH_CONCERNS, every evidence field below is required except commit_sha and evidence_paths:
+    When done, report structured evidence. For DONE/DONE_WITH_CONCERNS, every evidence field below is required except commit_sha and evidence_paths (controller checks evidence_paths when available):
     - **status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
     - **summary:** what you implemented (or attempted, if blocked)
     - **files_modified:** every file created/changed

@@ -753,11 +753,14 @@ WORKFLOW_SCRIPT
                 attempts: { 'implement:task-6': {
                   head_sha: '2222222', command: 'git diff',
                   committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: '+change\n' },
-                  worktree: { ok: true, name_status: '', diff: '' }
+                  worktree: { ok: true, name_status: '', diff: '' },
+                  command_results: [{ command: 'pytest', exit_code: 0, output: 'ok' }],
+                  evidence_paths: ['C:/tmp/evidence.png'],
+                  path_exists: { 'C:/tmp/evidence.png': true }
                 } }
               },
               __agent_results: {
-                'implement:task-6': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '', head_sha: '', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: '' },
+                'implement:task-6': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'agent pytest', exit_code: 0 }], base_sha: '', head_sha: '', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: '' },
                 'spec-review:task-6': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'code-review:task-6': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'final-review': { passed: true, issues: [], summary: 'ok' }
@@ -768,8 +771,14 @@ WORKFLOW_SCRIPT
         assert evidence["base_sha"] == "1111111"
         assert evidence["head_sha"] == "2222222"
         assert evidence["diff_summary"] == "src/a.js"
+        assert evidence["executed_commands"][0]["command"] == "pytest"
+        assert evidence["evidence_paths"] == ["C:/tmp/evidence.png"]
         assert evidence["controller_diff_evidence"][0]["diff_verified"] is True
-        assert result["passed"][0]["implementation_evidence"]["diff_evidence"][0]["label"] == "implement:task-6"
+        controller = result["passed"][0]["implementation_evidence"]
+        assert controller["diff_evidence"][0]["label"] == "implement:task-6"
+        assert controller["command_results"][0]["command"] == "pytest"
+        assert controller["evidence_paths"] == ["C:/tmp/evidence.png"]
+        assert controller["path_exists"] == {"C:/tmp/evidence.png": True}
 
     def test_evidence_gate_uses_clean_pass_status(self):
         assert "function implementationEvidenceCleanPass" in self.script
