@@ -415,6 +415,11 @@ class TestExecutePlanConstants:
         assert "missing_runtime_command_evidence" in result[1]["reasons"]
         assert "missing_concerns" in result[2]["reasons"]
 
+    def test_classification_wires_implementation_evidence_validation(self):
+        assert "validateImplementationEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review)" in self.script
+        assert "evidence_validation: implementationEvidence" in self.script
+        assert "partition: 'blocked'" in self.script
+
 
 # ── Cross-script consistency ──────────────────────────────────────────
 

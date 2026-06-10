@@ -584,7 +584,7 @@ function evidencePathExists(path, pathExists) {
 }
 
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
-  const evidence = extractEvidence(task, impl, controllerEvidence, null)
+  const evidence = extractEvidence(task, impl, controllerEvidence, reviewOverride)
   const reasons = []
   const commands = evidence.executed_commands || []
   const required = (task && task.required_commands) || []
@@ -675,6 +675,22 @@ function classifyTaskResult(taskId, task, ctx) {
     }
   }
 
+  const implementationEvidence = validateImplementationEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review)
+
+  if (!implementationEvidence.passed) {
+    return {
+      partition: 'blocked',
+      entry: {
+        id: taskId,
+        reason: implementationEvidence.reasons.join('; '),
+        classification: 'runtime_failure',
+        impl: ctx.impl,
+        evidence: implementationEvidence.evidence,
+        evidence_validation: implementationEvidence,
+      },
+    }
+  }
+
   // 4. Code review cap exhausted with blocking issues
   if (ctx.spec_passed && !ctx.code_passed && ctx._code_review_exhausted) {
     return {
@@ -714,7 +730,8 @@ function classifyTaskResult(taskId, task, ctx) {
       code_passed: true,
       spec_review: ctx.spec_review,
       code_review: ctx.code_review,
-      evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+      evidence: implementationEvidence.evidence,
+      evidence_validation: implementationEvidence,
       files: (ctx.impl && ctx.impl.files_modified) || [],
     },
   }
