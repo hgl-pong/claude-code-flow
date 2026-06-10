@@ -1163,6 +1163,25 @@ WORKFLOW_SCRIPT
         assert "missing_targeted_verification: prior-id" in result["reasons"]
         assert "verification_failure: prior-id" in result["reasons"]
 
+    def test_fix_result_targeted_verification_accepts_issue_id_aliases(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              validateFixResultContract(
+                { status: 'DONE', fixed_issue_ids: ['issue-a'], targeted_verification: [{ command: 'pytest', issue_id: 'issue-a' }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                [{ id: 'issue-a' }]
+              ),
+              validateFixResultContract(
+                { status: 'DONE', fixed_issue_ids: ['issue-b'], targeted_verification: [{ command: 'pytest', id: 'issue-b' }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                [{ id: 'issue-b' }]
+              ),
+              validateFixResultContract(
+                { status: 'DONE', fixed_issue_ids: ['issue-c'], targeted_verification: [{ command: 'pytest', prior_issue_id: 'issue-c' }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                [{ id: 'issue-c' }]
+              )
+            ]
+        ''')
+        assert [item["passed"] for item in result] == [True, True, True]
+
     def test_classification_wires_implementation_evidence_validation(self):
         assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script
         assert "evidence_validation: implementationEvidence" in self.script

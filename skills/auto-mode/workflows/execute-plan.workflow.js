@@ -1314,6 +1314,16 @@ function fixIssueFiles(issues) {
   return collectIssueFiles(issues || [])
 }
 
+function collectIssueIdAliases(item) {
+  const ids = []
+  if (!item) return ids
+  if (Array.isArray(item.issue_ids)) ids.push(...item.issue_ids)
+  for (const field of ['issue_id', 'id', 'prior_issue_id']) {
+    if (item[field]) ids.push(item[field])
+  }
+  return ids
+}
+
 function validateFixResultContract(updated, priorIssues) {
   const reasons = []
   if (!updated) reasons.push('missing_fix_result')
@@ -1323,7 +1333,7 @@ function validateFixResultContract(updated, priorIssues) {
     }
     const priorIds = (priorIssues || []).map(issue => issue && issue.id).filter(Boolean)
     const fixedIds = new Set(Array.isArray(updated.fixed_issue_ids) ? updated.fixed_issue_ids : [])
-    const targetedIds = new Set((Array.isArray(updated.targeted_verification) ? updated.targeted_verification : []).flatMap(item => (item && item.issue_ids) || []))
+    const targetedIds = new Set((Array.isArray(updated.targeted_verification) ? updated.targeted_verification : []).flatMap(collectIssueIdAliases))
     for (const id of priorIds) {
       if (!fixedIds.has(id)) reasons.push('missing_fixed_issue_id: ' + id)
       if (!targetedIds.has(id)) reasons.push('missing_targeted_verification: ' + id)
