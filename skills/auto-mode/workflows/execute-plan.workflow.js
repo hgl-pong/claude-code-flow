@@ -105,17 +105,6 @@ function resolveDiffAnchors(args, task, impl, stage) {
     gitAnchorError(args, task, 'missing_base_ref') ||
     gitAnchorError(args, task, 'shallow_or_missing_base')
 
-  const promptBase = impl && impl.base_sha
-  if (promptBase) {
-    if (!isValidSha(promptBase)) return { ...metadata, source: 'prompt_only_impl_base_sha', anchor_error: anchorError('invalid_sha', 'impl.base_sha') }
-    return {
-      ...metadata,
-      source: 'prompt_only_impl_base_sha',
-      base_sha: promptBase,
-      anchor_error: repoError || anchorError('prompt_only_merge_base_unverified', 'merge-base requires command primitive'),
-    }
-  }
-
   if (!repoError) {
     return {
       ...metadata,
@@ -124,6 +113,12 @@ function resolveDiffAnchors(args, task, impl, stage) {
       base_ref_source: baseRefSource,
       anchor_error: anchorError('prompt_only_merge_base_unverified', 'merge-base requires command primitive'),
     }
+  }
+
+  const promptBase = impl && impl.base_sha
+  if (promptBase) {
+    if (!isValidSha(promptBase)) return { ...metadata, source: 'prompt_only_impl_base_sha', anchor_error: anchorError('invalid_sha', 'impl.base_sha') }
+    return { ...metadata, source: 'prompt_only_impl_base_sha', base_sha: promptBase, anchor_error: repoError }
   }
 
   return { ...metadata, source: 'unverified', base_ref: baseRef, base_ref_source: baseRefSource, anchor_error: repoError }

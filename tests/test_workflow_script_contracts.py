@@ -190,6 +190,7 @@ class TestExecutePlanConstants:
             "args && args.base_sha",
             "task && (task.base_sha || task.captured_base_sha || task.git_base_sha)",
             "const baseRef = (args && args.base_ref) || defaultRef || 'main'",
+            "source: 'merge_base_ref'",
             "impl && impl.base_sha",
             "source: 'unverified'",
         ]
@@ -201,7 +202,7 @@ class TestExecutePlanConstants:
             [
               resolveDiffAnchors({ base_sha: '1111111' }, { base_sha: '2222222' }, { base_sha: '3333333' }, 'spec_review'),
               resolveDiffAnchors({}, { captured_base_sha: '2222222' }, { base_sha: '3333333' }, 'spec_review'),
-              resolveDiffAnchors({ base_ref: 'develop' }, {}, { base_sha: '3333333' }, 'spec_review'),
+              resolveDiffAnchors({ git: { no_repo: true } }, {}, { base_sha: '3333333' }, 'spec_review'),
               resolveDiffAnchors({ base_ref: 'develop' }, {}, {}, 'spec_review')
             ]
         ''')
