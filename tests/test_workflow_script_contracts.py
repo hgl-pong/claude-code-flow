@@ -603,6 +603,45 @@ class TestExecutePlanConstants:
         assert result["completed"][0]["id"] == "task-final"
         assert result["final_review"]["branch_diff_evidence"]["diff_verified"] is True
 
+    def test_final_review_severity_blocks_even_with_false_blocking_flag(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-final-flag']],
+              tasks: { 'task-final-flag': { id: 'task-final-flag', description: 'Do final block flag task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '2222222' },
+              __agent_results: {
+                'implement:task-final-flag': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-final-flag': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-final-flag': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [{ severity: 'High', blocking: false, file: 'src/a.js', description: 'cross-task break' }], summary: 'blocked despite false flag' }
+              }
+            }
+        ''')
+        assert result["final_review"]["passed"] is False
+        assert result["state_patch"]["final_review_blocked"] is True
+        assert result["final_review"]["unresolved_issue_ids"] == [result["final_review"]["issues"][0]["id"]]
+
+    def test_final_review_branch_diff_preserves_resolved_anchor_error(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-final-anchor']],
+              tasks: { 'task-final-anchor': { id: 'task-final-anchor', description: 'Do final anchor task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '2222222', missing_base_ref: 'origin/main unavailable' },
+              __agent_results: {
+                'implement:task-final-anchor': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-final-anchor': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-final-anchor': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
+        ''')
+        assert result["final_review"]["branch_diff_evidence"]["command_errors"] == [
+            {"scope": "anchor", "error": {"code": "missing_base_ref", "detail": "origin/main unavailable"}}
+        ]
+        assert result["final_review"]["branch_diff_evidence"]["diff_verified"] is False
+
     def _eval_evidence_helper(self, expression):
         helper_prefix = self.script.split("// ── Result adapter", 1)[0]
         helper_prefix = re.sub(r"export const meta", "const meta", helper_prefix)

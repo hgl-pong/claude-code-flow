@@ -325,7 +325,7 @@ const REVIEW_THRESHOLD = {
 
 function isIssueBlocking(reviewStage, taskRisk, severity, explicitFlag) {
   if (explicitFlag === true) return true
-  if (explicitFlag === false) return false
+  if (explicitFlag === false && reviewStage !== 'final_review') return false
   const key = reviewStage === 'final_review' ? 'any' : taskRisk
   const table = REVIEW_THRESHOLD[reviewStage]
   if (!table || !table[key]) return severity === 'Critical' || severity === 'High'
@@ -731,15 +731,16 @@ function diffEvidencePrompt(task, impl, stage) {
 function collectFinalBranchDiffEvidence(args, finalTask, finalImpl) {
   const git = (args && args.git) || {}
   const final = git.final || git.branch_diff || {}
+  const resolved = resolveDiffAnchors(workflowArgs, finalTask, finalImpl, 'final')
   const anchor = {
-    ...resolveDiffAnchors(workflowArgs, finalTask, finalImpl, 'final'),
+    ...resolved,
     stage: 'final',
     head_sha: final.head_sha || git.head_sha || '',
     dirty: final.dirty !== undefined ? final.dirty : !!git.dirty,
     command: final.command || 'git diff --name-status BASE...HEAD && git diff BASE...HEAD',
     committed: final.committed || {},
     worktree: final.worktree || {},
-    anchor_error: final.anchor_error || null,
+    anchor_error: final.anchor_error || (final.command ? null : resolved.anchor_error) || null,
     max_diff_chars: final.max_diff_chars,
   }
   return collectDiffEvidence(anchor)
