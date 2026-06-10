@@ -1019,6 +1019,29 @@ function collectIssueFiles(issues) {
   return (issues || []).map(issue => normalizePathForScope(issue && (issue.file || issue.path))).filter(Boolean)
 }
 
+function parseFixScopeDiffFiles(diffFiles) {
+  const changed = []
+  const deleted = []
+  const renamed = []
+  for (const entry of diffFiles || []) {
+    const line = typeof entry === 'string' ? entry : ''
+    const parts = line.split('\t')
+    const status = parts[0] || ''
+    if (parts.length > 1 && /^[A-Z-]/.test(status)) {
+      if (status[0] === 'D') deleted.push(parts[1] || '')
+      if (status[0] === 'R') renamed.push({ from: parts[1] || '', to: parts[2] || '', status })
+      for (const file of nameStatusFiles(line)) changed.push(file)
+    } else {
+      changed.push(line)
+    }
+  }
+  return {
+    changed: changed.map(normalizePathForScope).filter(Boolean),
+    deleted: deleted.map(normalizePathForScope).filter(Boolean),
+    renamed,
+  }
+}
+
 function validateFixScope(diffFiles, allowedFiles, fixResult) {
   const result = fixResult || {}
   const task = result.task || {}
@@ -1037,10 +1060,17 @@ function validateFixScope(diffFiles, allowedFiles, fixResult) {
     for (const imported of imports[file] || imports[normalizePathForScope(file)] || []) addAllowedPath(allowed, imported)
   }
 
-  const changed = (diffFiles || []).map(normalizePathForScope).filter(Boolean)
+  const parsed = parseFixScopeDiffFiles(diffFiles || [])
+  const changed = parsed.changed
   const formattingOnly = new Set((result.formatting_only_files || result.formattingOnlyFiles || []).map(normalizePathForScope))
-  const deleted = (result.deleted_files || result.deletedFiles || []).map(normalizePathForScope)
-  const renamed = result.renamed_files || result.renamedFiles || []
+  const deleted = [
+    ...parsed.deleted,
+    ...(result.deleted_files || result.deletedFiles || []).map(normalizePathForScope),
+  ]
+  const renamed = [
+    ...parsed.renamed,
+    ...(result.renamed_files || result.renamedFiles || []),
+  ]
   const reasons = []
 
   for (const file of changed) {

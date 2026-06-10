@@ -867,8 +867,8 @@ WORKFLOW_SCRIPT
               const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }, { id: 'issue-2', file: 'package.json' }];
               const unrelated = validateFixScope(['src/other/b.js'], issues, { task });
               const config = validateFixScope(['package.json'], issues, { task });
-              const deleted = validateFixScope(['src/feature/a.js'], issues, { task, deleted_files: ['src/feature/a.js'] });
-              const renamed = validateFixScope(['src/feature/a.js', 'src/feature/b.js'], issues, { task, renamed_files: [{ from: 'src/feature/a.js', to: 'src/feature/b.js' }] });
+              const deleted = validateFixScope(['D\tsrc/feature/a.js'], issues, { task });
+              const renamed = validateFixScope(['R100\tsrc/feature/a.js\tsrc/feature/b.js'], issues, { task });
               return [unrelated, config, deleted, renamed];
             })()
         ''')
