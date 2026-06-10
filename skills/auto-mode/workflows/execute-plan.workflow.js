@@ -19,8 +19,9 @@ export const meta = {
   ],
 }
 
-const { groups, tasks, worktree, model_tasks } = args
-const result_replay = args.result_replay || []
+const workflowArgs = typeof args === 'undefined' ? {} : args
+const { groups, tasks, worktree, model_tasks } = workflowArgs
+const result_replay = workflowArgs.result_replay || []
 const MAX_RETRIES = 5
 const COMMAND_EXECUTION_PRIMITIVE = 'workflow_agent_only'
 const ENFORCEMENT_MODE = 'prompt_only'
@@ -51,6 +52,78 @@ const ESCALATION_ATTEMPTS = {
 
 const REVIEW_SEVERITIES = ['Critical', 'High', 'Important', 'Minor', 'Info']
 const TASK_RISKS = ['low', 'medium', 'high', 'critical']
+
+// ── Diff anchor resolution (helper-only; no command primitive) ───────────
+
+function isValidSha(value) {
+  return typeof value === 'string' && /^[0-9a-f]{7,40}$/i.test(value)
+}
+
+function anchorError(code, detail) {
+  return { code, detail }
+}
+
+function gitAnchorError(args, task, code) {
+  const git = (args && args.git) || (task && task.git) || {}
+  if (!git) return null
+  if (git[code]) return anchorError(code, git[code] === true ? code : git[code])
+  return null
+}
+
+function resolveDiffAnchors(args, task, impl, stage) {
+  const metadata = {
+    stage,
+    enforcement_mode: ENFORCEMENT_MODE,
+    command_primitive: COMMAND_EXECUTION_PRIMITIVE,
+    verified: false,
+    base_sha: '',
+    base_ref: '',
+    anchor_error: null,
+  }
+
+  const explicit = args && args.base_sha
+  if (explicit) {
+    if (!isValidSha(explicit)) return { ...metadata, source: 'explicit_args_base_sha', anchor_error: anchorError('invalid_sha', 'args.base_sha') }
+    return { ...metadata, source: 'explicit_args_base_sha', base_sha: explicit }
+  }
+
+  const taskBase = task && (task.base_sha || task.captured_base_sha || task.git_base_sha)
+  if (taskBase) {
+    if (!isValidSha(taskBase)) return { ...metadata, source: 'task_captured_base_sha', anchor_error: anchorError('invalid_sha', 'task base_sha') }
+    return { ...metadata, source: 'task_captured_base_sha', base_sha: taskBase }
+  }
+
+  const baseRef = (args && args.base_ref) || 'main'
+  const repoError =
+    gitAnchorError(args, task, 'no_repo') ||
+    gitAnchorError(args, task, 'merge_conflict') ||
+    gitAnchorError(args, task, 'detached_head') ||
+    gitAnchorError(args, task, 'unborn_or_no_commits') ||
+    gitAnchorError(args, task, 'missing_base_ref') ||
+    gitAnchorError(args, task, 'shallow_or_missing_base')
+
+  if (!repoError) {
+    return {
+      ...metadata,
+      source: 'merge_base_ref',
+      base_ref: baseRef,
+      anchor_error: anchorError('prompt_only_merge_base_unverified', 'merge-base requires command primitive'),
+    }
+  }
+
+  const promptBase = impl && impl.base_sha
+  if (promptBase) {
+    if (!isValidSha(promptBase)) return { ...metadata, source: 'prompt_only_impl_base_sha', anchor_error: anchorError('invalid_sha', 'impl.base_sha') }
+    return { ...metadata, source: 'prompt_only_impl_base_sha', base_sha: promptBase, anchor_error: repoError }
+  }
+
+  return { ...metadata, source: 'unverified', base_ref: baseRef, anchor_error: repoError }
+}
+
+function diffAnchorPrompt(task, impl, stage) {
+  const anchor = resolveDiffAnchors(workflowArgs, task, impl, stage)
+  return '\n\n## Diff Anchor Metadata\n\n' + JSON.stringify(anchor, null, 2)
+}
 
 const REVIEW_THRESHOLD = {
   spec_review: {
@@ -449,15 +522,82 @@ function hasBlockingIssues(review, reviewStage, taskRisk) {
 
 // ── Extract evidence from impl result ─────────────────────────────────
 
+function normalizeRuntimeEvidenceRequirement(task) {
+  const value = task && task.runtime_evidence_required
+  if (value === true) return 'command'
+  if (value === 'required') return 'artifact'
+  if (value === 'artifact' || value === 'command') return value
+  return 'none'
+}
+
+function plannedVerification(task) {
+  return [
+    ...((task && task.tests) || []),
+    ...((task && task.verification) || []),
+  ]
+}
+
 function extractEvidence(task, impl, specReview, codeReview) {
+  const reviews = [specReview, codeReview].filter(Boolean)
   return {
-    commit_sha: (impl && impl.commit_sha) || '',
+    commit_sha: (impl && (impl.commit_sha || impl.dirty_commit_sha)) || '',
     test_results: (impl && impl.test_results) || '',
-    verification_commands: (impl && impl.verification_commands) || (task.verification) || [],
-    evidence_paths: (impl && impl.evidence_paths) || [],
+    verification_commands: (impl && impl.verification_commands) || (task && task.verification) || [],
+    planned_verification: plannedVerification(task),
+    executed_commands: reviews.flatMap(r => r.command_results || []),
+    evidence_paths: reviews.flatMap(r => r.evidence_paths || []).concat((impl && impl.evidence_paths) || []),
     concerns: (impl && impl.concerns) || [],
     files_modified: (impl && impl.files_modified) || [],
+    runtime_evidence_required: normalizeRuntimeEvidenceRequirement(task),
   }
+}
+
+function commandMatches(required, actual, substitutes) {
+  const allowed = [required, ...((substitutes && substitutes[required]) || [])]
+  return allowed.some(prefix => actual === prefix || actual.indexOf(prefix + ' ') === 0)
+}
+
+function evidencePathExists(path, pathExists) {
+  if (pathExists && Object.prototype.hasOwnProperty.call(pathExists, path)) return pathExists[path]
+  return true
+}
+
+function validateImplementationEvidence(task, impl, reviewEvidence, spec) {
+  const evidence = extractEvidence(task, impl, reviewEvidence, null)
+  const reasons = []
+  const commands = (reviewEvidence && reviewEvidence.command_results) || []
+  const required = (task && task.required_commands) || []
+  const substitutes = (task && task.command_substitutes) || {}
+  const expectedNonzero = (task && task.expected_nonzero_commands) || []
+
+  for (const command of required) {
+    if (!commands.some(result => commandMatches(command, result.command || '', substitutes) && result.exit_code === 0)) {
+      reasons.push('missing_required_command: ' + command)
+    }
+  }
+
+  for (const result of commands) {
+    const command = result.command || ''
+    const expected = expectedNonzero.some(prefix => commandMatches(prefix, command, {}))
+    if (result.exit_code !== 0 && !expected) reasons.push('command_failed: ' + command)
+  }
+
+  if (evidence.runtime_evidence_required === 'artifact' && evidence.evidence_paths.length === 0) {
+    reasons.push('missing_evidence_artifact')
+  }
+  for (const path of evidence.evidence_paths) {
+    if (!evidencePathExists(path, reviewEvidence && reviewEvidence.path_exists)) reasons.push('evidence_path_missing: ' + path)
+  }
+
+  const refs = ((spec && spec.acceptance_refs) || (task && task.acceptance_refs) || [])
+  const concernText = ((impl && impl.concerns) || []).join('\n')
+  if (impl && impl.status === 'DONE_WITH_CONCERNS') {
+    for (const ref of refs) {
+      if (concernText.indexOf(ref) === -1) reasons.push('missing_acceptance_concern: ' + ref)
+    }
+  }
+
+  return { passed: reasons.length === 0, status: reasons.length === 0 ? 'passed' : 'blocked', reasons, evidence }
 }
 
 // ── Result adapter: classify task into exactly one partition ──────────

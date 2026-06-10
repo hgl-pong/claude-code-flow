@@ -6,6 +6,7 @@ validation functions defined in the workflow scripts match the spec.
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -170,6 +171,61 @@ class TestExecutePlanConstants:
         assert "workflow_agent_only" in self.script
         assert "const ENFORCEMENT_MODE = 'prompt_only'" in self.script
 
+    def test_diff_anchor_helper_inventory(self):
+        """Contract: diff anchor resolution is helper-only with prompt fallback metadata."""
+        assert "function resolveDiffAnchors(args, task, impl, stage)" in self.script
+        for text in [
+            "explicit_args_base_sha", "task_captured_base_sha", "merge_base_ref",
+            "prompt_only_impl_base_sha", "unverified", "anchor_error",
+            "no_repo", "invalid_sha", "missing_base_ref", "detached_head",
+            "unborn_or_no_commits", "shallow_or_missing_base", "merge_conflict",
+            "enforcement_mode: ENFORCEMENT_MODE",
+        ]:
+            assert text in self.script
+
+    def test_diff_anchor_precedence_order(self):
+        """Contract: explicit args > task base > merge-base > prompt-only impl > unverified."""
+        ordered = [
+            "args && args.base_sha",
+            "task && (task.base_sha || task.captured_base_sha || task.git_base_sha)",
+            "args && args.base_ref) || 'main'",
+            "impl && impl.base_sha",
+            "source: 'unverified'",
+        ]
+        positions = [self.script.index(text) for text in ordered]
+        assert positions == sorted(positions)
+
+    def test_diff_anchor_resolution_precedence(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              resolveDiffAnchors({ base_sha: '1111111' }, { base_sha: '2222222' }, { base_sha: '3333333' }, 'spec_review'),
+              resolveDiffAnchors({}, { captured_base_sha: '2222222' }, { base_sha: '3333333' }, 'spec_review'),
+              resolveDiffAnchors({ base_ref: 'develop' }, {}, { base_sha: '3333333' }, 'spec_review')
+            ]
+        ''')
+        assert result[0]["source"] == "explicit_args_base_sha"
+        assert result[0]["base_sha"] == "1111111"
+        assert result[1]["source"] == "task_captured_base_sha"
+        assert result[1]["base_sha"] == "2222222"
+        assert result[2]["source"] == "merge_base_ref"
+        assert result[2]["base_ref"] == "develop"
+        assert result[2]["enforcement_mode"] == "prompt_only"
+
+    def test_diff_anchor_resolution_error_fallback_metadata(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              resolveDiffAnchors({ base_sha: 'not-a-sha' }, {}, {}, 'code_review'),
+              resolveDiffAnchors({ git: { no_repo: true } }, {}, { base_sha: '3333333' }, 'code_review'),
+              resolveDiffAnchors({ git: { missing_base_ref: 'origin/main unavailable' } }, {}, {}, 'code_review')
+            ]
+        ''')
+        assert result[0]["anchor_error"]["code"] == "invalid_sha"
+        assert result[1]["source"] == "prompt_only_impl_base_sha"
+        assert result[1]["base_sha"] == "3333333"
+        assert result[1]["anchor_error"]["code"] == "no_repo"
+        assert result[2]["source"] == "unverified"
+        assert result[2]["anchor_error"] == {"code": "missing_base_ref", "detail": "origin/main unavailable"}
+
     def test_state_resume_inventory(self):
         """Contract: resume/state patch paths remain discoverable."""
         for text in [
@@ -193,6 +249,85 @@ class TestExecutePlanConstants:
             "allOtherPartitionsEmpty", "final_review: finalReview", "opts('final-review'",
         ]:
             assert text in self.script
+
+    def _eval_evidence_helper(self, expression):
+        helper_prefix = self.script.split("// ── Result adapter", 1)[0]
+        helper_prefix = re.sub(r"export const meta", "const meta", helper_prefix)
+        node_script = helper_prefix + "\nconsole.log(JSON.stringify(" + expression + "))"
+        result = subprocess.run(
+            ["node", "-e", node_script],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return json.loads(result.stdout)
+
+    def test_extract_evidence_normalizes_sources_and_requirement(self):
+        result = self._eval_evidence_helper(r'''
+            extractEvidence(
+              { id: 'task-2', tests: ['pytest planned'], verification: ['manual planned'], runtime_evidence_required: 'required' },
+              { status: 'DONE', verification_results: [{ command: 'agent cmd', exit_code: 0 }], commit_sha: 'abc123', files_modified: ['a.js'] },
+              { command_results: [{ command: 'pytest', exit_code: 0, output: 'ok' }], evidence_paths: ['C:/tmp/e.png'] }
+            )
+        ''')
+        assert result["runtime_evidence_required"] == "artifact"
+        assert result["planned_verification"] == ["pytest planned", "manual planned"]
+        assert result["executed_commands"][0]["command"] == "pytest"
+        assert result["evidence_paths"] == ["C:/tmp/e.png"]
+        assert result["commit_sha"] == "abc123"
+
+    def test_extract_evidence_legacy_runtime_requirement_defaults(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              extractEvidence({}, {}, {}).runtime_evidence_required,
+              extractEvidence({ runtime_evidence_required: true }, {}, {}).runtime_evidence_required,
+              extractEvidence({ runtime_evidence_required: false }, {}, {}).runtime_evidence_required,
+              extractEvidence({ runtime_evidence_required: 'unknown' }, {}, {}).runtime_evidence_required
+            ]
+        ''')
+        assert result == ["none", "command", "none", "none"]
+
+    def test_validate_implementation_evidence_blocks_missing_required_command(self):
+        result = self._eval_evidence_helper(r'''
+            validateImplementationEvidence(
+              { required_commands: ['pytest'], runtime_evidence_required: true },
+              { status: 'DONE', verification_results: [] },
+              {},
+              null
+            )
+        ''')
+        assert result["passed"] is False
+        assert result["status"] == "blocked"
+        assert "missing_required_command: pytest" in result["reasons"]
+
+    def test_validate_implementation_evidence_accepts_substitute_nonzero_concerns_and_alias(self):
+        result = self._eval_evidence_helper(r'''
+            validateImplementationEvidence(
+              { required_commands: ['pytest'], command_substitutes: { pytest: ['uv run pytest'] }, expected_nonzero_commands: ['lint'], runtime_evidence_required: true, acceptance_refs: ['REQ-1'] },
+              { status: 'DONE_WITH_CONCERNS', concerns: ['REQ-1 deferred w/ user ok'], dirty_commit_sha: 'dirty-ok' },
+              { command_results: [
+                { command: 'uv run pytest tests', exit_code: 0 },
+                { command: 'lint', exit_code: 1 }
+              ] },
+              { acceptance_refs: ['REQ-1'] }
+            )
+        ''')
+        assert result["passed"] is True
+        assert result["status"] == "passed"
+        assert result["evidence"]["commit_sha"] == "dirty-ok"
+
+    def test_validate_implementation_evidence_blocks_unexpected_nonzero_and_paths(self):
+        result = self._eval_evidence_helper(r'''
+            validateImplementationEvidence(
+              { runtime_evidence_required: 'artifact' },
+              { status: 'DONE', evidence_paths: ['Z:/definitely/missing/evidence.txt'] },
+              { command_results: [{ command: 'pytest', exit_code: 1 }], path_exists: { 'Z:/definitely/missing/evidence.txt': false } },
+              null
+            )
+        ''')
+        assert result["passed"] is False
+        assert "command_failed: pytest" in result["reasons"]
+        assert "evidence_path_missing: Z:/definitely/missing/evidence.txt" in result["reasons"]
 
 
 # ── Cross-script consistency ──────────────────────────────────────────
