@@ -70,6 +70,13 @@ function gitAnchorError(args, task, code) {
   return null
 }
 
+function resolveBaseRef(args, task) {
+  const git = (args && args.git) || (task && task.git) || {}
+  const defaultRef = (args && (args.default_branch || args.default_ref)) || git.default_branch || git.default_ref
+  const baseRef = (args && args.base_ref) || defaultRef || 'main'
+  return { baseRef, source: defaultRef && !(args && args.base_ref) ? 'default_branch_ref' : 'base_ref' }
+}
+
 function resolveDiffAnchors(args, task, impl, stage) {
   const metadata = {
     stage,
@@ -537,14 +544,17 @@ function plannedVerification(task) {
   ]
 }
 
-function extractEvidence(task, impl, specReview, codeReview) {
-  const reviews = [specReview, codeReview].filter(Boolean)
+function extractEvidence(task, impl, controllerEvidence, codeReview) {
+  const reviews = [controllerEvidence, codeReview].filter(Boolean)
+  const controllerCommands = reviews.flatMap(r => r.command_results || [])
+  const controllerPromptOnly = controllerCommands.length === 0 && reviews.every(r => r.prompt_only || !r.command_results)
+  const agentCommands = (impl && impl.verification_results) || []
   return {
     commit_sha: (impl && (impl.commit_sha || impl.dirty_commit_sha)) || '',
     test_results: (impl && impl.test_results) || '',
-    verification_commands: (impl && impl.verification_commands) || (task && task.verification) || [],
+    verification_commands: (impl && impl.verification_commands) || [],
     planned_verification: plannedVerification(task),
-    executed_commands: reviews.flatMap(r => r.command_results || []),
+    executed_commands: controllerCommands.length > 0 || !controllerPromptOnly ? controllerCommands : agentCommands,
     evidence_paths: reviews.flatMap(r => r.evidence_paths || []).concat((impl && impl.evidence_paths) || []),
     concerns: (impl && impl.concerns) || [],
     files_modified: (impl && impl.files_modified) || [],
@@ -562,13 +572,17 @@ function evidencePathExists(path, pathExists) {
   return true
 }
 
-function validateImplementationEvidence(task, impl, reviewEvidence, spec) {
-  const evidence = extractEvidence(task, impl, reviewEvidence, null)
+function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
+  const evidence = extractEvidence(task, impl, controllerEvidence, null)
   const reasons = []
-  const commands = (reviewEvidence && reviewEvidence.command_results) || []
+  const commands = evidence.executed_commands || []
   const required = (task && task.required_commands) || []
   const substitutes = (task && task.command_substitutes) || {}
   const expectedNonzero = (task && task.expected_nonzero_commands) || []
+
+  if (!impl) reasons.push('missing_implementation_result')
+  if (impl && impl.status === 'BLOCKED') reasons.push('implementation_blocked: ' + (impl.blocker_detail || 'BLOCKED'))
+  if (impl && impl.status === 'DONE_WITH_CONCERNS' && evidence.concerns.length === 0) reasons.push('missing_concerns')
 
   for (const command of required) {
     if (!commands.some(result => commandMatches(command, result.command || '', substitutes) && result.exit_code === 0)) {
@@ -582,14 +596,15 @@ function validateImplementationEvidence(task, impl, reviewEvidence, spec) {
     if (result.exit_code !== 0 && !expected) reasons.push('command_failed: ' + command)
   }
 
+  if (evidence.runtime_evidence_required === 'command' && commands.length === 0) reasons.push('missing_runtime_command_evidence')
   if (evidence.runtime_evidence_required === 'artifact' && evidence.evidence_paths.length === 0) {
     reasons.push('missing_evidence_artifact')
   }
   for (const path of evidence.evidence_paths) {
-    if (!evidencePathExists(path, reviewEvidence && reviewEvidence.path_exists)) reasons.push('evidence_path_missing: ' + path)
+    if (!evidencePathExists(path, controllerEvidence && controllerEvidence.path_exists)) reasons.push('evidence_path_missing: ' + path)
   }
 
-  const refs = ((spec && spec.acceptance_refs) || (task && task.acceptance_refs) || [])
+  const refs = ((reviewOverride && reviewOverride.acceptance_refs) || (task && task.acceptance_refs) || [])
   const concernText = ((impl && impl.concerns) || []).join('\n')
   if (impl && impl.status === 'DONE_WITH_CONCERNS') {
     for (const ref of refs) {

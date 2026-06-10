@@ -329,6 +329,35 @@ class TestExecutePlanConstants:
         assert "command_failed: pytest" in result["reasons"]
         assert "evidence_path_missing: Z:/definitely/missing/evidence.txt" in result["reasons"]
 
+    def test_extract_evidence_uses_agent_results_only_when_controller_prompt_only(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              extractEvidence(
+                { required_commands: ['pytest'] },
+                { verification_results: [{ command: 'agent pytest', exit_code: 0 }] },
+                { command_results: [{ command: 'controller pytest', exit_code: 0 }] }
+              ).executed_commands[0].command,
+              extractEvidence(
+                { required_commands: ['pytest'] },
+                { verification_results: [{ command: 'agent pytest', exit_code: 0 }] },
+                { prompt_only: true }
+              ).executed_commands[0].command
+            ]
+        ''')
+        assert result == ["controller pytest", "agent pytest"]
+
+    def test_validate_implementation_evidence_blocks_status_and_runtime_command(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              validateImplementationEvidence({}, { status: 'BLOCKED', blocker_detail: 'missing token' }, {}, null),
+              validateImplementationEvidence({ runtime_evidence_required: true }, { status: 'DONE' }, { prompt_only: true }, null),
+              validateImplementationEvidence({}, { status: 'DONE_WITH_CONCERNS', concerns: [] }, {}, null)
+            ]
+        ''')
+        assert "implementation_blocked: missing token" in result[0]["reasons"]
+        assert "missing_runtime_command_evidence" in result[1]["reasons"]
+        assert "missing_concerns" in result[2]["reasons"]
+
 
 # ── Cross-script consistency ──────────────────────────────────────────
 
