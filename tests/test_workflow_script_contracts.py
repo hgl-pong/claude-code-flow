@@ -188,7 +188,7 @@ class TestExecutePlanConstants:
         ordered = [
             "args && args.base_sha",
             "task && (task.base_sha || task.captured_base_sha || task.git_base_sha)",
-            "args && args.base_ref) || 'main'",
+            "const baseRef = (args && args.base_ref) || defaultRef || 'main'",
             "impl && impl.base_sha",
             "source: 'unverified'",
         ]
@@ -210,6 +210,29 @@ class TestExecutePlanConstants:
         assert result[2]["source"] == "merge_base_ref"
         assert result[2]["base_ref"] == "develop"
         assert result[2]["enforcement_mode"] == "prompt_only"
+
+    def test_diff_anchor_resolution_uses_default_branch_metadata(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              resolveDiffAnchors({ default_branch: 'trunk' }, {}, {}, 'spec_review'),
+              resolveDiffAnchors({ git: { default_branch: 'develop', missing_base_ref: 'main unavailable' } }, {}, {}, 'code_review')
+            ]
+        ''')
+        assert result[0]["base_ref"] == "trunk"
+        assert result[0]["base_ref_source"] == "default_branch_ref"
+        assert result[1]["base_ref"] == "develop"
+        assert result[1]["base_ref_source"] == "default_branch_ref"
+        assert result[1]["anchor_error"]["code"] == "missing_base_ref"
+
+    def test_diff_anchor_prompt_is_appended_to_review_and_fix_prompts(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              specReviewPrompt({ id: 'task-1', description: 'Do x' }, { summary: 'Done', files_modified: ['a.js'] }).includes('## Diff Anchor Metadata'),
+              codeReviewPrompt({ summary: 'Done', files_modified: ['a.js'] }, 'task-1', { id: 'task-1' }).includes('## Diff Anchor Metadata'),
+              fixPrompt([], ['a.js'], { id: 'task-1' }, { files_modified: ['a.js'] }, 'spec_fix').includes('## Diff Anchor Metadata')
+            ]
+        ''')
+        assert result == [True, True, True]
 
     def test_diff_anchor_resolution_error_fallback_metadata(self):
         result = self._eval_evidence_helper(r'''

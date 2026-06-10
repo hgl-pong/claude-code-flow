@@ -70,13 +70,6 @@ function gitAnchorError(args, task, code) {
   return null
 }
 
-function resolveBaseRef(args, task) {
-  const git = (args && args.git) || (task && task.git) || {}
-  const defaultRef = (args && (args.default_branch || args.default_ref)) || git.default_branch || git.default_ref
-  const baseRef = (args && args.base_ref) || defaultRef || 'main'
-  return { baseRef, source: defaultRef && !(args && args.base_ref) ? 'default_branch_ref' : 'base_ref' }
-}
-
 function resolveDiffAnchors(args, task, impl, stage) {
   const metadata = {
     stage,
@@ -100,7 +93,10 @@ function resolveDiffAnchors(args, task, impl, stage) {
     return { ...metadata, source: 'task_captured_base_sha', base_sha: taskBase }
   }
 
-  const baseRef = (args && args.base_ref) || 'main'
+  const git = (args && args.git) || (task && task.git) || {}
+  const defaultRef = (args && (args.default_branch || args.default_ref)) || git.default_branch || git.default_ref
+  const baseRef = (args && args.base_ref) || defaultRef || 'main'
+  const baseRefSource = defaultRef && !(args && args.base_ref) ? 'default_branch_ref' : 'base_ref'
   const repoError =
     gitAnchorError(args, task, 'no_repo') ||
     gitAnchorError(args, task, 'merge_conflict') ||
@@ -114,6 +110,7 @@ function resolveDiffAnchors(args, task, impl, stage) {
       ...metadata,
       source: 'merge_base_ref',
       base_ref: baseRef,
+      base_ref_source: baseRefSource,
       anchor_error: anchorError('prompt_only_merge_base_unverified', 'merge-base requires command primitive'),
     }
   }
@@ -124,7 +121,7 @@ function resolveDiffAnchors(args, task, impl, stage) {
     return { ...metadata, source: 'prompt_only_impl_base_sha', base_sha: promptBase, anchor_error: repoError }
   }
 
-  return { ...metadata, source: 'unverified', base_ref: baseRef, anchor_error: repoError }
+  return { ...metadata, source: 'unverified', base_ref: baseRef, base_ref_source: baseRefSource, anchor_error: repoError }
 }
 
 function diffAnchorPrompt(task, impl, stage) {
@@ -413,10 +410,10 @@ Use Minor for: edge cases not covered, spec ambiguity.
 
 ## Structured Output
 
-Your final response will be parsed as JSON. You MUST return valid JSON.`
+Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(task, impl, 'spec_review')
 }
 
-function codeReviewPrompt(impl, taskId) {
+function codeReviewPrompt(impl, taskId, task) {
   return `Review the implementation for code quality.
 
 ## Context
@@ -463,10 +460,10 @@ Minor: style nits.
 
 ## Structured Output
 
-Your final response will be parsed as JSON. You MUST return valid JSON.`
+Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(task || { id: taskId }, impl, taskId === 'final' ? 'final_review' : 'code_review')
 }
 
-function fixPrompt(issues, files) {
+function fixPrompt(issues, files, task, impl, stage) {
   const issuesText = typeof issues === 'string' ? issues : JSON.stringify(issues, null, 2)
   return `Fix the following review issues in the implementation.
 
@@ -489,7 +486,7 @@ ${files.join(', ')}
 
 ## Structured Output
 
-Your final response will be parsed as JSON. You MUST return valid JSON.`
+Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(task || {}, impl || {}, stage || 'fix')
 }
 
 // ── Self-service escalation rejection ────────────────────────────────
@@ -814,7 +811,7 @@ for (const [gi, group] of groups.entries()) {
             )
             log(id + ': spec review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, impl.files_modified),
+              fixPrompt(blockingIssues, impl.files_modified, ctx, impl, 'spec_fix'),
               opts('fix-spec:' + id, 'Spec Review', IMPLEMENT_RESULT),
               0,
             )
@@ -855,7 +852,7 @@ for (const [gi, group] of groups.entries()) {
           }
 
           let review = await agentWithSchemaRetry(
-            codeReviewPrompt(ctx.impl, ctx.id),
+            codeReviewPrompt(ctx.impl, ctx.id, ctx),
             opts('code-review:' + ctx.id, 'Code Review', REVIEW_RESULT),
             0,
           )
@@ -869,14 +866,14 @@ for (const [gi, group] of groups.entries()) {
             )
             log(ctx.id + ': code review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, ctx.impl.files_modified),
+              fixPrompt(blockingIssues, ctx.impl.files_modified, ctx, ctx.impl, 'code_fix'),
               opts('fix-code:' + ctx.id, 'Code Review', IMPLEMENT_RESULT),
               0,
             )
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
             review = await agentWithSchemaRetry(
-              codeReviewPrompt(ctx.impl, ctx.id),
+              codeReviewPrompt(ctx.impl, ctx.id, ctx),
               opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_RESULT),
               0,
             )
@@ -932,6 +929,7 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
     codeReviewPrompt(
       { summary: 'Entire implementation: ' + allIds, files_modified: allFiles },
       'final',
+      { id: 'final', description: 'Final review for ' + allIds },
     ),
     opts('final-review', 'Final Review', REVIEW_RESULT),
   )
