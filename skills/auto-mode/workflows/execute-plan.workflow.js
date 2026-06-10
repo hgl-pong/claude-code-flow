@@ -606,6 +606,15 @@ const REVIEW_RESULT = {
   required: ['passed', 'issues', 'summary'],
 }
 
+const REVIEW_REREVIEW_RESULT = {
+  ...REVIEW_RESULT,
+  required: [
+    'passed', 'issues', 'summary',
+    'prior_findings_verified', 'unresolved_issue_ids', 'new_issues',
+    'diff_verified', 'targeted_verification_credible', 'scope_concerns',
+  ],
+}
+
 // ── Agent options helper ──────────────────────────────────────────────
 
 function opts(label, phase, schema) {
@@ -1633,7 +1642,7 @@ for (const [gi, group] of groups.entries()) {
             const priorSpecReview = review
             review = await agentWithSchemaRetry(
               specReviewPrompt(ctx, ctx.impl, priorSpecReview),
-              opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_RESULT),
+              opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_REREVIEW_RESULT),
               0,
             )
             review = normalizeReviewResult(review, 'spec_review', id, priorSpecReview)
@@ -1693,10 +1702,23 @@ for (const [gi, group] of groups.entries()) {
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
+            const controllerEvidence = controllerEvidenceFromAttempts(ctx)
+            const implementationEvidence = validateImplementationEvidence(ctx, ctx.impl, controllerEvidence, ctx.spec_review)
+            if (!implementationEvidence.passed) {
+              return { ...ctx, implementation_evidence: controllerEvidence, evidence_validation: implementationEvidence, code_review: null, code_passed: false, _blocked: true, _reason: implementationEvidence.reasons.join('; '), _evidence_blocked: true }
+            }
+            if (!implementationEvidenceCleanPass(implementationEvidence)) {
+              ctx.impl.concerns = [...(ctx.impl.concerns || []), ...implementationEvidence.limitations]
+              ctx.impl.evidence_validation = implementationEvidence
+              ctx.impl.limitations = implementationEvidence.limitations
+            }
+            ctx.implementation_evidence = controllerEvidence
+            ctx.evidence_validation = implementationEvidence
+
             const priorCodeReview = review
             review = await agentWithSchemaRetry(
               codeReviewPrompt(ctx.impl, ctx.id, ctx, priorCodeReview),
-              opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_RESULT),
+              opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_REREVIEW_RESULT),
               0,
             )
             review = normalizeReviewResult(review, 'code_review', ctx.id, priorCodeReview)

@@ -931,6 +931,27 @@ WORKFLOW_SCRIPT
         assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
         assert result["final_review"] is None
 
+    def test_code_fix_reruns_implementation_evidence_gate(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-8']],
+              tasks: { 'task-8': { id: 'task-8', description: 'Do code fix-gated task', required_commands: ['pytest'] } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-8': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-8': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-8': { passed: false, issues: [{ severity: 'Critical', blocking: true, description: 'fix code' }], summary: 'needs fix', prompt_only: true },
+                'fix-code:task-8-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: '', verification_commands: [], verification_results: [], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'code-review:task-8-r1': { passed: true, issues: [], summary: 'stale review should not pass', prompt_only: true }
+              }
+            }
+        ''')
+        assert result["blocked"][0]["id"] == "task-8"
+        assert "missing_required_command: pytest" in result["blocked"][0]["reason"]
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
+        assert result["final_review"] is None
+
     def test_targeted_fix_prompt_contract(self):
         result = self._eval_evidence_helper(r'''
             (() => {
@@ -1001,8 +1022,11 @@ WORKFLOW_SCRIPT
 
     def test_review_result_schema_requires_targeted_rereview_fields(self):
         for text in [
-            "prior_findings_verified", "unresolved_issue_ids", "new_issues",
-            "diff_verified", "targeted_verification_credible", "scope_concerns",
+            "const REVIEW_REREVIEW_RESULT", "...REVIEW_RESULT",
+            "'prior_findings_verified', 'unresolved_issue_ids', 'new_issues'",
+            "'diff_verified', 'targeted_verification_credible', 'scope_concerns'",
+            "opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_REREVIEW_RESULT)",
+            "opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_REREVIEW_RESULT)",
         ]:
             assert text in self.script
 
