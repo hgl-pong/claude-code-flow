@@ -594,7 +594,7 @@ WORKFLOW_SCRIPT
             )
         ''')
         assert result["passed"] is False
-        assert result["status"] == "blocked"
+        assert result["status"] == "block"
         assert "missing_required_command: pytest" in result["reasons"]
 
     def test_validate_implementation_evidence_accepts_substitute_nonzero_concerns_and_alias(self):
@@ -610,7 +610,7 @@ WORKFLOW_SCRIPT
             )
         ''')
         assert result["passed"] is True
-        assert result["status"] == "passed"
+        assert result["status"] == "pass"
         assert result["evidence"]["commit_sha"] == "dirty-ok"
 
     def test_validate_implementation_evidence_accepts_required_expected_nonzero_command(self):
@@ -623,7 +623,7 @@ WORKFLOW_SCRIPT
             )
         ''')
         assert result["passed"] is True
-        assert result["status"] == "passed"
+        assert result["status"] == "pass"
 
     def test_validate_implementation_evidence_blocks_unexpected_nonzero_and_paths(self):
         result = self._eval_evidence_helper(r'''
@@ -738,7 +738,7 @@ WORKFLOW_SCRIPT
         ''')
         assert result["blocked"][0]["id"] == "task-5"
         assert "missing_required_command: pytest" in result["blocked"][0]["reason"]
-        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "blocked"
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
         assert result["final_review"] is None
 
     def test_implementation_evidence_gate_consumes_controller_diff_evidence(self):
@@ -802,7 +802,7 @@ WORKFLOW_SCRIPT
         ''')
         assert result["blocked"][0]["id"] == "task-7"
         assert "missing_test_results" in result["blocked"][0]["reason"]
-        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "blocked"
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
         assert result["final_review"] is None
 
     def test_classification_wires_implementation_evidence_validation(self):

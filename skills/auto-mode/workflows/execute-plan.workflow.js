@@ -817,7 +817,7 @@ function controllerEvidenceFromAttempts(ctx) {
 }
 
 function implementationEvidenceCleanPass(evidence) {
-  return evidence && evidence.status === 'passed'
+  return evidence && evidence.status === 'pass'
 }
 
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
@@ -881,8 +881,8 @@ function validateImplementationEvidence(task, impl, controllerEvidence, reviewOv
   if (promptOnly) limitations.push('prompt_only_evidence_unverified')
   if (evidence.unverified_acceptance_refs.length > 0) limitations.push('unverified_acceptance_refs: ' + evidence.unverified_acceptance_refs.join(', '))
 
-  let status = 'passed'
-  if (reasons.length > 0) status = 'blocked'
+  let status = 'pass'
+  if (reasons.length > 0) status = 'block'
   else if (evidence.unverified_acceptance_refs.length > 0) status = 'prompt_only_unverified'
   else if (impl && impl.status === 'DONE_WITH_CONCERNS' && promptOnly) status = 'needs_review_override'
 
