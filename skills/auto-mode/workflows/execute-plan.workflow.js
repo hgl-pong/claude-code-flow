@@ -548,6 +548,26 @@ const IMPLEMENT_RESULT = {
   }],
 }
 
+const FIX_RESULT = {
+  ...IMPLEMENT_RESULT,
+  properties: {
+    ...IMPLEMENT_RESULT.properties,
+    fixed_issue_ids: { type: 'array', items: { type: 'string' }, description: 'Prior blocking issue IDs fixed by this targeted retry' },
+    targeted_verification: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Commands/checks run for each fixed issue ID' },
+    verification_failures: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Targeted commands/checks that failed' },
+    unrelated_files_changed: { type: 'array', items: { type: 'string' }, description: 'Files changed outside allowed targeted fix scope' },
+    scope_justifications: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Why each changed file belongs to the targeted fix' },
+  },
+  allOf: [{
+    if: { properties: { status: { enum: ['DONE', 'DONE_WITH_CONCERNS'] } }, required: ['status'] },
+    then: { required: [
+      'test_results', 'verification_commands', 'verification_results', 'base_sha', 'head_sha',
+      'acceptance_coverage', 'unverified_acceptance_refs', 'concerns', 'diff_summary',
+      'fixed_issue_ids', 'targeted_verification', 'verification_failures', 'unrelated_files_changed', 'scope_justifications',
+    ] },
+  }],
+}
+
 const REVIEW_RESULT = {
   type: 'object',
   additionalProperties: false,
@@ -576,6 +596,12 @@ const REVIEW_RESULT = {
       },
     },
     summary: { type: 'string' },
+    prior_findings_verified: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'For re-review: every prior blocking issue ID with verification status/evidence' },
+    unresolved_issue_ids: { type: 'array', items: { type: 'string' }, description: 'Prior issue IDs still unresolved or repeated' },
+    new_issues: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'New findings introduced by the fix, if any' },
+    diff_verified: { type: 'boolean', description: 'Whether controller diff/base metadata was credible and inspected' },
+    targeted_verification_credible: { type: 'boolean', description: 'Whether targeted fix verification credibly covers fixed_issue_ids' },
+    scope_concerns: { type: 'array', items: { type: 'string' }, description: 'Scope concerns including controller-detected unrelated files' },
   },
   required: ['passed', 'issues', 'summary'],
 }
@@ -690,12 +716,26 @@ function diffEvidencePrompt(task, impl, stage) {
     diffAnchorPrompt(task, impl, stage)
 }
 
-function specReviewPrompt(task, impl) {
+function specReviewPrompt(task, impl, priorReview) {
   const concerns = (impl.concerns || []).join('\n') || 'None reported'
   const evidenceValidation = impl.evidence_validation ? JSON.stringify(impl.evidence_validation, null, 2) : 'Not provided'
   const acceptanceCoverage = JSON.stringify(impl.acceptance_coverage || [], null, 2)
   const unverifiedRefs = (impl.unverified_acceptance_refs || []).join('\n') || 'None reported'
   const limitations = (impl.limitations || (impl.evidence_validation && impl.evidence_validation.limitations) || []).join('\n') || 'None reported'
+  const priorBlocking = ((priorReview && priorReview.issues) || []).filter(i => i && (i.blocking || i.severity === 'Critical' || i.severity === 'High' || i.severity === 'Important'))
+  const targetedFix = {
+    prior_blocking_issue_ids: priorBlocking.map(i => i.id || i.prior_issue_id || '').filter(Boolean),
+    fix_result: {
+      fixed_issue_ids: impl.fixed_issue_ids || [],
+      targeted_verification: impl.targeted_verification || [],
+      verification_failures: impl.verification_failures || [],
+      unrelated_files_changed: impl.unrelated_files_changed || [],
+      diff_summary: impl.diff_summary || '',
+      scope_justifications: impl.scope_justifications || [],
+    },
+    controller_detected_unrelated_files: validateLatestFixScope(task, priorBlocking, impl, task).reasons || [],
+    prior_review: priorReview || null,
+  }
   return `Verify whether the implementation matches its specification.
 
 ## What Was Requested
@@ -728,6 +768,18 @@ ${evidenceValidation}
 
 Limitations:
 ${limitations}
+
+## Targeted Re-Review Requirements
+
+${priorReview ? JSON.stringify(targetedFix, null, 2) : 'Initial review; no prior findings.'}
+
+If this is a re-review:
+- Verify every prior blocking issue by ID in prior_findings_verified[].
+- Put repeated unresolved issues in unresolved_issue_ids and preserve prior_issue_id on carried-forward findings.
+- Report new_issues separately from repeated unresolved issues.
+- Set diff_verified from controller diff/base metadata, not agent claims.
+- Set targeted_verification_credible only if targeted commands cover fixed_issue_ids.
+- Include scope_concerns for controller-detected unrelated files and unexplained scope expansion.
 
 ## CRITICAL: Do Not Trust the Report
 
@@ -776,7 +828,21 @@ Use Minor for: edge cases not covered, spec ambiguity.
 Your final response will be parsed as JSON. You MUST return valid JSON.` + diffEvidencePrompt(task, impl, 'spec_review')
 }
 
-function codeReviewPrompt(impl, taskId, task) {
+function codeReviewPrompt(impl, taskId, task, priorReview) {
+  const priorBlocking = ((priorReview && priorReview.issues) || []).filter(i => i && (i.blocking || i.severity === 'Critical' || i.severity === 'High' || i.severity === 'Important'))
+  const targetedFix = {
+    prior_blocking_issue_ids: priorBlocking.map(i => i.id || i.prior_issue_id || '').filter(Boolean),
+    fix_result: {
+      fixed_issue_ids: impl.fixed_issue_ids || [],
+      targeted_verification: impl.targeted_verification || [],
+      verification_failures: impl.verification_failures || [],
+      unrelated_files_changed: impl.unrelated_files_changed || [],
+      diff_summary: impl.diff_summary || '',
+      scope_justifications: impl.scope_justifications || [],
+    },
+    controller_detected_unrelated_files: validateLatestFixScope(task || {}, priorBlocking, impl, task || {}).reasons || [],
+    prior_review: priorReview || null,
+  }
   return `Review the implementation for code quality.
 
 ## Context
@@ -784,6 +850,18 @@ function codeReviewPrompt(impl, taskId, task) {
 Task: ${taskId}
 Summary: ${impl.summary}
 Reported files (untrusted unless controller diff confirms): ${impl.files_modified.join(', ')}
+
+## Targeted Re-Review Requirements
+
+${priorReview ? JSON.stringify(targetedFix, null, 2) : 'Initial review; no prior findings.'}
+
+If this is a re-review:
+- Verify every prior blocking issue by ID in prior_findings_verified[].
+- Put repeated unresolved issues in unresolved_issue_ids and preserve prior_issue_id on carried-forward findings.
+- Report new_issues separately from repeated unresolved issues.
+- Set diff_verified from controller diff/base metadata, not agent claims.
+- Set targeted_verification_credible only if targeted commands cover fixed_issue_ids.
+- Include scope_concerns for controller-detected unrelated files and unexplained scope expansion.
 
 ## Instructions
 
@@ -831,9 +909,52 @@ Minor: style nits.
 Your final response will be parsed as JSON. You MUST return valid JSON.` + diffEvidencePrompt(task || { id: taskId }, impl, taskId === 'final' ? 'final_review' : 'code_review')
 }
 
-function fixPrompt(issues, files, task, impl, stage) {
+function fixPrompt(issues, files, task, impl, stage, retryCount) {
+  const issueList = Array.isArray(issues) ? issues : []
   const issuesText = typeof issues === 'string' ? issues : JSON.stringify(issues, null, 2)
+  const allowedFiles = (files || []).filter(Boolean)
+  const context = {
+    stage: stage || 'fix',
+    task: task && { id: task.id, description: task.description },
+    prior_blocking_issue_ids: issueList.map(i => i && (i.id || i.prior_issue_id)).filter(Boolean),
+    allowed_files: allowedFiles,
+    controller_diff_base_metadata: {
+      diff_anchor: resolveDiffAnchors(workflowArgs, task || {}, impl || {}, stage || 'fix'),
+      latest_diff_evidence: latestDiffEvidence(impl, task) || collectDiffEvidence(resolveDiffAnchors(workflowArgs, task || {}, impl || {}, stage || 'fix')),
+    },
+    prior_evidence: {
+      summary: impl && impl.summary,
+      files_modified: impl && impl.files_modified,
+      verification_results: impl && impl.verification_results,
+      acceptance_coverage: impl && impl.acceptance_coverage,
+      diff_summary: impl && impl.diff_summary,
+    },
+    required_commands_acceptance_refs: {
+      required_commands: (task && task.required_commands) || [],
+      acceptance_refs: (task && task.acceptance_refs) || [],
+      verification: (task && task.verification) || [],
+      tests: (task && task.tests) || [],
+    },
+    retry_count: retryCount || 0,
+  }
   return `Fix the following review issues in the implementation.
+
+## Targeted Fix Context
+
+Stage: ${context.stage}
+Task: ${context.task && context.task.id || 'unknown'}
+Retry count: ${context.retry_count}
+Prior blocking issue IDs: ${context.prior_blocking_issue_ids.join(', ') || 'none'}
+Allowed files: ${allowedFiles.join(', ') || 'none'}
+
+Controller diff/base metadata:
+${JSON.stringify(context.controller_diff_base_metadata, null, 2)}
+
+Prior evidence:
+${JSON.stringify(context.prior_evidence, null, 2)}
+
+Required commands / acceptance refs:
+${JSON.stringify(context.required_commands_acceptance_refs, null, 2)}
 
 ## Issues to Fix
 
@@ -841,19 +962,20 @@ ${issuesText}
 
 ## Files to Modify
 
-${files.join(', ')}
+${allowedFiles.join(', ')}
 
 ## Instructions
 
 1. Read each file listed above
-2. Fix every issue described in the issues list
+2. Fix only the listed prior blocking issue IDs
 3. Do NOT make changes beyond fixing these specific issues
 4. Do NOT refactor, restructure, or "improve" unrelated code
-5. Run the tests to verify nothing broke
+5. Run targeted verification for each fixed issue ID plus required commands
 6. Commit with: fix(review): address review findings
 
 ## Structured Output
 
+For DONE/DONE_WITH_CONCERNS include the normal implementation fields plus fixed_issue_ids, targeted_verification, verification_failures, unrelated_files_changed, diff_summary, scope_justifications.
 Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(task || {}, impl || {}, stage || 'fix')
 }
 
@@ -1491,8 +1613,8 @@ for (const [gi, group] of groups.entries()) {
             const fixLabel = 'fix-spec:' + id + '-r' + (iterations + 1)
             captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, impl.files_modified, ctx, impl, 'spec_fix'),
-              opts(fixLabel, 'Spec Review', IMPLEMENT_RESULT),
+              fixPrompt(blockingIssues, impl.files_modified, ctx, impl, 'spec_fix', iterations + 1),
+              opts(fixLabel, 'Spec Review', FIX_RESULT),
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
@@ -1510,7 +1632,7 @@ for (const [gi, group] of groups.entries()) {
 
             const priorSpecReview = review
             review = await agentWithSchemaRetry(
-              specReviewPrompt(ctx, ctx.impl),
+              specReviewPrompt(ctx, ctx.impl, priorSpecReview),
               opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_RESULT),
               0,
             )
@@ -1564,8 +1686,8 @@ for (const [gi, group] of groups.entries()) {
             const fixLabel = 'fix-code:' + ctx.id + '-r' + (iterations + 1)
             captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, ctx.impl.files_modified, ctx, ctx.impl, 'code_fix'),
-              opts(fixLabel, 'Code Review', IMPLEMENT_RESULT),
+              fixPrompt(blockingIssues, ctx.impl.files_modified, ctx, ctx.impl, 'code_fix', iterations + 1),
+              opts(fixLabel, 'Code Review', FIX_RESULT),
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
@@ -1573,7 +1695,7 @@ for (const [gi, group] of groups.entries()) {
 
             const priorCodeReview = review
             review = await agentWithSchemaRetry(
-              codeReviewPrompt(ctx.impl, ctx.id, ctx),
+              codeReviewPrompt(ctx.impl, ctx.id, ctx, priorCodeReview),
               opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_RESULT),
               0,
             )

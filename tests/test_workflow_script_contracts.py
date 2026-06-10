@@ -931,6 +931,90 @@ WORKFLOW_SCRIPT
         assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
         assert result["final_review"] is None
 
+    def test_targeted_fix_prompt_contract(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const prompt = fixPrompt(
+                [{ id: 'issue-1', severity: 'Critical', file: 'src/a.js', description: 'missing req' }],
+                ['src/a.js'],
+                { id: 'task-9', description: 'Do x', required_commands: ['pytest'], acceptance_refs: ['REQ-1'], attempt_diff_evidence: [{ diff_files: ['src/a.js'], diff_verified: true }] },
+                { summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }], acceptance_coverage: [{ ref: 'REQ-1' }], diff_summary: 'M src/a.js' },
+                'spec_fix',
+                2
+              );
+              return [
+                prompt.includes('## Targeted Fix Context'),
+                prompt.includes('Stage: spec_fix'),
+                prompt.includes('Task: task-9'),
+                prompt.includes('Prior blocking issue IDs'),
+                prompt.includes('issue-1'),
+                prompt.includes('Allowed files'),
+                prompt.includes('Controller diff/base metadata'),
+                prompt.includes('Prior evidence'),
+                prompt.includes('Required commands / acceptance refs'),
+                prompt.includes('Retry count: 2'),
+                prompt.includes('fixed_issue_ids'),
+                prompt.includes('targeted_verification'),
+                prompt.includes('verification_failures'),
+                prompt.includes('unrelated_files_changed'),
+                prompt.includes('diff_summary'),
+                prompt.includes('scope_justifications')
+              ];
+            })()
+        ''')
+        assert result == [True] * 16
+
+    def test_review_prompt_rereview_contract(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const prompt = specReviewPrompt(
+                { id: 'task-9', description: 'Do x', attempt_diff_evidence: [{ diff_files: ['src/a.js'], diff_verified: true }] },
+                {
+                  summary: 'Fixed',
+                  files_modified: ['src/a.js'],
+                  fixed_issue_ids: ['issue-1'],
+                  targeted_verification: [{ command: 'pytest', issue_ids: ['issue-1'] }],
+                  verification_failures: [],
+                  unrelated_files_changed: ['src/other.js'],
+                  diff_summary: 'M src/a.js',
+                  scope_justifications: [{ file: 'src/a.js', reason: 'issue-1' }]
+                },
+                { issues: [{ id: 'issue-1', severity: 'Critical', blocking: true, description: 'missing req' }] }
+              );
+              return [
+                prompt.includes('## Targeted Re-Review Requirements'),
+                prompt.includes('Verify every prior blocking issue by ID'),
+                prompt.includes('prior_findings_verified'),
+                prompt.includes('unresolved_issue_ids'),
+                prompt.includes('new_issues'),
+                prompt.includes('diff_verified'),
+                prompt.includes('targeted_verification_credible'),
+                prompt.includes('scope_concerns'),
+                prompt.includes('repeated unresolved issues'),
+                prompt.includes('controller-detected unrelated files'),
+                prompt.includes('issue-1'),
+                prompt.includes('src/other.js')
+              ];
+            })()
+        ''')
+        assert result == [True] * 12
+
+    def test_review_result_schema_requires_targeted_rereview_fields(self):
+        for text in [
+            "prior_findings_verified", "unresolved_issue_ids", "new_issues",
+            "diff_verified", "targeted_verification_credible", "scope_concerns",
+        ]:
+            assert text in self.script
+
+    def test_fix_result_schema_requires_targeted_fields(self):
+        for text in [
+            "const FIX_RESULT", "fixed_issue_ids", "targeted_verification",
+            "verification_failures", "unrelated_files_changed", "scope_justifications",
+        ]:
+            assert text in self.script
+        assert "opts(fixLabel, 'Spec Review', FIX_RESULT)" in self.script
+        assert "opts(fixLabel, 'Code Review', FIX_RESULT)" in self.script
+
     def test_fix_scope_policy_is_helper_only_not_review_loop_gate(self):
         assert "function validateLatestFixScope" in self.script
         assert "const fixScope = validateLatestFixScope" not in self.script
