@@ -120,7 +120,7 @@ Task tool (general-purpose):
 
     Evidence files/summaries must not include secrets, tokens, API keys, credentials, private data, or proprietary logs. Redact before reporting.
 
-    Any concerns, limitations, unverified evidence, or DONE_WITH_CONCERNS context is passed to spec review for explicit verification.
+    Only clean `DONE` evidence with verified acceptance coverage is treated as a clean pass. Concerns, limitations, unverified evidence, or DONE_WITH_CONCERNS context is passed to spec review for explicit verification.
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need

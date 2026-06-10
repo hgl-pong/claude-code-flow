@@ -771,6 +771,31 @@ WORKFLOW_SCRIPT
         assert evidence["controller_diff_evidence"][0]["diff_verified"] is True
         assert result["passed"][0]["implementation_evidence"]["diff_evidence"][0]["label"] == "implement:task-6"
 
+    def test_evidence_gate_uses_clean_pass_status(self):
+        assert "function implementationEvidenceCleanPass" in self.script
+        assert "!implementationEvidenceCleanPass(implementationEvidence)" in self.script
+
+    def test_spec_fix_reruns_implementation_evidence_gate(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-7']],
+              tasks: { 'task-7': { id: 'task-7', description: 'Do fix-gated task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-7': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-7': { passed: false, issues: [{ severity: 'Critical', blocking: true, description: 'fix it' }], summary: 'needs fix', prompt_only: true },
+                'fix-spec:task-7-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: '', verification_commands: [], verification_results: [], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-7-r1': { passed: true, issues: [], summary: 'stale review should not pass', prompt_only: true },
+                'code-review:task-7': { passed: true, issues: [], summary: 'should not run', prompt_only: true }
+              }
+            }
+        ''')
+        assert result["blocked"][0]["id"] == "task-7"
+        assert "missing_test_results" in result["blocked"][0]["reason"]
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "blocked"
+        assert result["final_review"] is None
+
     def test_classification_wires_implementation_evidence_validation(self):
         assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script
         assert "evidence_validation: implementationEvidence" in self.script

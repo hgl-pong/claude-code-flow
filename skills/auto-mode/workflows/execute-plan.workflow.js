@@ -804,6 +804,10 @@ function controllerEvidenceFromAttempts(ctx) {
   }
 }
 
+function implementationEvidenceCleanPass(evidence) {
+  return evidence && evidence.status === 'passed'
+}
+
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
   const evidence = extractEvidence(task, impl, controllerEvidence, reviewOverride)
   const reasons = []
@@ -1100,12 +1104,12 @@ for (const [gi, group] of groups.entries()) {
             return { ...ctx, spec_review: null, spec_passed: false, _blocked: true, _reason: (impl && impl.blocker_detail) || 'BLOCKED' }
           }
 
-          const controllerEvidence = controllerEvidenceFromAttempts(ctx)
-          const implementationEvidence = validateImplementationEvidence(ctx, impl, controllerEvidence, null)
+          let controllerEvidence = controllerEvidenceFromAttempts(ctx)
+          let implementationEvidence = validateImplementationEvidence(ctx, impl, controllerEvidence, null)
           if (!implementationEvidence.passed) {
             return { ...ctx, implementation_evidence: controllerEvidence, evidence_validation: implementationEvidence, spec_review: null, spec_passed: false, _blocked: true, _reason: implementationEvidence.reasons.join('; '), _evidence_blocked: true }
           }
-          if (implementationEvidence.status !== 'passed') {
+          if (!implementationEvidenceCleanPass(implementationEvidence)) {
             impl.concerns = [...(impl.concerns || []), ...implementationEvidence.limitations]
             impl.evidence_validation = implementationEvidence
             impl.limitations = implementationEvidence.limitations
@@ -1134,6 +1138,16 @@ for (const [gi, group] of groups.entries()) {
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
+            controllerEvidence = controllerEvidenceFromAttempts(ctx)
+            implementationEvidence = validateImplementationEvidence(ctx, ctx.impl, controllerEvidence, null)
+            if (!implementationEvidence.passed) {
+              return { ...ctx, implementation_evidence: controllerEvidence, evidence_validation: implementationEvidence, spec_review: null, spec_passed: false, _blocked: true, _reason: implementationEvidence.reasons.join('; '), _evidence_blocked: true }
+            }
+            if (!implementationEvidenceCleanPass(implementationEvidence)) {
+              ctx.impl.concerns = [...(ctx.impl.concerns || []), ...implementationEvidence.limitations]
+              ctx.impl.evidence_validation = implementationEvidence
+              ctx.impl.limitations = implementationEvidence.limitations
+            }
 
             review = await agentWithSchemaRetry(
               specReviewPrompt(ctx, ctx.impl),
