@@ -202,6 +202,7 @@ class TestExecutePlanConstants:
             [
               resolveDiffAnchors({ base_sha: '1111111' }, { base_sha: '2222222' }, { base_sha: '3333333' }, 'spec_review'),
               resolveDiffAnchors({}, { captured_base_sha: '2222222' }, { base_sha: '3333333' }, 'spec_review'),
+              resolveDiffAnchors({ base_ref: 'develop' }, {}, { base_sha: '3333333' }, 'spec_review'),
               resolveDiffAnchors({ git: { no_repo: true } }, {}, { base_sha: '3333333' }, 'spec_review'),
               resolveDiffAnchors({ base_ref: 'develop' }, {}, {}, 'spec_review')
             ]
@@ -210,13 +211,16 @@ class TestExecutePlanConstants:
         assert result[0]["base_sha"] == "1111111"
         assert result[1]["source"] == "task_captured_base_sha"
         assert result[1]["base_sha"] == "2222222"
-        assert result[2]["source"] == "prompt_only_impl_base_sha"
-        assert result[2]["base_sha"] == "3333333"
+        assert result[2]["source"] == "merge_base_ref"
+        assert result[2]["base_ref"] == "develop"
         assert result[2]["anchor_error"]["code"] == "prompt_only_merge_base_unverified"
         assert result[2]["enforcement_mode"] == "prompt_only"
-        assert result[3]["source"] == "merge_base_ref"
-        assert result[3]["base_ref"] == "develop"
-        assert result[3]["enforcement_mode"] == "prompt_only"
+        assert result[3]["source"] == "prompt_only_impl_base_sha"
+        assert result[3]["base_sha"] == "3333333"
+        assert result[3]["anchor_error"]["code"] == "no_repo"
+        assert result[4]["source"] == "merge_base_ref"
+        assert result[4]["base_ref"] == "develop"
+        assert result[4]["enforcement_mode"] == "prompt_only"
 
     def test_diff_anchor_resolution_uses_default_branch_metadata(self):
         result = self._eval_evidence_helper(r'''
