@@ -7,6 +7,7 @@ validation functions defined in the workflow scripts match the spec.
 import json
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -277,12 +278,18 @@ class TestExecutePlanConstants:
         helper_prefix = self.script.split("// ── Result adapter", 1)[0]
         helper_prefix = re.sub(r"export const meta", "const meta", helper_prefix)
         node_script = helper_prefix + "\nconsole.log(JSON.stringify(" + expression + "))"
-        result = subprocess.run(
-            ["node", "-e", node_script],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as f:
+            f.write(node_script)
+            node_path = f.name
+        try:
+            result = subprocess.run(
+                ["node", node_path],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        finally:
+            Path(node_path).unlink(missing_ok=True)
         return json.loads(result.stdout)
 
     def test_extract_evidence_normalizes_sources_and_requirement(self):
@@ -338,6 +345,18 @@ class TestExecutePlanConstants:
         assert result["passed"] is True
         assert result["status"] == "passed"
         assert result["evidence"]["commit_sha"] == "dirty-ok"
+
+    def test_validate_implementation_evidence_accepts_required_expected_nonzero_command(self):
+        result = self._eval_evidence_helper(r'''
+            validateImplementationEvidence(
+              { required_commands: ['lint'], expected_nonzero_commands: ['lint'], runtime_evidence_required: true },
+              { status: 'DONE' },
+              { command_results: [{ command: 'lint', exit_code: 1 }] },
+              null
+            )
+        ''')
+        assert result["passed"] is True
+        assert result["status"] == "passed"
 
     def test_validate_implementation_evidence_blocks_unexpected_nonzero_and_paths(self):
         result = self._eval_evidence_helper(r'''

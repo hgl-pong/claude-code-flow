@@ -582,7 +582,11 @@ function validateImplementationEvidence(task, impl, controllerEvidence, reviewOv
   if (impl && impl.status === 'DONE_WITH_CONCERNS' && evidence.concerns.length === 0) reasons.push('missing_concerns')
 
   for (const command of required) {
-    if (!commands.some(result => commandMatches(command, result.command || '', substitutes) && result.exit_code === 0)) {
+    if (!commands.some(result => {
+      const actual = result.command || ''
+      const expected = expectedNonzero.some(prefix => commandMatches(prefix, actual, {}))
+      return commandMatches(command, actual, substitutes) && (result.exit_code === 0 || expected)
+    })) {
       reasons.push('missing_required_command: ' + command)
     }
   }
