@@ -172,6 +172,16 @@ class TestExecutePlanConstants:
         assert "workflow_agent_only" in self.script
         assert "const ENFORCEMENT_MODE = 'prompt_only'" in self.script
 
+    def test_implement_result_schema_requires_done_evidence_fields(self):
+        """Contract: DONE/DONE_WITH_CONCERNS require evidence fields."""
+        for text in [
+            "allOf: [{",
+            "status: { enum: ['DONE', 'DONE_WITH_CONCERNS'] }",
+            "'test_results', 'verification_commands', 'verification_results', 'base_sha', 'head_sha'",
+            "'acceptance_coverage', 'unverified_acceptance_refs', 'concerns', 'diff_summary'",
+        ]:
+            assert text in self.script
+
     def test_implement_result_schema_allows_agent_verification_results(self):
         """Contract: implementer schema accepts agent evidence fallback field."""
         assert "verification_results" in self.script
@@ -342,7 +352,7 @@ class TestExecutePlanConstants:
                 } }
               },
               __agent_results: {
-                'implement:task-1': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'implement:task-1': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task', status: 'covered' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
                 'spec-review:task-1': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'code-review:task-1': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'final-review': { passed: true, issues: [], summary: 'ok' }
@@ -373,7 +383,7 @@ class TestExecutePlanConstants:
               worktree: 'C:/tmp/worktree',
               git: { controller_commands_available: true, head_sha: '1111111' },
               __agent_results: {
-                'implement:task-2': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'implement:task-2': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task', status: 'covered' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
                 'spec-review:task-2': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'code-review:task-2': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'final-review': { passed: true, issues: [], summary: 'ok' }
@@ -397,7 +407,7 @@ class TestExecutePlanConstants:
               worktree: 'C:/tmp/worktree',
               git: { controller_commands_available: true },
               __agent_results: {
-                'implement:task-3': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'implement:task-3': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task', status: 'covered' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
                 'spec-review:task-3': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'code-review:task-3': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'final-review': { passed: true, issues: [], summary: 'ok' }
@@ -429,7 +439,7 @@ class TestExecutePlanConstants:
               },
               __agent_results: {
                 'implement:task-4': { status: 'BLOCKED', summary: 'Blocked', blocker_detail: 'test failure', files_modified: [] },
-                'escalate-schema-retry:task-4': { status: 'DONE', summary: 'Done', files_modified: ['src/escalated.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'escalate-schema-retry:task-4': { status: 'DONE', summary: 'Done', files_modified: ['src/escalated.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task', status: 'covered' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
                 'spec-review:task-4': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'code-review:task-4': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'final-review': { passed: true, issues: [], summary: 'ok' }
@@ -524,7 +534,7 @@ WORKFLOW_SCRIPT
         result = self._eval_evidence_helper(r'''
             extractEvidence(
               { id: 'task-2', tests: ['pytest planned'], verification: ['manual planned'], runtime_evidence_required: 'required' },
-              { status: 'DONE', verification_results: [{ command: 'agent cmd', exit_code: 0 }], commit_sha: 'abc123', files_modified: ['a.js'] },
+              { status: 'DONE', test_results: 'agent cmd passed', verification_commands: ['agent cmd'], verification_results: [{ command: 'agent cmd', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', commit_sha: 'abc123', files_modified: ['a.js'], acceptance_coverage: [{ ref: 'task', status: 'covered' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M a.js' },
               { command_results: [{ command: 'pytest', exit_code: 0, output: 'ok' }], evidence_paths: ['C:/tmp/e.png'] }
             )
         ''')
@@ -562,7 +572,7 @@ WORKFLOW_SCRIPT
         result = self._eval_evidence_helper(r'''
             validateImplementationEvidence(
               { required_commands: ['pytest'], command_substitutes: { pytest: ['uv run pytest'] }, expected_nonzero_commands: ['lint'], runtime_evidence_required: true, acceptance_refs: ['REQ-1'] },
-              { status: 'DONE_WITH_CONCERNS', concerns: ['REQ-1 deferred w/ user ok'], dirty_commit_sha: 'dirty-ok' },
+              { status: 'DONE_WITH_CONCERNS', test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'uv run pytest tests', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', concerns: ['REQ-1 deferred w/ user ok'], acceptance_coverage: [{ ref: 'REQ-1' }], unverified_acceptance_refs: [], diff_summary: 'M src/a.js', dirty_commit_sha: 'dirty-ok' },
               { command_results: [
                 { command: 'uv run pytest tests', exit_code: 0 },
                 { command: 'lint', exit_code: 1 }
@@ -578,7 +588,7 @@ WORKFLOW_SCRIPT
         result = self._eval_evidence_helper(r'''
             validateImplementationEvidence(
               { required_commands: ['lint'], expected_nonzero_commands: ['lint'], runtime_evidence_required: true },
-              { status: 'DONE' },
+              { status: 'DONE', test_results: 'lint expected failure', verification_commands: ['lint'], verification_results: [{ command: 'lint', exit_code: 1 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
               { command_results: [{ command: 'lint', exit_code: 1 }] },
               null
             )
@@ -628,18 +638,47 @@ WORKFLOW_SCRIPT
         assert "missing_runtime_command_evidence" in result[1]["reasons"]
         assert "missing_concerns" in result[2]["reasons"]
 
+    def test_validate_implementation_evidence_blocks_missing_done_evidence_fields(self):
+        result = self._eval_evidence_helper(r'''
+            validateImplementationEvidence(
+              {},
+              { status: 'DONE', summary: 'Done', files_modified: ['a.js'] },
+              { prompt_only: true },
+              null
+            )
+        ''')
+        assert result["passed"] is False
+        for reason in [
+            "missing_test_results", "missing_verification_commands", "missing_verification_results",
+            "missing_base_sha", "missing_head_sha", "missing_acceptance_coverage",
+            "missing_diff_summary",
+        ]:
+            assert reason in result["reasons"]
+
+    def test_validate_implementation_evidence_rejects_done_with_concerns(self):
+        result = self._eval_evidence_helper(r'''
+            validateImplementationEvidence(
+              {},
+              { status: 'DONE', test_results: 'ok', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: ['prompt only'], diff_summary: 'M a.js' },
+              { prompt_only: true },
+              null
+            )
+        ''')
+        assert result["passed"] is False
+        assert "done_has_concerns" in result["reasons"]
+
     def test_validate_implementation_evidence_classifies_review_override_and_prompt_only(self):
         result = self._eval_evidence_helper(r'''
             [
               validateImplementationEvidence(
                 { acceptance_refs: ['REQ-1'] },
-                { status: 'DONE_WITH_CONCERNS', concerns: ['REQ-1 manually inspected'], acceptance_coverage: [{ ref: 'REQ-1', status: 'covered' }], base_sha: '1111111', head_sha: '2222222', diff_summary: 'M src/a.js' },
+                { status: 'DONE_WITH_CONCERNS', test_results: 'ok', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], concerns: ['REQ-1 manually inspected'], acceptance_coverage: [{ ref: 'REQ-1', status: 'covered' }], unverified_acceptance_refs: [], base_sha: '1111111', head_sha: '2222222', diff_summary: 'M src/a.js' },
                 { prompt_only: true },
                 { prompt_only: true }
               ),
               validateImplementationEvidence(
                 { acceptance_refs: ['REQ-2'] },
-                { status: 'DONE', unverified_acceptance_refs: ['REQ-2'], concerns: ['REQ-2 prompt-only'], base_sha: '1111111', head_sha: '2222222', diff_summary: 'M src/a.js' },
+                { status: 'DONE', test_results: 'ok', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], unverified_acceptance_refs: ['REQ-2'], concerns: [], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'REQ-2' }], diff_summary: 'M src/a.js' },
                 { prompt_only: true },
                 { prompt_only: true }
               )
@@ -672,6 +711,36 @@ WORKFLOW_SCRIPT
         assert "missing_required_command: pytest" in result["blocked"][0]["reason"]
         assert result["state_patch"]["task_evidence_validations"][0]["status"] == "blocked"
         assert result["final_review"] is None
+
+    def test_implementation_evidence_gate_consumes_controller_diff_evidence(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-6']],
+              tasks: { 'task-6': { id: 'task-6', description: 'Do diff-gated task' } },
+              worktree: 'C:/tmp/worktree',
+              git: {
+                controller_commands_available: true,
+                head_sha: '1111111',
+                attempts: { 'implement:task-6': {
+                  head_sha: '2222222', command: 'git diff',
+                  committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: '+change\n' },
+                  worktree: { ok: true, name_status: '', diff: '' }
+                } }
+              },
+              __agent_results: {
+                'implement:task-6': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '', head_sha: '', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: '' },
+                'spec-review:task-6': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-6': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
+        ''')
+        evidence = result["passed"][0]["evidence"]
+        assert evidence["base_sha"] == "1111111"
+        assert evidence["head_sha"] == "2222222"
+        assert evidence["diff_summary"] == "src/a.js"
+        assert evidence["controller_diff_evidence"][0]["diff_verified"] is True
+        assert result["passed"][0]["implementation_evidence"]["diff_evidence"][0]["label"] == "implement:task-6"
 
     def test_classification_wires_implementation_evidence_validation(self):
         assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script

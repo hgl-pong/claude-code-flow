@@ -432,6 +432,13 @@ const IMPLEMENT_RESULT = {
     evidence_paths: { type: 'array', items: { type: 'string' }, description: 'Paths to evidence artifacts' },
   },
   required: ['status', 'summary', 'files_modified'],
+  allOf: [{
+    if: { properties: { status: { enum: ['DONE', 'DONE_WITH_CONCERNS'] } }, required: ['status'] },
+    then: { required: [
+      'test_results', 'verification_commands', 'verification_results', 'base_sha', 'head_sha',
+      'acceptance_coverage', 'unverified_acceptance_refs', 'concerns', 'diff_summary',
+    ] },
+  }],
 }
 
 const REVIEW_RESULT = {
@@ -742,9 +749,12 @@ function extractEvidence(task, impl, controllerEvidence, codeReview) {
   const controllerCommands = reviews.flatMap(r => r.command_results || [])
   const controllerPromptOnly = controllerCommands.length === 0 && reviews.every(r => r.prompt_only || !r.command_results)
   const agentCommands = (impl && impl.verification_results) || []
+  const controllerDiffEvidence = reviews.flatMap(r => r.diff_evidence || r.controller_diff_evidence || [])
+  const verifiedDiffEvidence = controllerDiffEvidence.filter(e => e && e.diff_verified)
+  const diffSummary = (impl && impl.diff_summary) || verifiedDiffEvidence.flatMap(e => e.diff_files || []).join(', ')
   return {
-    base_sha: (impl && impl.base_sha) || '',
-    head_sha: (impl && impl.head_sha) || '',
+    base_sha: (impl && impl.base_sha) || (verifiedDiffEvidence[0] && verifiedDiffEvidence[0].base_sha) || '',
+    head_sha: (impl && impl.head_sha) || (verifiedDiffEvidence[0] && verifiedDiffEvidence[0].head_sha) || '',
     commit_sha: (impl && (impl.commit_sha || impl.dirty_commit_sha)) || '',
     test_results: (impl && impl.test_results) || '',
     verification_commands: (impl && impl.verification_commands) || [],
@@ -754,7 +764,8 @@ function extractEvidence(task, impl, controllerEvidence, codeReview) {
     concerns: (impl && impl.concerns) || [],
     acceptance_coverage: (impl && impl.acceptance_coverage) || [],
     unverified_acceptance_refs: (impl && impl.unverified_acceptance_refs) || [],
-    diff_summary: (impl && impl.diff_summary) || '',
+    diff_summary: diffSummary,
+    controller_diff_evidence: controllerDiffEvidence,
     files_modified: (impl && impl.files_modified) || [],
     runtime_evidence_required: normalizeRuntimeEvidenceRequirement(task),
   }
@@ -770,6 +781,15 @@ function evidencePathExists(path, pathExists) {
   return true
 }
 
+function controllerEvidenceFromAttempts(ctx) {
+  const attempts = (ctx && ctx.attempt_diff_evidence) || []
+  const verified = attempts.filter(e => e && e.diff_verified)
+  return {
+    prompt_only: verified.length === 0,
+    diff_evidence: attempts,
+  }
+}
+
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
   const evidence = extractEvidence(task, impl, controllerEvidence, reviewOverride)
   const reasons = []
@@ -780,6 +800,18 @@ function validateImplementationEvidence(task, impl, controllerEvidence, reviewOv
 
   if (!impl) reasons.push('missing_implementation_result')
   if (impl && impl.status === 'BLOCKED') reasons.push('implementation_blocked: ' + (impl.blocker_detail || 'BLOCKED'))
+  if (impl && (impl.status === 'DONE' || impl.status === 'DONE_WITH_CONCERNS')) {
+    if (!evidence.test_results) reasons.push('missing_test_results')
+    if (!Array.isArray(evidence.verification_commands) || evidence.verification_commands.length === 0) reasons.push('missing_verification_commands')
+    if (!Array.isArray(impl.verification_results) || impl.verification_results.length === 0) reasons.push('missing_verification_results')
+    if (!evidence.base_sha) reasons.push('missing_base_sha')
+    if (!evidence.head_sha) reasons.push('missing_head_sha')
+    if (!Array.isArray(evidence.acceptance_coverage) || evidence.acceptance_coverage.length === 0) reasons.push('missing_acceptance_coverage')
+    if (!Object.prototype.hasOwnProperty.call(impl, 'unverified_acceptance_refs') || !Array.isArray(impl.unverified_acceptance_refs)) reasons.push('missing_unverified_acceptance_refs')
+    if (!Object.prototype.hasOwnProperty.call(impl, 'concerns') || !Array.isArray(impl.concerns)) reasons.push('missing_concerns')
+    if (!evidence.diff_summary) reasons.push('missing_diff_summary')
+  }
+  if (impl && impl.status === 'DONE' && evidence.concerns.length > 0) reasons.push('done_has_concerns')
   if (impl && impl.status === 'DONE_WITH_CONCERNS' && evidence.concerns.length === 0) reasons.push('missing_concerns')
 
   for (const command of required) {
@@ -949,6 +981,7 @@ function classifyTaskResult(taskId, task, ctx) {
       code_review: ctx.code_review,
       evidence: implementationEvidence.evidence,
       evidence_validation: implementationEvidence,
+      implementation_evidence: ctx.implementation_evidence,
       files: (ctx.impl && ctx.impl.files_modified) || [],
       ...attemptBase,
       attempt_diff_evidence: ctx.attempt_diff_evidence || [],
@@ -1053,9 +1086,10 @@ for (const [gi, group] of groups.entries()) {
             return { ...ctx, spec_review: null, spec_passed: false, _blocked: true, _reason: (impl && impl.blocker_detail) || 'BLOCKED' }
           }
 
-          const implementationEvidence = validateImplementationEvidence(ctx, impl, { prompt_only: true }, null)
+          const controllerEvidence = controllerEvidenceFromAttempts(ctx)
+          const implementationEvidence = validateImplementationEvidence(ctx, impl, controllerEvidence, null)
           if (!implementationEvidence.passed) {
-            return { ...ctx, implementation_evidence: { prompt_only: true }, evidence_validation: implementationEvidence, spec_review: null, spec_passed: false, _blocked: true, _reason: implementationEvidence.reasons.join('; '), _evidence_blocked: true }
+            return { ...ctx, implementation_evidence: controllerEvidence, evidence_validation: implementationEvidence, spec_review: null, spec_passed: false, _blocked: true, _reason: implementationEvidence.reasons.join('; '), _evidence_blocked: true }
           }
           if (implementationEvidence.status !== 'passed') {
             impl.concerns = [...(impl.concerns || []), ...implementationEvidence.limitations]
@@ -1098,7 +1132,7 @@ for (const [gi, group] of groups.entries()) {
 
           return {
             ...ctx,
-            implementation_evidence: { prompt_only: true },
+            implementation_evidence: controllerEvidence,
             evidence_validation: implementationEvidence,
             spec_review: review,
             spec_passed: specPassed,
