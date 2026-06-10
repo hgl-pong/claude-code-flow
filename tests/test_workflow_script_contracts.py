@@ -849,16 +849,18 @@ WORKFLOW_SCRIPT
                 pre_fix_changed_files: ['src/feature/existing.js']
               };
               const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }];
+              const locationOnlyIssues = [{ id: 'issue-2', location: 'src/feature/location.js:12' }];
               const support = { imports: { 'src/feature/a.js': ['src/feature/helper.js'] } };
               return [
                 validateFixScope(['src/feature/a.js'], issues, { files_modified: ['untrusted.js'], task }).passed,
                 validateFixScope(['tests/test_a_more.py'], issues, { task }).passed,
                 validateFixScope(['src/feature/existing.js'], issues, { task }).passed,
-                validateFixScope(['src/feature/helper.js'], issues, { task, support }).passed
+                validateFixScope(['src/feature/helper.js'], issues, { task, support }).passed,
+                validateFixScope(['src/feature/location.js'], locationOnlyIssues, { task }).passed
               ];
             })()
         ''')
-        assert result == [True, True, True, True]
+        assert result == [True, True, True, True, True]
 
     def test_validate_fix_scope_blocks_unrelated_config_delete_and_rename(self):
         result = self._eval_evidence_helper(r'''
@@ -867,9 +869,12 @@ WORKFLOW_SCRIPT
               const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }, { id: 'issue-2', file: 'package.json' }];
               const unrelated = validateFixScope(['src/other/b.js'], issues, { task });
               const config = validateFixScope(['package.json'], issues, { task });
+              const dockerfile = validateFixScope(['Dockerfile'], issues, { task });
+              const workflow = validateFixScope(['.github/workflows/ci.yml'], issues, { task });
+              const eslint = validateFixScope(['eslint.config.js'], issues, { task });
               const deleted = validateFixScope(['D\tsrc/feature/a.js'], issues, { task });
               const renamed = validateFixScope(['R100\tsrc/feature/a.js\tsrc/feature/b.js'], issues, { task });
-              return [unrelated, config, deleted, renamed];
+              return [unrelated, config, dockerfile, workflow, eslint, deleted, renamed];
             })()
         ''')
         assert result[0]["passed"] is False
@@ -877,9 +882,15 @@ WORKFLOW_SCRIPT
         assert result[1]["passed"] is False
         assert "broad_config_change: package.json" in result[1]["reasons"]
         assert result[2]["passed"] is False
-        assert "delete_outside_fix_scope: src/feature/a.js" in result[2]["reasons"]
+        assert "broad_config_change: Dockerfile" in result[2]["reasons"]
         assert result[3]["passed"] is False
-        assert "rename_outside_fix_scope: src/feature/a.js -> src/feature/b.js" in result[3]["reasons"]
+        assert "broad_config_change: .github/workflows/ci.yml" in result[3]["reasons"]
+        assert result[4]["passed"] is False
+        assert "broad_config_change: eslint.config.js" in result[4]["reasons"]
+        assert result[5]["passed"] is False
+        assert "delete_outside_fix_scope: src/feature/a.js" in result[5]["reasons"]
+        assert result[6]["passed"] is False
+        assert "rename_outside_fix_scope: src/feature/a.js -> src/feature/b.js" in result[6]["reasons"]
 
     def test_validate_fix_scope_blocks_formatting_only_outside_scope_and_ignores_agent_advisory(self):
         result = self._eval_evidence_helper(r'''

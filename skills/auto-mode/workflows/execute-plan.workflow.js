@@ -1006,8 +1006,15 @@ function isSameDirectoryTestPattern(file, allowedFiles) {
 }
 
 function isBroadConfigFile(file) {
-  const base = basenameForScope(file).toLowerCase()
-  return ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'requirements.txt', 'pyproject.toml', 'poetry.lock', 'cargo.toml', 'cargo.lock', 'go.mod', 'go.sum', 'webpack.config.js', 'vite.config.js', 'rollup.config.js', 'tsconfig.json'].includes(base)
+  const normalized = normalizePathForScope(file).toLowerCase()
+  const base = basenameForScope(normalized)
+  if (normalized.startsWith('.github/workflows/')) return true
+  if (['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'requirements.txt', 'pyproject.toml', 'poetry.lock', 'cargo.toml', 'cargo.lock', 'go.mod', 'go.sum', 'webpack.config.js', 'vite.config.js', 'rollup.config.js', 'tsconfig.json', 'dockerfile', 'makefile'].includes(base)) return true
+  if (/^dockerfile[.-]/.test(base)) return true
+  if (/^(jenkinsfile|circle\.yml|azure-pipelines\.ya?ml|bitbucket-pipelines\.ya?ml|cloudbuild\.ya?ml)$/.test(base)) return true
+  if (/^(babel|eslint|prettier|postcss|tailwind|jest|vitest|rollup|webpack|vite|tsup|esbuild)\.config\.[cm]?[jt]s$/.test(base)) return true
+  if (/^\.(babelrc|eslintrc|prettierrc)(\.|$)/.test(base)) return true
+  return false
 }
 
 function addAllowedPath(set, path) {
@@ -1016,7 +1023,13 @@ function addAllowedPath(set, path) {
 }
 
 function collectIssueFiles(issues) {
-  return (issues || []).map(issue => normalizePathForScope(issue && (issue.file || issue.path))).filter(Boolean)
+  return (issues || []).map(issue => {
+    const explicit = issue && (issue.file || issue.path)
+    if (explicit) return normalizePathForScope(explicit)
+    const location = String((issue && issue.location) || '').trim()
+    const match = location.match(/^(.+?)(?::\d+(?::\d+)?)?$/)
+    return normalizePathForScope(match && match[1])
+  }).filter(Boolean)
 }
 
 function parseFixScopeDiffFiles(diffFiles) {
