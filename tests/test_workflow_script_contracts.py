@@ -350,7 +350,7 @@ class TestExecutePlanConstants:
             }
         ''')
         base = result["state_patch"]["task_attempt_bases"][0]
-        assert base == {"id": "task-1", "task_attempt_base_sha": "1111111", "task_attempt_base_dirty": True}
+        assert base == {"id": "task-1", "task_attempt_base_sha": "1111111", "task_attempt_base_dirty": True, "task_attempt_base_capture_failed": ""}
         assert result["passed"][0]["task_attempt_base_sha"] == "1111111"
         assert result["passed"][0]["task_attempt_base_dirty"] is True
         evidence = result["state_patch"]["task_attempt_diff_evidence"][0]
@@ -388,6 +388,58 @@ class TestExecutePlanConstants:
         assert evidence["worktree_diff_included"] is False
         assert evidence["diff_command"] == ""
         assert evidence["diff_files"] == []
+
+    def test_attempt_diff_capture_persists_missing_base_failure(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-3']],
+              tasks: { 'task-3': { id: 'task-3', description: 'Do z' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true },
+              __agent_results: {
+                'implement:task-3': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'spec-review:task-3': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-3': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
+        ''')
+        base = result["state_patch"]["task_attempt_bases"][0]
+        assert base == {"id": "task-3", "task_attempt_base_sha": "", "task_attempt_base_dirty": False, "task_attempt_base_capture_failed": "missing_controller_head_sha"}
+        assert result["passed"][0]["task_attempt_base_capture_failed"] == "missing_controller_head_sha"
+        evidence = result["state_patch"]["task_attempt_diff_evidence"][0]
+        assert evidence["label"] == "implement:task-3"
+        assert evidence["base_sha"] == ""
+        assert evidence["diff_verified"] is False
+
+    def test_attempt_diff_capture_escalation_attempts(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-4']],
+              tasks: { 'task-4': { id: 'task-4', description: 'Do blocked' } },
+              worktree: 'C:/tmp/worktree',
+              git: {
+                controller_commands_available: true,
+                head_sha: '1111111',
+                attempts: { 'escalate-schema-retry:task-4': {
+                  head_sha: '2222222', command: 'git diff escalate',
+                  committed: { ok: true, name_status: 'M\tsrc/escalated.js\n', diff: '+change\n' },
+                  worktree: { ok: true, name_status: '', diff: '' }
+                } }
+              },
+              __agent_results: {
+                'implement:task-4': { status: 'BLOCKED', summary: 'Blocked', blocker_detail: 'test failure', files_modified: [] },
+                'escalate-schema-retry:task-4': { status: 'DONE', summary: 'Done', files_modified: ['src/escalated.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'spec-review:task-4': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-4': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
+        ''')
+        labels = [e["label"] for e in result["state_patch"]["task_attempt_diff_evidence"]]
+        assert labels == ["implement:task-4", "escalate-schema-retry:task-4"]
+        assert result["state_patch"]["task_attempt_diff_evidence"][1]["diff_command"] == "git diff escalate"
+        assert result["passed"][0]["attempt_diff_evidence"] == result["state_patch"]["task_attempt_diff_evidence"]
 
     def test_state_resume_inventory(self):
         """Contract: resume/state patch paths remain discoverable."""

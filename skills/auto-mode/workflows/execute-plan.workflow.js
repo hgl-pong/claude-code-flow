@@ -248,18 +248,20 @@ function captureAttemptBase(args, task, ctx, label) {
   if (!controllerCommandsExist(args)) return null
   const git = (args && args.git) || {}
   const baseSha = git.head_sha || git.base_sha || ''
-  if (!baseSha) return null
-  if (!task.task_attempt_base_sha) {
+  if (!task.task_attempt_base_sha && !task.task_attempt_base_capture_failed) {
     task.task_attempt_base_sha = baseSha
     task.task_attempt_base_dirty = !!git.dirty
+    if (!baseSha) task.task_attempt_base_capture_failed = 'missing_controller_head_sha'
   }
   const capture = {
     label,
-    task_attempt_base_sha: task.task_attempt_base_sha,
+    task_attempt_base_sha: task.task_attempt_base_sha || '',
     task_attempt_base_dirty: !!task.task_attempt_base_dirty,
+    task_attempt_base_capture_failed: task.task_attempt_base_capture_failed || '',
   }
   ctx.task_attempt_base_sha = capture.task_attempt_base_sha
   ctx.task_attempt_base_dirty = capture.task_attempt_base_dirty
+  ctx.task_attempt_base_capture_failed = capture.task_attempt_base_capture_failed
   return capture
 }
 
@@ -290,7 +292,7 @@ function recordAttemptDiffEvidence(args, task, ctx, label) {
   const evidence = collectDiffEvidence(anchor)
   const entry = { label, ...evidence }
   if (ctx) ctx.attempt_diff_evidence = [...(ctx.attempt_diff_evidence || []), entry]
-  if (task) task.attempt_diff_evidence = [...(task.attempt_diff_evidence || []), entry]
+  if (task && task !== ctx) task.attempt_diff_evidence = [...(task.attempt_diff_evidence || []), entry]
   return entry
 }
 
@@ -355,12 +357,19 @@ async function runEscalationLadder(task, impl, classifyReason) {
       log(task.id + ': escalation ' + rung + ' attempt ' + (attempt + 1) + '/' + maxAttempts)
 
       let result = null
+      let label = ''
       if (rung === 'schema_retry') {
+        label = 'escalate-schema-retry:' + task.id
+        captureAttemptBase(workflowArgs, task, task, label)
         result = await agent(implementPrompt(task),
-          opts('escalate-schema-retry:' + task.id, 'Implement', IMPLEMENT_RESULT))
+          opts(label, 'Implement', IMPLEMENT_RESULT))
+        recordAttemptDiffEvidence(workflowArgs, task, task, label)
       } else if (rung === 'self_service_retry') {
+        label = 'escalate-self-service:' + task.id
+        captureAttemptBase(workflowArgs, task, task, label)
         result = await agent(selfServicePrompt(task),
-          opts('escalate-self-service:' + task.id, 'Implement', IMPLEMENT_RESULT))
+          opts(label, 'Implement', IMPLEMENT_RESULT))
+        recordAttemptDiffEvidence(workflowArgs, task, task, label)
       } else if (rung === 'ask_user') {
         log(task.id + ': BLOCKED — escalation exhausted, asking user: ' + currentReason)
         attempts.push({ rung, attempt: attempt + 1, result: null })
@@ -801,6 +810,7 @@ function classifyTaskResult(taskId, task, ctx) {
   const attemptBase = {
     task_attempt_base_sha: ctx.task_attempt_base_sha || task.task_attempt_base_sha || '',
     task_attempt_base_dirty: !!(ctx.task_attempt_base_dirty || task.task_attempt_base_dirty),
+    task_attempt_base_capture_failed: ctx.task_attempt_base_capture_failed || task.task_attempt_base_capture_failed || '',
   }
 
   // 1. Blocked at implementation
@@ -1174,10 +1184,11 @@ const resultEntries = [
 ]
 
 const attemptDiffEvidence = resultEntries.flatMap(e => e.attempt_diff_evidence || e.impl?.attempt_diff_evidence || [])
-const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha).map(e => ({
+const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha || e.task_attempt_base_capture_failed).map(e => ({
   id: e.id,
   task_attempt_base_sha: e.task_attempt_base_sha,
   task_attempt_base_dirty: !!e.task_attempt_base_dirty,
+  task_attempt_base_capture_failed: e.task_attempt_base_capture_failed || '',
 }))
 
 const state_patch = {
