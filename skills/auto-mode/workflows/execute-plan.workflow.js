@@ -1035,8 +1035,11 @@ function normalizeReviewResult(review, stage, taskId, priorReview) {
 function hasBlockingRereviewMetadata(review) {
   if (!review) return false
   const verified = Array.isArray(review.prior_findings_verified) ? review.prior_findings_verified : []
+  const verifiedIds = new Set(verified.filter(finding => finding && finding.verified === true).map(finding => finding.id || finding.issue_id || finding.prior_issue_id).filter(Boolean))
+  const priorIds = Array.isArray(review._prior_blocking_issue_ids) ? review._prior_blocking_issue_ids : []
   return (Array.isArray(review.unresolved_issue_ids) && review.unresolved_issue_ids.length > 0) ||
     verified.some(finding => finding && finding.verified === false) ||
+    priorIds.some(id => !verifiedIds.has(id)) ||
     review.targeted_verification_credible === false ||
     review.diff_verified === false ||
     (Array.isArray(review.scope_concerns) && review.scope_concerns.length > 0)
@@ -1311,12 +1314,25 @@ function fixIssueFiles(issues) {
   return collectIssueFiles(issues || [])
 }
 
-function validateFixResultContract(updated) {
+function validateFixResultContract(updated, priorIssues) {
   const reasons = []
   if (!updated) reasons.push('missing_fix_result')
   if (updated && (updated.status === 'DONE' || updated.status === 'DONE_WITH_CONCERNS')) {
     for (const field of ['fixed_issue_ids', 'targeted_verification', 'verification_failures', 'unrelated_files_changed', 'scope_justifications']) {
       if (!Array.isArray(updated[field])) reasons.push('missing_' + field)
+    }
+    const priorIds = (priorIssues || []).map(issue => issue && issue.id).filter(Boolean)
+    const fixedIds = new Set(Array.isArray(updated.fixed_issue_ids) ? updated.fixed_issue_ids : [])
+    const targetedIds = new Set((Array.isArray(updated.targeted_verification) ? updated.targeted_verification : []).flatMap(item => (item && item.issue_ids) || []))
+    for (const id of priorIds) {
+      if (!fixedIds.has(id)) reasons.push('missing_fixed_issue_id: ' + id)
+      if (!targetedIds.has(id)) reasons.push('missing_targeted_verification: ' + id)
+    }
+    for (const id of Array.from(fixedIds)) {
+      if (!targetedIds.has(id)) reasons.push('missing_targeted_verification: ' + id)
+    }
+    for (const failure of Array.isArray(updated.verification_failures) ? updated.verification_failures : []) {
+      reasons.push('verification_failure: ' + (failure && (failure.issue_id || failure.id || failure.command || failure.reason) || 'unknown'))
     }
   }
   return { passed: reasons.length === 0, status: reasons.length === 0 ? 'pass' : 'block', reasons }
@@ -1652,7 +1668,7 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
-            const fixContract = validateFixResultContract(updated)
+            const fixContract = validateFixResultContract(updated, blockingIssues)
             if (!fixContract.passed) {
               return { ...ctx, implementation_evidence: controllerEvidenceFromAttempts(ctx), evidence_validation: fixContract, spec_review: null, spec_passed: false, _blocked: true, _reason: fixContract.reasons.join('; '), _fix_result_blocked: true }
             }
@@ -1675,6 +1691,7 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             review = normalizeReviewResult(review, 'spec_review', id, priorSpecReview)
+            if (review) review._prior_blocking_issue_ids = blockingIssues.map(issue => issue && issue.id).filter(Boolean)
             iterations++
           }
 
@@ -1729,7 +1746,7 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
-            const fixContract = validateFixResultContract(updated)
+            const fixContract = validateFixResultContract(updated, blockingIssues)
             if (!fixContract.passed) {
               return { ...ctx, implementation_evidence: controllerEvidenceFromAttempts(ctx), evidence_validation: fixContract, code_review: null, code_passed: false, _blocked: true, _reason: fixContract.reasons.join('; '), _fix_result_blocked: true }
             }
@@ -1755,6 +1772,7 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             review = normalizeReviewResult(review, 'code_review', ctx.id, priorCodeReview)
+            if (review) review._prior_blocking_issue_ids = blockingIssues.map(issue => issue && issue.id).filter(Boolean)
             iterations++
           }
 
