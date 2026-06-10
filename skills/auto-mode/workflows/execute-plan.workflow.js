@@ -1297,6 +1297,21 @@ function validateLatestFixScope(ctx, issues, updated, task) {
   })
 }
 
+function fixIssueFiles(issues) {
+  return collectIssueFiles(issues || [])
+}
+
+function validateFixResultContract(updated) {
+  const reasons = []
+  if (!updated) reasons.push('missing_fix_result')
+  if (updated && (updated.status === 'DONE' || updated.status === 'DONE_WITH_CONCERNS')) {
+    for (const field of ['fixed_issue_ids', 'targeted_verification', 'verification_failures', 'unrelated_files_changed', 'scope_justifications']) {
+      if (!Array.isArray(updated[field])) reasons.push('missing_' + field)
+    }
+  }
+  return { passed: reasons.length === 0, status: reasons.length === 0 ? 'pass' : 'block', reasons }
+}
+
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
   const evidence = extractEvidence(task, impl, controllerEvidence, reviewOverride)
   const reasons = []
@@ -1622,12 +1637,16 @@ for (const [gi, group] of groups.entries()) {
             const fixLabel = 'fix-spec:' + id + '-r' + (iterations + 1)
             captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, impl.files_modified, ctx, impl, 'spec_fix', iterations + 1),
+              fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, impl, 'spec_fix', iterations + 1),
               opts(fixLabel, 'Spec Review', FIX_RESULT),
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
-            if (updated) ctx.impl = { ...ctx.impl, ...updated }
+            const fixContract = validateFixResultContract(updated)
+            if (!fixContract.passed) {
+              return { ...ctx, implementation_evidence: controllerEvidenceFromAttempts(ctx), evidence_validation: fixContract, spec_review: null, spec_passed: false, _blocked: true, _reason: fixContract.reasons.join('; '), _fix_result_blocked: true }
+            }
+            ctx.impl = { ...ctx.impl, ...updated }
             controllerEvidence = controllerEvidenceFromAttempts(ctx)
             implementationEvidence = validateImplementationEvidence(ctx, ctx.impl, controllerEvidence, null)
             if (!implementationEvidence.passed) {
@@ -1695,12 +1714,16 @@ for (const [gi, group] of groups.entries()) {
             const fixLabel = 'fix-code:' + ctx.id + '-r' + (iterations + 1)
             captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
-              fixPrompt(blockingIssues, ctx.impl.files_modified, ctx, ctx.impl, 'code_fix', iterations + 1),
+              fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, ctx.impl, 'code_fix', iterations + 1),
               opts(fixLabel, 'Code Review', FIX_RESULT),
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
-            if (updated) ctx.impl = { ...ctx.impl, ...updated }
+            const fixContract = validateFixResultContract(updated)
+            if (!fixContract.passed) {
+              return { ...ctx, implementation_evidence: controllerEvidenceFromAttempts(ctx), evidence_validation: fixContract, code_review: null, code_passed: false, _blocked: true, _reason: fixContract.reasons.join('; '), _fix_result_blocked: true }
+            }
+            ctx.impl = { ...ctx.impl, ...updated }
 
             const controllerEvidence = controllerEvidenceFromAttempts(ctx)
             const implementationEvidence = validateImplementationEvidence(ctx, ctx.impl, controllerEvidence, ctx.spec_review)

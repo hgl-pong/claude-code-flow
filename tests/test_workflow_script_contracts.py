@@ -920,7 +920,7 @@ WORKFLOW_SCRIPT
               __agent_results: {
                 'implement:task-7': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
                 'spec-review:task-7': { passed: false, issues: [{ severity: 'Critical', blocking: true, description: 'fix it' }], summary: 'needs fix', prompt_only: true },
-                'fix-spec:task-7-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: '', verification_commands: [], verification_results: [], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'fix-spec:task-7-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: '', verification_commands: [], verification_results: [], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['issue-1'], targeted_verification: [], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
                 'spec-review:task-7-r1': { passed: true, issues: [], summary: 'stale review should not pass', prompt_only: true },
                 'code-review:task-7': { passed: true, issues: [], summary: 'should not run', prompt_only: true }
               }
@@ -942,7 +942,7 @@ WORKFLOW_SCRIPT
                 'implement:task-8': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
                 'spec-review:task-8': { passed: true, issues: [], summary: 'ok', prompt_only: true },
                 'code-review:task-8': { passed: false, issues: [{ severity: 'Critical', blocking: true, description: 'fix code' }], summary: 'needs fix', prompt_only: true },
-                'fix-code:task-8-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: '', verification_commands: [], verification_results: [], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'fix-code:task-8-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: '', verification_commands: [], verification_results: [], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['issue-1'], targeted_verification: [], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
                 'code-review:task-8-r1': { passed: true, issues: [], summary: 'stale review should not pass', prompt_only: true }
               }
             }
@@ -1038,6 +1038,53 @@ WORKFLOW_SCRIPT
             assert text in self.script
         assert "opts(fixLabel, 'Spec Review', FIX_RESULT)" in self.script
         assert "opts(fixLabel, 'Code Review', FIX_RESULT)" in self.script
+
+    def test_fix_loops_scope_prompts_to_blocking_issue_files(self):
+        assert "fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, impl, 'spec_fix'" in self.script
+        assert "fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, ctx.impl, 'code_fix'" in self.script
+        assert "fixPrompt(blockingIssues, impl.files_modified" not in self.script
+        assert "fixPrompt(blockingIssues, ctx.impl.files_modified" not in self.script
+
+    def test_spec_fix_blocks_missing_fix_result_before_rereview(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-10']],
+              tasks: { 'task-10': { id: 'task-10', description: 'Do spec fix contract task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-10': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-10': { passed: false, issues: [{ severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix it' }], summary: 'needs fix', prompt_only: true },
+                'spec-review:task-10-r1': { passed: true, issues: [], summary: 'should not run', prompt_only: true },
+                'code-review:task-10': { passed: true, issues: [], summary: 'should not run', prompt_only: true }
+              }
+            }
+        ''')
+        assert result["blocked"][0]["id"] == "task-10"
+        assert "missing_fix_result" in result["blocked"][0]["reason"]
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
+        assert result["final_review"] is None
+
+    def test_code_fix_blocks_missing_targeted_fields_before_rereview(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-11']],
+              tasks: { 'task-11': { id: 'task-11', description: 'Do code fix contract task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-11': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-11': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-11': { passed: false, issues: [{ severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix code' }], summary: 'needs fix', prompt_only: true },
+                'fix-code:task-11-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'code-review:task-11-r1': { passed: true, issues: [], summary: 'should not run', prompt_only: true }
+              }
+            }
+        ''')
+        assert result["blocked"][0]["id"] == "task-11"
+        assert "missing_fixed_issue_ids" in result["blocked"][0]["reason"]
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
+        assert result["final_review"] is None
 
     def test_fix_scope_policy_is_helper_only_not_review_loop_gate(self):
         assert "function validateLatestFixScope" in self.script
