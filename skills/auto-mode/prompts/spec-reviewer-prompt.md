@@ -54,6 +54,10 @@ Task tool (general-purpose):
     - Include location_unavailable_reason when file/line is omitted
     - Preserve prior_issue_id for unresolved carried-forward findings
 
+    ## Structured Output Tolerance
+
+    Use the closest severity label you know. Free-form severity/category/location values are accepted and normalized by the workflow.
+
     ## Your Job
 
     Read the implementation diff/code and verify:

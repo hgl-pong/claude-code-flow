@@ -282,11 +282,21 @@ class TestExecutePlanConstants:
         ''')
         assert result == [True, True, True, True, True, True, True, True]
 
+    def test_review_result_schema_accepts_unnormalized_issue_values(self):
+        for text in [
+            "severity: { type: 'string', description: 'Free-form severity; normalized after schema parsing' }",
+            "category: { type: 'string', description: 'Free-form category; normalized after schema parsing' }",
+            "line: { type: ['number', 'string', 'null'], description: 'Line number or free-form line value; normalized after schema parsing' }",
+        ]:
+            assert text in self.script
+        assert "severity: { type: 'string', enum: ['Critical', 'High', 'Important', 'Minor', 'Info'] }" not in self.script
+        assert "line: { type: 'number' }" not in self.script
+
     def test_review_issue_identity_is_stable_normalized_and_deduped(self):
         result = self._eval_evidence_helper(r'''
             (() => {
               const review = normalizeReviewIssues({ issues: [
-                { severity: 'medium', category: 'Spec Gap', file: 'src/a.js', line: 2, description: 'Missing X' },
+                { severity: 'medium', category: 'Spec Gap', file: 'src/a.js', line: '2', description: 'Missing X' },
                 { severity: 'medium', category: 'Spec Gap', file: 'src/a.js', line: 2, description: 'Missing X' },
                 { id: 'custom-1', severity: 'low', description: 'No location' }
               ] }, { stage: 'spec_review', task_id: 'task-7', prior_issues: [

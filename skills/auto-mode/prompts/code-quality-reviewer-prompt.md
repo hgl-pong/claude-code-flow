@@ -39,4 +39,4 @@ Task tool (general-purpose):
 - Sprite/image generation is delegated to claude-code-flow:image-generation, not a duplicate provider path.
 - playtest/smoke evidence exists for runnable game changes, or unverifiable runtime acceptance is called out.
 
-**Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment, diff_verified limitation when applicable
+**Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment, diff_verified limitation when applicable. Free-form severity/category/location values are accepted and normalized by the workflow.

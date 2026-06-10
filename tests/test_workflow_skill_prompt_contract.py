@@ -177,6 +177,7 @@ class TestReviewPromptContracts:
     @pytest.mark.parametrize("text", [
         "Diff-First Review Rules", "requirements/acceptance only", "actual code diff",
         "unverified_acceptance_refs", "location_unavailable_reason", "prior_issue_id",
+        "Free-form severity/category/location values",
     ])
     def test_spec_review_prompt_is_diff_first(self, text):
         assert text in self.spec_prompt
@@ -185,6 +186,7 @@ class TestReviewPromptContracts:
         "Review the verified controller diff", "controller diff metadata first",
         "files_modified", "diff_verified=false", "conflicting scope",
         "location_unavailable_reason", "prior_issue_id",
+        "Free-form severity/category/location values",
     ])
     def test_code_review_prompt_is_diff_first(self, text):
         assert text in self.code_prompt
