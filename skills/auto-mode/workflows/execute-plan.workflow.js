@@ -235,6 +235,20 @@ const IMPLEMENT_RESULT = {
     commit_sha: { type: 'string', description: 'Git commit SHA (short)' },
     concerns: { type: 'array', items: { type: 'string' }, description: 'If DONE_WITH_CONCERNS, list each concern' },
     blocker_detail: { type: 'string', description: 'If BLOCKED: what blocks you, what you tried' },
+    verification_results: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: true,
+        properties: {
+          command: { type: 'string' },
+          exit_code: { type: 'number' },
+          output: { type: 'string' },
+        },
+        required: ['command'],
+      },
+      description: 'Agent-run verification command results used when controller evidence is prompt-only',
+    },
     verification_commands: { type: 'array', items: { type: 'string' }, description: 'Commands to verify the implementation' },
     evidence_paths: { type: 'array', items: { type: 'string' }, description: 'Paths to evidence artifacts' },
   },

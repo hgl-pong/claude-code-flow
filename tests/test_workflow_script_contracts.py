@@ -172,6 +172,11 @@ class TestExecutePlanConstants:
         assert "workflow_agent_only" in self.script
         assert "const ENFORCEMENT_MODE = 'prompt_only'" in self.script
 
+    def test_implement_result_schema_allows_agent_verification_results(self):
+        """Contract: implementer schema accepts agent evidence fallback field."""
+        assert "verification_results" in self.script
+        assert "Agent-run verification command results" in self.script
+
     def test_diff_anchor_helper_inventory(self):
         """Contract: diff anchor resolution is helper-only with prompt fallback metadata."""
         assert "function resolveDiffAnchors(args, task, impl, stage)" in self.script
