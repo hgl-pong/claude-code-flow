@@ -971,6 +971,100 @@ function implementationEvidenceCleanPass(evidence) {
   return evidence && evidence.status === 'pass'
 }
 
+function normalizePathForScope(path) {
+  return String(path || '').replace(/\\/g, '/').replace(/^\.\//, '')
+}
+
+function dirnameForScope(path) {
+  const normalized = normalizePathForScope(path)
+  const index = normalized.lastIndexOf('/')
+  return index === -1 ? '' : normalized.slice(0, index)
+}
+
+function basenameForScope(path) {
+  const normalized = normalizePathForScope(path)
+  const index = normalized.lastIndexOf('/')
+  return index === -1 ? normalized : normalized.slice(index + 1)
+}
+
+function isTestPath(path) {
+  const normalized = normalizePathForScope(path).toLowerCase()
+  const base = basenameForScope(normalized)
+  return normalized.includes('/test/') || normalized.includes('/tests/') || normalized.startsWith('test/') || normalized.startsWith('tests/') ||
+    base.startsWith('test_') || base.endsWith('.test.js') || base.endsWith('.test.ts') || base.endsWith('.spec.js') || base.endsWith('.spec.ts') || base.endsWith('_test.py')
+}
+
+function isSameDirectoryTestPattern(file, allowedFiles) {
+  if (!isTestPath(file)) return false
+  const dir = dirnameForScope(file)
+  const base = basenameForScope(file).toLowerCase()
+  return allowedFiles.some(allowed => {
+    const allowedDir = dirnameForScope(allowed)
+    const stem = basenameForScope(allowed).replace(/\.[^.]+$/, '').toLowerCase()
+    return dir === allowedDir && (base.includes(stem) || base.includes(stem.replace(/^test[_-]/, '')))
+  })
+}
+
+function isBroadConfigFile(file) {
+  const base = basenameForScope(file).toLowerCase()
+  return ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb', 'requirements.txt', 'pyproject.toml', 'poetry.lock', 'cargo.toml', 'cargo.lock', 'go.mod', 'go.sum', 'webpack.config.js', 'vite.config.js', 'rollup.config.js', 'tsconfig.json'].includes(base)
+}
+
+function addAllowedPath(set, path) {
+  const normalized = normalizePathForScope(path)
+  if (normalized) set.add(normalized)
+}
+
+function collectIssueFiles(issues) {
+  return (issues || []).map(issue => normalizePathForScope(issue && (issue.file || issue.path))).filter(Boolean)
+}
+
+function validateFixScope(diffFiles, allowedFiles, fixResult) {
+  const result = fixResult || {}
+  const task = result.task || {}
+  const issues = result.issues || (Array.isArray(allowedFiles) && allowedFiles.some(item => item && typeof item === 'object') ? allowedFiles : [])
+  const explicitAllowed = Array.isArray(allowedFiles) && allowedFiles.every(item => typeof item === 'string') ? allowedFiles : []
+  const allowed = new Set()
+  for (const file of explicitAllowed) addAllowedPath(allowed, file)
+  for (const file of collectIssueFiles(issues)) addAllowedPath(allowed, file)
+  for (const file of task.pre_fix_changed_files || task.preFixChangedFiles || []) addAllowedPath(allowed, file)
+  for (const file of task.files || []) addAllowedPath(allowed, file)
+  for (const file of task.tests || []) addAllowedPath(allowed, file)
+
+  const support = result.support || task.support || {}
+  const imports = support.imports || support.imported_by_allowed_files || support.justified_imports || {}
+  for (const file of Array.from(allowed)) {
+    for (const imported of imports[file] || imports[normalizePathForScope(file)] || []) addAllowedPath(allowed, imported)
+  }
+
+  const changed = (diffFiles || []).map(normalizePathForScope).filter(Boolean)
+  const formattingOnly = new Set((result.formatting_only_files || result.formattingOnlyFiles || []).map(normalizePathForScope))
+  const deleted = (result.deleted_files || result.deletedFiles || []).map(normalizePathForScope)
+  const renamed = result.renamed_files || result.renamedFiles || []
+  const reasons = []
+
+  for (const file of changed) {
+    const scoped = allowed.has(file) || isSameDirectoryTestPattern(file, Array.from(allowed))
+    if (isBroadConfigFile(file) && !allowed.has(file)) reasons.push('broad_config_change: ' + file)
+    else if (!scoped) reasons.push(formattingOnly.has(file) ? 'formatting_only_outside_scope: ' + file : 'unrelated_file_changed: ' + file)
+  }
+  for (const file of deleted) reasons.push('delete_outside_fix_scope: ' + file)
+  for (const entry of renamed) {
+    const from = normalizePathForScope(entry && (entry.from || entry.old || entry[0]))
+    const to = normalizePathForScope(entry && (entry.to || entry.new || entry[1]))
+    reasons.push('rename_outside_fix_scope: ' + from + ' -> ' + to)
+  }
+
+  return {
+    passed: reasons.length === 0,
+    status: reasons.length === 0 ? 'pass' : 'block',
+    reasons,
+    allowed_files: Array.from(allowed),
+    diff_files: changed,
+    advisory: { unrelated_files_changed: result.unrelated_files_changed || [] },
+  }
+}
+
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
   const evidence = extractEvidence(task, impl, controllerEvidence, reviewOverride)
   const reasons = []

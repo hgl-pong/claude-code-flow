@@ -840,6 +840,63 @@ WORKFLOW_SCRIPT
         assert "function implementationEvidenceCleanPass" in self.script
         assert "!implementationEvidenceCleanPass(implementationEvidence)" in self.script
 
+    def test_validate_fix_scope_allows_issue_task_tests_and_support_files(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const task = {
+                files: ['src/feature/a.js'],
+                tests: ['tests/test_a.py'],
+                pre_fix_changed_files: ['src/feature/existing.js']
+              };
+              const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }];
+              const support = { imports: { 'src/feature/a.js': ['src/feature/helper.js'] } };
+              return [
+                validateFixScope(['src/feature/a.js'], issues, { files_modified: ['untrusted.js'], task }).passed,
+                validateFixScope(['tests/test_a_more.py'], issues, { task }).passed,
+                validateFixScope(['src/feature/existing.js'], issues, { task }).passed,
+                validateFixScope(['src/feature/helper.js'], issues, { task, support }).passed
+              ];
+            })()
+        ''')
+        assert result == [True, True, True, True]
+
+    def test_validate_fix_scope_blocks_unrelated_config_delete_and_rename(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const task = { files: ['src/feature/a.js'], tests: ['tests/test_a.py'] };
+              const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }];
+              const unrelated = validateFixScope(['src/other/b.js'], issues, { task });
+              const config = validateFixScope(['package.json'], issues, { task });
+              const deleted = validateFixScope(['src/feature/a.js'], issues, { task, deleted_files: ['src/feature/a.js'] });
+              const renamed = validateFixScope(['src/feature/a.js', 'src/feature/b.js'], issues, { task, renamed_files: [{ from: 'src/feature/a.js', to: 'src/feature/b.js' }] });
+              return [unrelated, config, deleted, renamed];
+            })()
+        ''')
+        assert result[0]["passed"] is False
+        assert "unrelated_file_changed: src/other/b.js" in result[0]["reasons"]
+        assert result[1]["passed"] is False
+        assert "broad_config_change: package.json" in result[1]["reasons"]
+        assert result[2]["passed"] is False
+        assert "delete_outside_fix_scope: src/feature/a.js" in result[2]["reasons"]
+        assert result[3]["passed"] is False
+        assert "rename_outside_fix_scope: src/feature/a.js -> src/feature/b.js" in result[3]["reasons"]
+
+    def test_validate_fix_scope_blocks_formatting_only_outside_scope_and_ignores_agent_advisory(self):
+        result = self._eval_evidence_helper(r'''
+            validateFixScope(
+              ['src/other/format.js'],
+              [{ id: 'issue-1', file: 'src/feature/a.js' }],
+              {
+                task: { files: ['src/feature/a.js'] },
+                formatting_only_files: ['src/other/format.js'],
+                unrelated_files_changed: []
+              }
+            )
+        ''')
+        assert result["passed"] is False
+        assert "formatting_only_outside_scope: src/other/format.js" in result["reasons"]
+        assert "unrelated_files_changed" in result["advisory"]
+
     def test_spec_fix_reruns_implementation_evidence_gate(self):
         result = self._eval_workflow(r'''
             {
