@@ -746,9 +746,23 @@ function collectFinalBranchDiffEvidence(args, finalTask, finalImpl) {
   return collectDiffEvidence(anchor)
 }
 
-function finalReviewPrompt(completed, finalTask, finalImpl) {
+function finalReviewPrompt(completed, finalTask, finalImpl, priorReview) {
   const branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
   const completedSummary = (completed || []).map(entry => ({ id: entry.id, files: entry.files || [] }))
+  const priorBlocking = ((priorReview && priorReview.issues) || []).filter(i => i && isIssueBlocking('final_review', 'medium', i.severity, i.blocking))
+  const targetedFix = {
+    prior_blocking_issue_ids: priorBlocking.map(i => i.id || i.prior_issue_id || '').filter(Boolean),
+    fix_result: {
+      fixed_issue_ids: finalImpl.fixed_issue_ids || [],
+      targeted_verification: finalImpl.targeted_verification || [],
+      verification_failures: finalImpl.verification_failures || [],
+      unrelated_files_changed: finalImpl.unrelated_files_changed || [],
+      diff_summary: finalImpl.diff_summary || '',
+      scope_justifications: finalImpl.scope_justifications || [],
+    },
+    final_fix_diff_evidence: latestDiffEvidence(finalImpl, finalTask) || null,
+    prior_review: priorReview || null,
+  }
   return `Final cross-task review after all tasks passed.
 
 ## Completed Tasks
@@ -763,6 +777,19 @@ Inspect branch-level diff evidence first. Prefer controller metadata for changed
 
 Review only cross-task integration bugs, conflicts, duplicated changes, missing shared tests, regression risk, and branch-wide consistency issues.
 Do not propose or apply final fixes. Report blocking findings only as review issues.
+
+## Final Targeted Re-Review Requirements
+
+${priorReview ? JSON.stringify(targetedFix, null, 2) : 'Initial review; no prior findings.'}
+
+If this is a final re-review:
+- Cover the full branch diff plus the final fix diff evidence.
+- Verify every prior blocking issue by ID in prior_findings_verified[].
+- Put repeated unresolved issues in unresolved_issue_ids and preserve prior_issue_id on carried-forward findings.
+- Report new_issues separately from repeated unresolved issues.
+- Set diff_verified from controller branch and final fix diff/base metadata, not agent claims.
+- Set targeted_verification_credible only if targeted commands cover fixed_issue_ids.
+- Include scope_concerns for final fixes outside review issue files or stale task evidence.
 
 Blocking severities: Critical, High, Important. Minor/Info are non-blocking.
 If any blocking issue exists, passed must be false even if an optimistic pass seems tempting.
@@ -1095,6 +1122,35 @@ function hasBlockingRereviewMetadata(review) {
 
 function unresolvedIssueIds(review) {
   return review && Array.isArray(review.unresolved_issue_ids) ? review.unresolved_issue_ids : []
+}
+
+function taskFilesForFinalStaleness(entry) {
+  return (entry && (entry.files || (entry.evidence && entry.evidence.files_modified) || []) || []).map(normalizePathForScope).filter(Boolean)
+}
+
+function collectFinalFixTouchedFiles(finalTask) {
+  const latest = ((finalTask && finalTask.attempt_diff_evidence) || []).slice(-1)[0] || {}
+  const fromDiff = latest.diff_files || []
+  const fromStatus = [latest.committed_diff, latest.worktree_diff]
+    .filter(Boolean)
+    .flatMap(section => section.files || [])
+  return [...new Set([...fromDiff, ...fromStatus].map(normalizePathForScope).filter(Boolean))]
+}
+
+function tasksStaleAfterFinalFix(completed, touchedFiles) {
+  const touched = new Set((touchedFiles || []).map(normalizePathForScope).filter(Boolean))
+  if (touched.size === 0) return []
+  const stale = []
+  for (const entry of completed || []) {
+    const files = taskFilesForFinalStaleness(entry).filter(file => touched.has(file))
+    if (files.length > 0) stale.push({ task_id: entry.id, files, reason: 'final_fix_touched_completed_task_files' })
+  }
+  return stale
+}
+
+function finalFixInvalidatesTaskEvidence(completed, staleTasks) {
+  const staleIds = new Set((staleTasks || []).map(item => item && item.task_id).filter(Boolean))
+  return (completed || []).some(entry => staleIds.has(entry.id) && (!entry.evidence_validation || entry.evidence_validation.status !== 'pass'))
 }
 
 function normalizeFinalReview(review, branchDiffEvidence) {
@@ -1932,19 +1988,77 @@ const allOtherPartitionsEmpty =
   partitions.needs_escalation.length === 0
 
 let finalReview = null
+let finalFixAttempts = 0
+let tasksStaleAfterFinalFixList = []
+let finalReviewNextAction = ''
 if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && totalTasks > 0) {
   phase('Final Review')
   const allFiles = partitions.completed.flatMap(r => r.files || r.evidence?.files_modified || []).filter(Boolean)
   const allIds = partitions.completed.map(r => r.id).join(', ')
   const finalTask = { id: 'final', description: 'Final review for ' + allIds, files: allFiles }
-  const finalImpl = { summary: 'Entire implementation: ' + allIds, files_modified: allFiles }
-  const branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
+  let finalImpl = { summary: 'Entire implementation: ' + allIds, files_modified: allFiles }
+  let branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
 
-  finalReview = await agent(
+  finalReview = await agentWithSchemaRetry(
     finalReviewPrompt(partitions.completed, finalTask, finalImpl),
     opts('final-review', 'Final Review', REVIEW_RESULT),
+    0,
   )
   finalReview = normalizeFinalReview(finalReview, branchDiffEvidence)
+
+  while (finalReview && finalReview.passed === false && finalFixAttempts < MAX_RETRIES) {
+    const blockingIssues = (finalReview.issues || []).filter(i =>
+      isIssueBlocking('final_review', 'medium', i.severity, i.blocking)
+    )
+    if (blockingIssues.length === 0) break
+    const fixAttempt = finalFixAttempts + 1
+    const fixLabel = 'fix-final-r' + fixAttempt
+    captureAttemptBase(workflowArgs, finalTask, finalTask, fixLabel)
+    const updated = await agentWithSchemaRetry(
+      fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), finalTask, finalImpl, 'final_fix', fixAttempt),
+      opts(fixLabel, 'Final Review', FIX_RESULT),
+      0,
+    )
+    recordAttemptDiffEvidence(workflowArgs, finalTask, finalTask, fixLabel)
+    const fixContract = validateFixResultContract(updated, blockingIssues)
+    finalFixAttempts = fixAttempt
+    if (!fixContract.passed) {
+      finalReview = normalizeFinalReview({
+        passed: false,
+        issues: blockingIssues,
+        summary: fixContract.reasons.join('; '),
+        unresolved_issue_ids: blockingIssues.map(issue => issue.id).filter(Boolean),
+      }, branchDiffEvidence)
+      break
+    }
+    finalImpl = { ...finalImpl, ...updated, attempt_diff_evidence: finalTask.attempt_diff_evidence || [] }
+    const touchedFiles = collectFinalFixTouchedFiles(finalTask)
+    tasksStaleAfterFinalFixList = tasksStaleAfterFinalFix(partitions.completed, touchedFiles)
+    const invalidatesEvidence = finalFixInvalidatesTaskEvidence(partitions.completed, tasksStaleAfterFinalFixList)
+    if (invalidatesEvidence) finalReviewNextAction = 'rerun_task_review'
+    const priorFinalReview = finalReview
+    branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
+    finalReview = await agentWithSchemaRetry(
+      finalReviewPrompt(partitions.completed, finalTask, finalImpl, priorFinalReview),
+      opts('final-review-r' + fixAttempt, 'Final Review', REVIEW_REREVIEW_RESULT),
+      0,
+    )
+    finalReview = normalizeFinalReview(finalReview, branchDiffEvidence)
+    if (finalReview) finalReview._prior_blocking_issue_ids = blockingIssues.map(issue => issue && issue.id).filter(Boolean)
+    if (hasBlockingRereviewMetadata(finalReview)) finalReview.passed = false
+    if (invalidatesEvidence) {
+      finalReview.passed = false
+      finalReview.next_action = 'rerun_task_review'
+      finalReview.scope_concerns = [...(finalReview.scope_concerns || []), 'final_fix_invalidates_unverified_task_evidence']
+    }
+  }
+
+  if (finalReview) {
+    finalReview.final_fix_attempts = finalFixAttempts
+    finalReview.tasks_stale_after_final_fix = tasksStaleAfterFinalFixList
+    if (finalReviewNextAction && !finalReview.next_action) finalReview.next_action = finalReviewNextAction
+    if (finalReview.passed === false) finalReview.unresolved_issue_ids = unresolvedIssueIds(finalReview)
+  }
 }
 
 // ── Build state_patch for resume support ──────────────────────────────
@@ -1989,6 +2103,8 @@ const state_patch = {
   final_review_run: finalReview !== null,
   final_review_blocked: finalReviewBlocked,
   final_review_unresolved_issue_ids: finalReviewBlocked ? unresolvedIssueIds(finalReview) : [],
+  final_fix_attempts: finalFixAttempts,
+  tasks_stale_after_final_fix: tasksStaleAfterFinalFixList,
 }
 
 return {
