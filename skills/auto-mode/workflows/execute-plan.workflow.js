@@ -1496,27 +1496,6 @@ function classifyTaskResult(taskId, task, ctx) {
 
   const implementationEvidence = ctx.evidence_validation || validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)
 
-  if (!reviewOverrideDecisionAllowsConcerns(ctx.impl, ctx.code_review)) {
-    return {
-      partition: 'blocked',
-      entry: {
-        id: taskId,
-        reason: 'DONE_WITH_CONCERNS requires passed code review override',
-        classification: 'runtime_failure',
-        impl: ctx.impl,
-        evidence: implementationEvidence.evidence,
-        evidence_validation: {
-          ...implementationEvidence,
-          passed: false,
-          status: 'block',
-          reasons: [...(implementationEvidence.reasons || []), 'missing_review_override_for_concerns'],
-        },
-        ...attemptBase,
-        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
-      },
-    }
-  }
-
   if (!implementationEvidence.passed) {
     return {
       partition: 'blocked',
@@ -1547,6 +1526,27 @@ function classifyTaskResult(taskId, task, ctx) {
         iterations: ctx._iterations_code || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
         evidence_validation: ctx.evidence_validation,
+        ...attemptBase,
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
+      },
+    }
+  }
+
+  if (!reviewOverrideDecisionAllowsConcerns(ctx.impl, ctx.code_review)) {
+    return {
+      partition: 'blocked',
+      entry: {
+        id: taskId,
+        reason: 'DONE_WITH_CONCERNS requires passed code review override',
+        classification: 'runtime_failure',
+        impl: ctx.impl,
+        evidence: implementationEvidence.evidence,
+        evidence_validation: {
+          ...implementationEvidence,
+          passed: false,
+          status: 'block',
+          reasons: [...(implementationEvidence.reasons || []), 'missing_review_override_for_concerns'],
+        },
         ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
