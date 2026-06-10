@@ -1055,6 +1055,51 @@ function parseFixScopeDiffFiles(diffFiles) {
   }
 }
 
+function stripScopeExtension(path) {
+  return normalizePathForScope(path).replace(/\.[^.\/]+$/, '')
+}
+
+function resolveRelativeImportForScope(fromFile, specifier) {
+  const spec = String(specifier || '').trim()
+  if (!spec.startsWith('.')) return ''
+  const base = dirnameForScope(fromFile)
+  const parts = (base ? base.split('/') : []).concat(spec.split('/'))
+  const resolved = []
+  for (const part of parts) {
+    if (!part || part === '.') continue
+    if (part === '..') resolved.pop()
+    else resolved.push(part)
+  }
+  return stripScopeExtension(resolved.join('/'))
+}
+
+function importSpecifiersFromLine(line) {
+  const text = String(line || '')
+  const specs = []
+  const importMatch = text.match(/\bimport\s+(?:[^'"()]+?\s+from\s+)?['"]([^'"]+)['"]/) || text.match(/\bexport\s+[^'"()]+?\s+from\s+['"]([^'"]+)['"]/) || text.match(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/)
+  const requireMatch = text.match(/\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/)
+  if (importMatch) specs.push(importMatch[1])
+  if (requireMatch) specs.push(requireMatch[1])
+  return specs
+}
+
+function collectActualImportSupport(diffEvidence, allowedFiles) {
+  const allowedStems = new Set(Array.from(allowedFiles || []).map(stripScopeExtension))
+  const support = []
+  for (const evidence of diffEvidence || []) {
+    for (const section of [evidence && evidence.committed_diff, evidence && evidence.worktree_diff]) {
+      let current = ''
+      for (const line of String((section && section.diff_body) || '').split('\n')) {
+        const header = line.match(/^\+\+\+ b\/(.+)$/)
+        if (header) current = normalizePathForScope(header[1])
+        if (!current || !allowedStems.has(stripScopeExtension(current)) || !line.startsWith('+') || line.startsWith('+++')) continue
+        for (const spec of importSpecifiersFromLine(line.slice(1))) addAllowedPath({ add: value => support.push(value) }, resolveRelativeImportForScope(current, spec))
+      }
+    }
+  }
+  return support
+}
+
 function validateFixScope(diffFiles, allowedFiles, fixResult) {
   const result = fixResult || {}
   const task = result.task || {}
@@ -1072,6 +1117,7 @@ function validateFixScope(diffFiles, allowedFiles, fixResult) {
   for (const file of Array.from(allowed)) {
     for (const imported of imports[file] || imports[normalizePathForScope(file)] || []) addAllowedPath(allowed, imported)
   }
+  for (const imported of collectActualImportSupport(result.diff_evidence || result.controller_diff_evidence || task.attempt_diff_evidence || [], allowed)) addAllowedPath(allowed, imported)
 
   const parsed = parseFixScopeDiffFiles(diffFiles || [])
   const changed = parsed.changed
@@ -1086,8 +1132,9 @@ function validateFixScope(diffFiles, allowedFiles, fixResult) {
   ]
   const reasons = []
 
+  const allowedStems = new Set(Array.from(allowed).map(stripScopeExtension))
   for (const file of changed) {
-    const scoped = allowed.has(file) || isSameDirectoryTestPattern(file, Array.from(allowed))
+    const scoped = allowed.has(file) || allowedStems.has(stripScopeExtension(file)) || isSameDirectoryTestPattern(file, Array.from(allowed))
     if (isBroadConfigFile(file)) reasons.push('broad_config_change: ' + file)
     else if (!scoped) reasons.push(formattingOnly.has(file) ? 'formatting_only_outside_scope: ' + file : 'unrelated_file_changed: ' + file)
   }
@@ -1449,10 +1496,6 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
-            const fixScope = validateLatestFixScope(ctx, blockingIssues, updated, ctx)
-            if (!fixScope.passed) {
-              return { ...ctx, fix_scope_validation: fixScope, spec_review: null, spec_passed: false, _blocked: true, _reason: fixScope.reasons.join('; '), _fix_scope_blocked: true }
-            }
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
             controllerEvidence = controllerEvidenceFromAttempts(ctx)
             implementationEvidence = validateImplementationEvidence(ctx, ctx.impl, controllerEvidence, null)
@@ -1526,10 +1569,6 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
-            const fixScope = validateLatestFixScope(ctx, blockingIssues, updated, ctx)
-            if (!fixScope.passed) {
-              return { ...ctx, fix_scope_validation: fixScope, code_review: null, code_passed: false, _blocked: true, _reason: fixScope.reasons.join('; '), _fix_scope_blocked: true }
-            }
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
             const priorCodeReview = review

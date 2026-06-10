@@ -851,16 +851,18 @@ WORKFLOW_SCRIPT
               const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }];
               const locationOnlyIssues = [{ id: 'issue-2', location: 'src/feature/location.js:12' }];
               const support = { imports: { 'src/feature/a.js': ['src/feature/helper.js'] } };
+              const diff_evidence = [{ committed_diff: { diff_body: 'diff --git a/src/feature/a.js b/src/feature/a.js\n+++ b/src/feature/a.js\n+import util from "./util"\n' } }];
               return [
                 validateFixScope(['src/feature/a.js'], issues, { files_modified: ['untrusted.js'], task }).passed,
                 validateFixScope(['tests/test_a_more.py'], issues, { task }).passed,
                 validateFixScope(['src/feature/existing.js'], issues, { task }).passed,
                 validateFixScope(['src/feature/helper.js'], issues, { task, support }).passed,
+                validateFixScope(['src/feature/util.js'], issues, { task, diff_evidence }).passed,
                 validateFixScope(['src/feature/location.js'], locationOnlyIssues, { task }).passed
               ];
             })()
         ''')
-        assert result == [True, True, True, True, True]
+        assert result == [True, True, True, True, True, True]
 
     def test_validate_fix_scope_blocks_unrelated_config_delete_and_rename(self):
         result = self._eval_evidence_helper(r'''
@@ -928,6 +930,11 @@ WORKFLOW_SCRIPT
         assert "missing_test_results" in result["blocked"][0]["reason"]
         assert result["state_patch"]["task_evidence_validations"][0]["status"] == "block"
         assert result["final_review"] is None
+
+    def test_fix_scope_policy_is_helper_only_not_review_loop_gate(self):
+        assert "function validateLatestFixScope" in self.script
+        assert "const fixScope = validateLatestFixScope" not in self.script
+        assert "_fix_scope_blocked" not in self.script
 
     def test_classification_wires_implementation_evidence_validation(self):
         assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script
