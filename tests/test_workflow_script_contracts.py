@@ -250,6 +250,56 @@ class TestExecutePlanConstants:
         ''')
         assert result == [True, True, True]
 
+    def test_collect_diff_evidence_inventory(self):
+        for text in [
+            "function collectDiffEvidence(anchor)", "name_status", "diff_summary",
+            "worktree_diff", "committed_diff", "truncated", "binary", "renamed", "deleted",
+            "command_errors", "verified_diff",
+        ]:
+            assert text in self.script
+
+    def test_collect_diff_evidence_metadata_and_dirty_state(self):
+        result = self._eval_evidence_helper(r'''
+            collectDiffEvidence({
+              base_sha: '1111111', head_sha: '2222222', dirty: true,
+              committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: 'diff --git a/src/a.js b/src/a.js\n+change\n' },
+              worktree: { ok: true, name_status: 'A\tsrc/wip.js\n', diff: 'diff --git a/src/wip.js b/src/wip.js\n+wip\n' }
+            })
+        ''')
+        assert result["base_sha"] == "1111111"
+        assert result["head_sha"] == "2222222"
+        assert result["dirty"] is True
+        assert result["includes_worktree_diff"] is True
+        assert result["verified_diff"] is True
+        assert result["committed_diff"]["name_status"] == ["M\tsrc/a.js"]
+        assert result["worktree_diff"]["name_status"] == ["A\tsrc/wip.js"]
+
+    def test_collect_diff_evidence_truncates_huge_diff_and_records_scope_error(self):
+        result = self._eval_evidence_helper(r'''
+            collectDiffEvidence({
+              base_sha: '1111111', head_sha: '2222222', max_diff_chars: 12,
+              committed: { ok: false, error: 'git diff failed', name_status: 'M\ta.js\n', diff: '12345678901234567890' },
+              worktree: { ok: true, diff: 'abcdefghijklmno' }
+            })
+        ''')
+        assert result["verified_diff"] is False
+        assert result["scope_complete"] is False
+        assert result["committed_diff"]["truncated"] is True
+        assert result["worktree_diff"]["truncated"] is True
+        assert result["command_errors"][0] == {"scope": "committed", "error": "git diff failed"}
+
+    def test_collect_diff_evidence_special_file_status_metadata(self):
+        result = self._eval_evidence_helper(r'''
+            collectDiffEvidence({
+              committed: { ok: true, name_status: 'R100\told name.txt\tnew name.txt\nD\tdeleted file.txt\n-\t-\tbinary.bin\n', diff: 'Binary files a/binary.bin and b/binary.bin differ\n' },
+              worktree: { ok: true, name_status: 'A\tpath with spaces/file.txt\n' }
+            })
+        ''')
+        assert result["special_statuses"]["renamed"] == [{"from": "old name.txt", "to": "new name.txt", "status": "R100"}]
+        assert result["special_statuses"]["deleted"] == ["deleted file.txt"]
+        assert result["special_statuses"]["binary"] == ["binary.bin"]
+        assert result["worktree_diff"]["files"] == ["path with spaces/file.txt"]
+
     def test_diff_anchor_resolution_error_fallback_metadata(self):
         result = self._eval_evidence_helper(r'''
             [

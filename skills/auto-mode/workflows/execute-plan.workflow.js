@@ -129,6 +129,106 @@ function diffAnchorPrompt(task, impl, stage) {
   return '\n\n## Diff Anchor Metadata\n\n' + JSON.stringify(anchor, null, 2)
 }
 
+const DEFAULT_DIFF_BODY_LIMIT = 60000
+
+function truncateText(value, limit) {
+  const text = typeof value === 'string' ? value : ''
+  const max = limit || DEFAULT_DIFF_BODY_LIMIT
+  if (text.length <= max) return { text, truncated: false, original_length: text.length }
+  return { text: text.slice(0, max), truncated: true, original_length: text.length }
+}
+
+function splitNameStatus(value) {
+  if (!value) return []
+  return value.split(/\r?\n/).filter(Boolean)
+}
+
+function nameStatusFiles(line) {
+  const parts = line.split('\t')
+  const status = parts[0] || ''
+  if (status[0] === 'R' || status[0] === 'C') return parts.slice(1, 3).filter(Boolean)
+  return parts.slice(1).filter(Boolean)
+}
+
+function extractStatusMetadata(lines, diffBody) {
+  const metadata = { binary: [], renamed: [], deleted: [] }
+  for (const line of lines) {
+    const parts = line.split('\t')
+    const status = parts[0] || ''
+    if (status[0] === 'R') metadata.renamed.push({ from: parts[1] || '', to: parts[2] || '', status })
+    if (status[0] === 'D') metadata.deleted.push(parts[1] || '')
+    if (status === '-' && parts[2]) metadata.binary.push(parts[2])
+  }
+  const binaryRe = /Binary files (?:a\/)?(.+?) and (?:b\/)?(.+?) differ/g
+  let match
+  while ((match = binaryRe.exec(diffBody || '')) !== null) {
+    const path = match[2] || match[1]
+    if (path && !metadata.binary.includes(path)) metadata.binary.push(path)
+  }
+  return metadata
+}
+
+function buildDiffScopeEvidence(scope, anchor) {
+  const source = (anchor && anchor[scope]) || {}
+  const limit = (anchor && anchor.max_diff_chars) || DEFAULT_DIFF_BODY_LIMIT
+  const body = truncateText(source.diff || source.body || '', limit)
+  const summary = truncateText(source.summary || source.diff_summary || source.stat || '', limit)
+  const nameStatus = splitNameStatus(source.name_status || source.nameStatus || '')
+  const files = []
+  for (const line of nameStatus) {
+    for (const file of nameStatusFiles(line)) files.push(file)
+  }
+  return {
+    ok: source.ok === true,
+    name_status: nameStatus,
+    files,
+    diff_body: body.text,
+    diff_summary: summary.text,
+    truncated: body.truncated || summary.truncated,
+    body_truncated: body.truncated,
+    summary_truncated: summary.truncated,
+    original_body_length: body.original_length,
+    error: source.error || null,
+  }
+}
+
+function mergeSpecialStatuses(a, b) {
+  return {
+    binary: [...a.binary, ...b.binary],
+    renamed: [...a.renamed, ...b.renamed],
+    deleted: [...a.deleted, ...b.deleted],
+  }
+}
+
+function collectDiffEvidence(anchor) {
+  const committed = buildDiffScopeEvidence('committed', anchor || {})
+  const worktree = buildDiffScopeEvidence('worktree', anchor || {})
+  const committedSpecial = extractStatusMetadata(committed.name_status, committed.diff_body)
+  const worktreeSpecial = extractStatusMetadata(worktree.name_status, worktree.diff_body)
+  const command_errors = []
+  if (committed.error) command_errors.push({ scope: 'committed', error: committed.error })
+  if (worktree.error) command_errors.push({ scope: 'worktree', error: worktree.error })
+  if (anchor && anchor.anchor_error) command_errors.push({ scope: 'anchor', error: anchor.anchor_error })
+  const scope_complete = committed.ok && worktree.ok && !command_errors.length
+  return {
+    stage: anchor && anchor.stage,
+    enforcement_mode: ENFORCEMENT_MODE,
+    command_primitive: COMMAND_EXECUTION_PRIMITIVE,
+    base_sha: (anchor && anchor.base_sha) || '',
+    base_ref: (anchor && anchor.base_ref) || '',
+    head_sha: (anchor && anchor.head_sha) || '',
+    dirty: !!(anchor && anchor.dirty),
+    includes_worktree_diff: worktree.name_status.length > 0 || worktree.diff_body.length > 0,
+    scope_complete,
+    verified_diff: scope_complete,
+    committed_diff: committed,
+    worktree_diff: worktree,
+    special_statuses: mergeSpecialStatuses(committedSpecial, worktreeSpecial),
+    truncated: committed.truncated || worktree.truncated,
+    command_errors,
+  }
+}
+
 const REVIEW_THRESHOLD = {
   spec_review: {
     low:       { Critical: true, High: true, Important: 'if_explicit', Minor: false, Info: false },
