@@ -1091,6 +1091,46 @@ WORKFLOW_SCRIPT
         assert "const fixScope = validateLatestFixScope" not in self.script
         assert "_fix_scope_blocked" not in self.script
 
+    def test_rereview_metadata_blocks_spec_pass(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-12']],
+              tasks: { 'task-12': { id: 'task-12', description: 'Do spec re-review metadata task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-12': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-12': { passed: false, issues: [{ id: 'prior-id', severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix it' }], summary: 'needs fix', prompt_only: true },
+                'fix-spec:task-12-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['prior-id'], targeted_verification: [{ command: 'pytest', issue_ids: ['prior-id'] }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                'spec-review:task-12-r1': { passed: true, issues: [], summary: 'should not pass', prompt_only: true, prior_findings_verified: [], unresolved_issue_ids: ['prior-id'], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] },
+                'code-review:task-12': { passed: true, issues: [], summary: 'should not run', prompt_only: true }
+              }
+            }
+        ''')
+        assert result["stalled"][0]["id"] == "task-12"
+        assert result["stalled"][0]["spec_passed"] is False
+        assert result["final_review"] is None
+
+    def test_rereview_metadata_blocks_code_pass(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-13']],
+              tasks: { 'task-13': { id: 'task-13', description: 'Do code re-review metadata task' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-13': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-13': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-13': { passed: false, issues: [{ id: 'prior-id', severity: 'Critical', blocking: true, file: 'src/a.js', description: 'fix code' }], summary: 'needs fix', prompt_only: true },
+                'fix-code:task-13-r1': { status: 'DONE', summary: 'Fixed', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '3333333', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['prior-id'], targeted_verification: [{ command: 'pytest', issue_ids: ['prior-id'] }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                'code-review:task-13-r1': { passed: true, issues: [], summary: 'should not pass', prompt_only: true, prior_findings_verified: [{ id: 'prior-id', verified: false }], unresolved_issue_ids: [], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] }
+              }
+            }
+        ''')
+        assert result["stalled"][0]["id"] == "task-13"
+        assert result["stalled"][0]["code_passed"] is False
+        assert result["final_review"] is None
+
     def test_classification_wires_implementation_evidence_validation(self):
         assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script
         assert "evidence_validation: implementationEvidence" in self.script

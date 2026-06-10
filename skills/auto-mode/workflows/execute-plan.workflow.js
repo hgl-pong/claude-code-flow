@@ -1032,6 +1032,16 @@ function normalizeReviewResult(review, stage, taskId, priorReview) {
   })
 }
 
+function hasBlockingRereviewMetadata(review) {
+  if (!review) return false
+  const verified = Array.isArray(review.prior_findings_verified) ? review.prior_findings_verified : []
+  return (Array.isArray(review.unresolved_issue_ids) && review.unresolved_issue_ids.length > 0) ||
+    verified.some(finding => finding && finding.verified === false) ||
+    review.targeted_verification_credible === false ||
+    review.diff_verified === false ||
+    (Array.isArray(review.scope_concerns) && review.scope_concerns.length > 0)
+}
+
 // ── Extract evidence from impl result ─────────────────────────────────
 
 function normalizeRuntimeEvidenceRequirement(task) {
@@ -1668,7 +1678,7 @@ for (const [gi, group] of groups.entries()) {
             iterations++
           }
 
-          const specPassed = review ? !hasBlocking() : false
+          const specPassed = review ? !hasBlocking() && !hasBlockingRereviewMetadata(review) : false
           const exhausted = iterations >= MAX_RETRIES && !specPassed
 
           return {
@@ -1748,7 +1758,7 @@ for (const [gi, group] of groups.entries()) {
             iterations++
           }
 
-          const codePassed = review ? !hasBlocking() : false
+          const codePassed = review ? !hasBlocking() && !hasBlockingRereviewMetadata(review) : false
           const exhausted = iterations >= MAX_RETRIES && !codePassed
 
           return {
