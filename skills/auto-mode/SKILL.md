@@ -13,10 +13,11 @@ Announce: “I'm using auto-mode to run the development workflow autonomously. D
 
 Trigger on `/auto <task>`, `全自动模式 <task>`, `CCF_AUTO_MODE=1`, `/auto --resume`, `/auto --new`, `/auto --list`. Slash parsing is harness-owned.
 
-1. Create `.claude/auto/<task-name>/state.json` immediately.
+**MANDATORY first step (before ANY implementation):**
+1. Create `.claude/auto/<task-name>/state.json` IMMEDIATELY. This is non-negotiable — even for trivial one-file tasks. Without `state.json`, hooks cannot protect the pipeline, and interruption recovery is impossible. Write at minimum `{"task_name":"...","phase":"execute","status":"ACTIVE","updated_at":"..."}`.
 2. Investigate existing code/patterns before implementation.
 3. Write/review spec and plan; user approval is not required after `/auto` consent.
-4. Execute via Dynamic Workflow when available: `workflows/full-auto-pipeline.workflow.js` owns parallel agents, reviews, retries, gates, and resume. Use direct implementation only for small safe tasks.
+4. Execute via Dynamic Workflow when available: `workflows/full-auto-pipeline.workflow.js` owns parallel agents, reviews, retries, gates, and resume. Use direct implementation only for small safe tasks — but even direct implementation MUST create the audit trail first.
 5. For plan-only execution, use `workflows/execute-plan.workflow.js` with parsed task groups.
 6. Run review/fix loops, tests, runtime checks, and final gates.
 7. Finalize locally: summarize, clean planned artifacts, report git state. No PR unless user explicitly asks and reviews the diff.
