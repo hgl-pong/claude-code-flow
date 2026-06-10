@@ -349,6 +349,10 @@ class TestExecutePlanConstants:
               }
             }
         ''')
+        base = result["state_patch"]["task_attempt_bases"][0]
+        assert base == {"id": "task-1", "task_attempt_base_sha": "1111111", "task_attempt_base_dirty": True}
+        assert result["passed"][0]["task_attempt_base_sha"] == "1111111"
+        assert result["passed"][0]["task_attempt_base_dirty"] is True
         evidence = result["state_patch"]["task_attempt_diff_evidence"][0]
         assert evidence["label"] == "implement:task-1"
         assert evidence["base_sha"] == "1111111"

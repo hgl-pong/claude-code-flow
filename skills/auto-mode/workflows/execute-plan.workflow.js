@@ -798,6 +798,11 @@ function validateImplementationEvidence(task, impl, controllerEvidence, reviewOv
 // ── Result adapter: classify task into exactly one partition ──────────
 
 function classifyTaskResult(taskId, task, ctx) {
+  const attemptBase = {
+    task_attempt_base_sha: ctx.task_attempt_base_sha || task.task_attempt_base_sha || '',
+    task_attempt_base_dirty: !!(ctx.task_attempt_base_dirty || task.task_attempt_base_dirty),
+  }
+
   // 1. Blocked at implementation
   if (ctx._blocked) {
     const classification = classifyBlocker(ctx._reason)
@@ -808,6 +813,7 @@ function classifyTaskResult(taskId, task, ctx) {
         reason: ctx._reason,
         classification,
         impl: ctx.impl,
+        ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
@@ -823,6 +829,7 @@ function classifyTaskResult(taskId, task, ctx) {
         classification: ctx._escalation_classification,
         rung_reached: ctx._escalation_rung,
         impl: ctx.impl,
+        ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
@@ -838,6 +845,7 @@ function classifyTaskResult(taskId, task, ctx) {
         blocking_issues: (ctx.spec_review && ctx.spec_review.issues) || [],
         iterations: ctx._iterations_spec || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, null),
+        ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
@@ -855,6 +863,7 @@ function classifyTaskResult(taskId, task, ctx) {
         impl: ctx.impl,
         evidence: implementationEvidence.evidence,
         evidence_validation: implementationEvidence,
+        ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
@@ -870,6 +879,7 @@ function classifyTaskResult(taskId, task, ctx) {
         blocking_issues: (ctx.code_review && ctx.code_review.issues) || [],
         iterations: ctx._iterations_code || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+        ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
@@ -886,6 +896,7 @@ function classifyTaskResult(taskId, task, ctx) {
         spec_iterations: ctx._iterations_spec || 0,
         code_iterations: ctx._iterations_code || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+        ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
@@ -904,6 +915,7 @@ function classifyTaskResult(taskId, task, ctx) {
       evidence: implementationEvidence.evidence,
       evidence_validation: implementationEvidence,
       files: (ctx.impl && ctx.impl.files_modified) || [],
+      ...attemptBase,
       attempt_diff_evidence: ctx.attempt_diff_evidence || [],
     },
   }
@@ -1153,15 +1165,23 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
 
 // ── Build state_patch for resume support ──────────────────────────────
 
-const attemptDiffEvidence = [
+const resultEntries = [
   ...partitions.passed,
   ...partitions.blocked,
   ...partitions.stalled,
   ...partitions.failed_review,
   ...partitions.needs_escalation,
-].flatMap(e => e.attempt_diff_evidence || e.impl?.attempt_diff_evidence || [])
+]
+
+const attemptDiffEvidence = resultEntries.flatMap(e => e.attempt_diff_evidence || e.impl?.attempt_diff_evidence || [])
+const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha).map(e => ({
+  id: e.id,
+  task_attempt_base_sha: e.task_attempt_base_sha,
+  task_attempt_base_dirty: !!e.task_attempt_base_dirty,
+}))
 
 const state_patch = {
+  task_attempt_bases: attemptBaseEvidence,
   task_attempt_diff_evidence: attemptDiffEvidence,
   partitions: {
     passed: partitions.passed.map(e => e.id),
