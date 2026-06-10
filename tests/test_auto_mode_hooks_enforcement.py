@@ -6,7 +6,6 @@ Covers:
 - SubagentStart: workflow_run_id, task_id, expected_schema injection
 - PreCompact: delegates to flow-state.py snapshot, fallback on failure
 - TeammateIdle: blocked/stalled/failed treated as unfinished, terminal top-level exemption
-- SessionStart: multi-state discovery and resume/new/list prompt
 """
 
 import importlib.util
@@ -707,71 +706,6 @@ class TestTeammateIdleEnforcement:
              patch("sys.stdin", _FakeStdin('{"team_name": "team"}')):
             with pytest.raises(SystemExit) as exc_info:
                 hooks.hook_teammate_idle()
-
-        assert exc_info.value.code == 0
-
-
-# ========================================================================
-# SessionStart multi-state discovery
-# ========================================================================
-
-
-class TestSessionStartEnforcement:
-    """SessionStart discovers active states and emits resume/new/list prompt."""
-
-    def test_emits_dangling_for_active_state(self, tmp_path, capsys, monkeypatch):
-        """Emits context for a single active state."""
-        _, state_file = _init_run(tmp_path, task_name="session-active")
-        monkeypatch.chdir(tmp_path)
-
-        capsys.readouterr()
-        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
-             patch.object(hooks, "discover_active_states", return_value=[
-                 {"state_file": state_file, "task_name": "session-active",
-                  "phase": "execute", "status": "ACTIVE", "updated_at": "2026-01-01T00:00:00Z",
-                  "workflow_run_id": "1"},
-             ]):
-            with pytest.raises(SystemExit) as exc_info:
-                hooks.hook_session_start()
-
-        assert exc_info.value.code == 0
-        out = json.loads(capsys.readouterr().out)
-        ctx = out["hookSpecificOutput"]["additionalContext"]
-        assert "AUTO-MODE-DANGLING-TASK" in ctx
-        assert "session-active" in ctx
-
-    def test_lists_multiple_active_states(self, tmp_path, capsys, monkeypatch):
-        """Lists all active states in the prompt."""
-        _, state_file = _init_run(tmp_path, task_name="session-multi")
-        monkeypatch.chdir(tmp_path)
-
-        active = [
-            {"state_file": "/a/state.json", "task_name": "task-a",
-             "phase": "execute", "status": "ACTIVE", "updated_at": "2026-01-02T00:00:00Z",
-             "workflow_run_id": "1"},
-            {"state_file": "/b/state.json", "task_name": "task-b",
-             "phase": "gates", "status": "ACTIVE", "updated_at": "2026-01-01T00:00:00Z",
-             "workflow_run_id": "2"},
-        ]
-
-        capsys.readouterr()
-        with patch.object(hooks, "auto_mode_active", return_value=state_file), \
-             patch.object(hooks, "discover_active_states", return_value=active):
-            with pytest.raises(SystemExit) as exc_info:
-                hooks.hook_session_start()
-
-        assert exc_info.value.code == 0
-        out = json.loads(capsys.readouterr().out)
-        ctx = out["hookSpecificOutput"]["additionalContext"]
-        assert "task-a" in ctx
-        assert "task-b" in ctx
-        assert "2 active task" in ctx
-
-    def test_no_active_states_exits_cleanly(self):
-        """Exits normally when no active states found."""
-        with patch.object(hooks, "discover_active_states", return_value=[]):
-            with pytest.raises(SystemExit) as exc_info:
-                hooks.hook_session_start()
 
         assert exc_info.value.code == 0
 

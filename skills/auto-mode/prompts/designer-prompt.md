@@ -89,7 +89,7 @@ Task tool (general-purpose):
 
     ### Phase 2: DESIGN.md Format
 
-    Read `skills/workflow-driven-development/design-md-format.md` and follow it exactly.
+    Read `skills/auto-mode/prompts/design-md-format.md` and follow it exactly.
     It defines the required root `DESIGN.md` structure, token architecture, theme groups, component specs, accessibility requirements, quality checklist, and failure modes.
 
     ## Design Reviewer Loop
@@ -105,9 +105,10 @@ Task tool (general-purpose):
     - **Status:** DONE | NEEDS_CONTEXT | BLOCKED
     - **DESIGN.md saved to:** project root
     - **Research summary:** [design direction, key competitive insights]
-    - **Format reference:** `skills/workflow-driven-development/design-md-format.md`
+    - **Format reference:** `skills/auto-mode/prompts/design-md-format.md`
     - **Token architecture:** [primitive / semantic / component families]
     - **Theme groups:** [color-scheme / breakpoint / contrast]
     - **Component specs:** [variants and states covered]
     - **Visual review:** Open http://localhost:<PORT>/design-viewer (served by brainstorm companion)
 ```
+

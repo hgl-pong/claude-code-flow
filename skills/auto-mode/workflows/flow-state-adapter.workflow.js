@@ -1,4 +1,4 @@
-export const meta = {
+﻿export const meta = {
   name: 'flow-state-adapter',
   description: 'Bridge workflow state updates to hooks/scripts/flow-state.py CLI',
   phases: [{ title: 'Write State' }],

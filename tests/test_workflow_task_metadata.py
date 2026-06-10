@@ -1,4 +1,4 @@
-"""Tests for workflow task metadata contract.
+﻿"""Tests for workflow task metadata contract.
 
 Validates task metadata defaults, inference rules, and dependency graph
 validation as defined in the spec.
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow-driven-development"
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "workflows"
 FULL_AUTO = SKILLS_DIR / "full-auto-pipeline.workflow.js"
 
 TASK_METADATA_DEFAULTS = {

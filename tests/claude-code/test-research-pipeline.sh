@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# LONG_RUNNING: Behavioral e2e test for research pipeline
-# Runs unattended Claude Code invocations to verify research skill dispatch.
-# Uses stream-json output to detect skill/tool invocations.
+# LONG_RUNNING: Behavioral e2e test for auto-mode research/planning path.
+# Uses stream-json output to verify auto-mode skill invocation and research/planning guidance.
 # Expect 5-10 minutes.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 echo "======================================"
-echo " E2E Test: Research Pipeline"
+echo " E2E Test: Auto-Mode Research Pipeline"
 echo "======================================"
 echo ""
 echo "LONG_RUNNING: Expect 5-10 minutes."
@@ -23,107 +24,88 @@ fi
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
-# Test 1: Brainstorming skill triggers on naive prompt
-echo "Test 1: Brainstorming triggers..."
-brainstorm_log="$TMPDIR/brainstorm-output.json"
-claude -p "Let's design a CLI password manager with encrypted local storage." \
-    --plugin-dir "$(cd "$SCRIPT_DIR/../.." && pwd)" \
+cd "$TMPDIR"
+git init >/dev/null 2>&1
+cat > package.json <<'JSON'
+{"scripts":{"test":"node test.js"}}
+JSON
+cat > test.js <<'JS'
+console.log('ok')
+JS
+
+# Test 1: auto-mode skill triggers through namespaced slash command
+echo "Test 1: auto-mode skill triggers..."
+auto_log="$TMPDIR/auto-mode-output.jsonl"
+claude -p "/claude-code-flow:auto-mode add a README with one sentence describing this research pipeline test project" \
+    --plugin-dir "$REPO_ROOT" \
     --dangerously-skip-permissions \
-    --max-turns 5 \
+    --max-turns 12 \
     --output-format stream-json \
     --verbose \
-    > "$brainstorm_log" 2>&1 || true
+    > "$auto_log" 2>&1 || true
 
-# Check for Skill tool invocation with brainstorming
-if grep -q '"name":"Skill"' "$brainstorm_log" && grep -qE '"skill":"[^"]*brainstorming"' "$brainstorm_log"; then
-    echo "  [PASS] Brainstorming skill triggered"
+if grep -q '"name":"Skill"' "$auto_log" && grep -q '"skill":"claude-code-flow:auto-mode"' "$auto_log"; then
+    pass "auto-mode skill triggered"
 else
-    echo "  [FAIL] Brainstorming skill NOT triggered"
+    fail "auto-mode skill NOT triggered"
     echo "  Skills found in output:"
-    grep -o '"skill":"[^"]*"' "$brainstorm_log" 2>/dev/null | sort -u || echo "    (none)"
+    grep -o '"skill":"[^"]*"' "$auto_log" 2>/dev/null | sort -u || echo "    (none)"
 fi
 
-# Check for research references in the stream output
-if grep -qE 'research|researcher|\.claude/research' "$brainstorm_log"; then
-    echo "  [PASS] Research referenced in brainstorming output"
+if grep -qE 'research|spec|plan|Decision trail|\.claude/auto' "$auto_log"; then
+    pass "auto-mode output references research/planning/audit flow"
 else
-    echo "  [INFO] Research not referenced in first 5 turns (brainstorming needs user interaction)"
-fi
-
-echo ""
-
-# Test 2: Research output directory
-echo "Test 2: Research output directory..."
-RESEARCH_DIR=".claude/research"
-if [ -d "$RESEARCH_DIR" ]; then
-    research_files=$(find "$RESEARCH_DIR" -name "*-research.md" -type f 2>/dev/null)
-    if [ -n "$research_files" ]; then
-        echo "  [PASS] Research files exist:"
-        echo "$research_files" | while read -r f; do echo "    $f"; done
-    else
-        echo "  [FAIL] .claude/research/ exists but no *-research.md files found"
-    fi
-else
-    echo "  [INFO] .claude/research/ not yet created"
+    fail "auto-mode output missing research/planning/audit references"
 fi
 
 echo ""
 
-# Test 3: Writing-plans dispatches researcher
-echo "Test 3: Writing-plans dispatches researcher..."
-plan_log="$TMPDIR/plan-output.json"
-claude -p "Create an implementation plan for adding a 'hello' command that prints Hello, World!." \
-    --plugin-dir "$(cd "$SCRIPT_DIR/../.." && pwd)" \
-    --dangerously-skip-permissions \
-    --max-turns 10 \
-    --output-format stream-json \
-    --verbose \
-    > "$plan_log" 2>&1 || true
-
-# Check for writing-plans skill invocation
-if grep -qE '"skill":"[^"]*writing-plans"' "$plan_log"; then
-    echo "  [PASS] Writing-plans skill triggered"
+# Test 2: auto-mode audit/state output
+echo "Test 2: auto-mode audit/state output..."
+if [ -d ".claude/auto" ]; then
+    pass ".claude/auto created"
 else
-    echo "  [INFO] Writing-plans skill not triggered (may need different prompt)"
+    fail ".claude/auto not created"
 fi
 
-# Check for researcher Agent dispatch (researcher-prompt.md reference)
-if grep -qE 'researcher-prompt|researcher' "$plan_log"; then
-    echo "  [PASS] Researcher subagent referenced in writing-plans"
-elif grep -qE 'technical.research|technical-research' "$plan_log"; then
-    echo "  [PASS] Technical research referenced in writing-plans"
+state_files=$(find .claude/auto -name state.json -type f 2>/dev/null || true)
+if [ -n "$state_files" ]; then
+    pass "state.json created"
 else
-    echo "  [INFO] Researcher dispatch not visible in stream-json (may be internal Agent tool call)"
+    fail "state.json not created"
+fi
+
+if [ -f README.md ]; then
+    pass "README.md created by auto-mode"
+else
+    fail "README.md not created"
 fi
 
 echo ""
 
-# Test 4: Source provenance in research files
-echo "Test 4: Source provenance in research output..."
-if [ -d "$RESEARCH_DIR" ]; then
-    all_research=$(find "$RESEARCH_DIR" -name "*-research.md" -type f 2>/dev/null)
-    if [ -z "$all_research" ]; then
-        echo "  [INFO] No research files found"
-    else
-        research_count=$(echo "$all_research" | wc -l)
-        echo "  [PASS] $research_count research file(s) found"
-
-        # Check for source provenance tags in research files
-        provenance_found=false
-        while IFS= read -r f; do
-            if [ -z "$f" ]; then continue; fi
-            if grep -qE 'source: (local|web|both)|Source provenance|URLs and access dates|Cross-reference' "$f" 2>/dev/null; then
-                echo "  [PASS] Source provenance in: $(basename "$f")"
-                provenance_found=true
-            fi
-        done <<< "$all_research"
-
-        if [ "$provenance_found" = false ]; then
-            echo "  [INFO] No source provenance tags found in existing research files (pre-date this feature)"
-        fi
-    fi
+# Test 3: verification command still works
+echo "Test 3: project verification..."
+if npm test >/tmp/auto-mode-research-npm.log 2>&1; then
+    pass "npm test passed"
 else
-    echo "  [FAIL] .claude/research/ directory not found"
+    fail "npm test failed"
+    sed 's/^/    /' /tmp/auto-mode-research-npm.log
+fi
+
+echo ""
+
+# Test 4: source/provenance/audit artifacts are inspectable
+echo "Test 4: audit artifacts inspectable..."
+if find .claude/auto -type f | grep -qE 'decisions\.md|spec\.md|plan\.md|runtime\.json'; then
+    pass "audit artifacts created"
+else
+    fail "expected audit artifacts missing"
+fi
+
+if grep -R -qE 'Decision|Spec|Plan|Auto' .claude/auto 2>/dev/null; then
+    pass "audit artifacts contain readable planning context"
+else
+    fail "audit artifacts missing readable planning context"
 fi
 
 echo ""

@@ -16,19 +16,14 @@ echo ""
 echo "Plugin directory: $PLUGIN_DIR"
 echo ""
 
-# ── Section 1: All skill SKILL.md files exist and have required frontmatter ──
+# 鈹€鈹€ Section 1: All skill SKILL.md files exist and have required frontmatter 鈹€鈹€
 echo "--- Section 1: Skill Files ---"
 echo ""
 
 # Define expected skills and their key characteristics
 declare -A SKILL_TITLES=(
     ["auto-mode"]="Auto Mode"
-    ["finishing-a-development-branch"]="Finishing a Development Branch"
-    ["image-generation"]="Image Generation"
-    ["semi-auto"]="Semi-Auto"
     ["systematic-debugging"]="Systematic Debugging"
-    ["using-claude-code-flow"]="Using Claude Code Flow"
-    ["using-git-worktrees"]="Using Git Worktrees"
 )
 
 SKILL_COUNT=0
@@ -75,7 +70,7 @@ echo ""
 echo "  Skills found: $SKILL_COUNT / ${#SKILL_TITLES[@]}"
 echo ""
 
-# ── Section 2: Hook scripts are valid Python ──
+# 鈹€鈹€ Section 2: Hook scripts are valid Python 鈹€鈹€
 echo "--- Section 2: Hook Scripts ---"
 echo ""
 
@@ -95,7 +90,7 @@ for hook in "${HOOK_SCRIPTS[@]}"; do
         continue
     fi
 
-    # Verify Python syntax — use stdin to avoid path escaping issues
+    # Verify Python syntax 鈥?use stdin to avoid path escaping issues
     if "$PYTHON_BIN" -c "import py_compile, sys; py_compile.compile(sys.argv[1], doraise=True)" "$hook_path" 2>/dev/null; then
         pass "$(basename "$hook"): valid Python syntax"
     else
@@ -105,7 +100,7 @@ done
 
 echo ""
 
-# ── Section 3: Hook configuration files ──
+# 鈹€鈹€ Section 3: Hook configuration files 鈹€鈹€
 echo "--- Section 3: Hook Configurations ---"
 echo ""
 
@@ -117,7 +112,7 @@ HOOK_CONFIGS=(
 for config in "${HOOK_CONFIGS[@]}"; do
     config_path="$PLUGIN_DIR/$config"
     if [ ! -f "$config_path" ]; then
-        # codex-hooks.json may not exist — only fail for hooks.json
+        # codex-hooks.json may not exist 鈥?only fail for hooks.json
         if [ "$(basename "$config")" = "hooks.json" ]; then
             fail "Hook config missing: $config"
         else
@@ -126,7 +121,7 @@ for config in "${HOOK_CONFIGS[@]}"; do
         continue
     fi
 
-    # Verify valid JSON — use sys.argv to avoid path escaping issues
+    # Verify valid JSON 鈥?use sys.argv to avoid path escaping issues
     if "$PYTHON_BIN" -c "import json, sys; json.load(open(sys.argv[1]))" "$config_path" 2>/dev/null; then
         pass "$(basename "$config"): valid JSON"
     else
@@ -136,13 +131,13 @@ done
 
 echo ""
 
-# ── Section 4: Workflow script files ──
+# 鈹€鈹€ Section 4: Workflow script files 鈹€鈹€
 echo "--- Section 4: Workflow Scripts ---"
 echo ""
 
 WF_SCRIPTS=(
-    "skills/workflow-driven-development/execute-plan.workflow.js"
-    "skills/workflow-driven-development/full-auto-pipeline.workflow.js"
+    "skills/auto-mode/workflows/execute-plan.workflow.js"
+    "skills/auto-mode/workflows/full-auto-pipeline.workflow.js"
 )
 
 for wf in "${WF_SCRIPTS[@]}"; do
@@ -182,20 +177,19 @@ done
 
 echo ""
 
-# ── Section 5: Prompt template files ──
+# 鈹€鈹€ Section 5: Prompt template files 鈹€鈹€
 echo "--- Section 5: Prompt Templates ---"
 echo ""
 
 PROMPT_TEMPLATES=(
-    "skills/workflow-driven-development/implementer-prompt.md"
-    "skills/workflow-driven-development/spec-reviewer-prompt.md"
-    "skills/workflow-driven-development/code-quality-reviewer-prompt.md"
-    "skills/workflow-driven-development/designer-prompt.md"
-    "skills/workflow-driven-development/researcher-prompt.md"
-    "skills/workflow-driven-development/forge-implementer-prompt.md"
-    "skills/workflow-driven-development/oracle-planner-prompt.md"
-    "skills/workflow-driven-development/prism-verifier-prompt.md"
-    "skills/workflow-driven-development/artist-prompt.md"
+    "skills/auto-mode/prompts/implementer-prompt.md"
+    "skills/auto-mode/prompts/spec-reviewer-prompt.md"
+    "skills/auto-mode/prompts/code-quality-reviewer-prompt.md"
+    "skills/auto-mode/prompts/designer-prompt.md"
+    "skills/auto-mode/prompts/researcher-prompt.md"
+    "skills/auto-mode/prompts/forge-implementer-prompt.md"
+    "skills/auto-mode/prompts/oracle-planner-prompt.md"
+    "skills/auto-mode/prompts/prism-verifier-prompt.md"
 )
 
 for template in "${PROMPT_TEMPLATES[@]}"; do
@@ -209,7 +203,7 @@ done
 
 echo ""
 
-# ── Section 6: Script files ──
+# 鈹€鈹€ Section 6: Script files 鈹€鈹€
 echo "--- Section 6: Support Scripts ---"
 echo ""
 
@@ -229,7 +223,7 @@ done
 
 echo ""
 
-# ── Section 7: Clone script validates ──
+# 鈹€鈹€ Section 7: Clone script validates 鈹€鈹€
 echo "--- Section 7: Clone Script ---"
 echo ""
 
@@ -248,38 +242,7 @@ fi
 
 echo ""
 
-# ── Section 8: Skill cross-references ──
-echo "--- Section 8: Skill Cross-References ---"
-echo ""
-
-# Verify each skill that references another skill actually points to an existing one
-REFERENCE_CHECKS=(
-    "auto-mode:finishing-a-development-branch"
-    "auto-mode:using-git-worktrees"
-    "auto-mode:semi-auto"
-    "semi-auto:finishing-a-development-branch"
-)
-
-for ref in "${REFERENCE_CHECKS[@]}"; do
-    source_skill="${ref%%:*}"
-    target_skill="${ref##*:}"
-    source_file="$PLUGIN_DIR/skills/$source_skill/SKILL.md"
-
-    if [ ! -f "$source_file" ]; then
-        fail "$source_skill → $target_skill: source skill not found"
-        continue
-    fi
-
-    if grep -q "$target_skill" "$source_file"; then
-        pass "$source_skill → $target_skill: reference exists"
-    else
-        fail "$source_skill → $target_skill: reference NOT found in SKILL.md"
-    fi
-done
-
-echo ""
-
-# ── Section 9: Documentation files ──
+# 鈹€鈹€ Section 9: Documentation files 鈹€鈹€
 echo "--- Section 9: Documentation ---"
 echo ""
 
@@ -301,10 +264,11 @@ done
 
 echo ""
 
-# ── Summary ──
+# 鈹€鈹€ Summary 鈹€鈹€
 echo "========================================"
 echo " Health Check Summary"
 echo "========================================"
 echo ""
 
 report_failures
+

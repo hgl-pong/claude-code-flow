@@ -30,16 +30,12 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=1, help="Number of images (default: 1)")
     args = parser.parse_args()
 
-    url = os.environ.get("NINEROUTER_URL", "").strip()
+    url = os.environ.get("NINEROUTER_URL", "http://localhost:20128").strip()
     key = os.environ.get("NINEROUTER_KEY", "").strip()
-    if not url:
-        print("Error: NINEROUTER_URL is required", file=sys.stderr)
-        sys.exit(2)
-    if not key:
-        print("Error: NINEROUTER_KEY is required", file=sys.stderr)
-        sys.exit(2)
-
-    endpoint = f"{url.rstrip('/')}/v1/images/generations?response_format=binary"
+    if url.rstrip("/").endswith("/v1/images/generations"):
+        endpoint = f"{url.rstrip('/')}?response_format=binary"
+    else:
+        endpoint = f"{url.rstrip('/')}/v1/images/generations?response_format=binary"
     body = json.dumps({
         "model": MODEL,
         "prompt": args.prompt,
@@ -48,13 +44,14 @@ def main() -> None:
         "n": args.n,
     }).encode("utf-8")
 
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+
     req = urllib.request.Request(
         endpoint,
         data=body,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
+        headers=headers,
         method="POST",
     )
 

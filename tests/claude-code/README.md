@@ -1,4 +1,4 @@
-﻿# Claude Code Skills Tests
+# Claude Code Skills Tests
 
 Automated tests for claude-code-flow skills using Claude Code CLI.
 
@@ -25,7 +25,7 @@ This test suite verifies that skills are loaded correctly and Claude follows the
 
 ### Run specific test:
 ```bash
-./run-skill-tests.sh --test test-workflow-driven-development.sh
+./run-skill-tests.sh --test test-auto-mode dynamic workflow.sh
 ```
 
 ### Run with verbose output:
@@ -100,11 +100,11 @@ Simplified pipeline chain integrity verification:
 - User-facing skill surface is compact
 - Deleted skills are not exposed
 - Auto-mode owns full workflow
-- Semi-auto owns guided planning
+- auto-mode owns guided planning
 - Internal workflow engine files exist
 - Cross-skill reference consistency (no broken links)
 
-#### test-workflow-driven-development-structure.sh
+#### test-auto-mode-workflow-structure.sh
 Workflow script static checks:
 - File existence and workflow-engine.md title
 - JS structure: balanced braces/parens/brackets, meta block, required fields
@@ -136,14 +136,6 @@ Researcher prompt content verification:
 ### Behavioral Tests (use claude -p, ~2 min each)
 
 Each test verifies skill behavior through Claude Code CLI prompts.
-
-#### test-bootstrap-e2e.sh
-Bootstrap skill verification:
-- Skill recognition by name
-- Skill-check-before-response instruction
-- Red Flags rationalization table completeness
-- Skill priority order (process first, then implementation)
-- Skill tool invocation instruction
 
 #### test-git-worktrees-e2e.sh
 Git worktrees skill:
@@ -186,8 +178,7 @@ Auto-mode hook lifecycle (Python-based):
 - SubagentStart injects context
 - SubagentStop handles empty/gave-up/untracked/reviewer output
 - PreCompact writes snapshot
-- SessionStart detects dangling tasks
-- TeammateIdle with/without team
+- - TeammateIdle with/without team
 - Corrupt state.json handling
 - Multiple active task selection
 - hooks.json structure validation
@@ -224,7 +215,7 @@ Research pipeline E2E (long-running, 5-10 min):
 
 With `--verbose`, you'll see full Claude output:
 ```bash
-./run-skill-tests.sh --verbose --test test-workflow-driven-development.sh
+./run-skill-tests.sh --verbose --test test-auto-mode dynamic workflow.sh
 ```
 
 Without verbose, only failures show output.
@@ -246,3 +237,5 @@ To run in CI:
 - Focus on verifying key skill requirements
 - Tests should be deterministic
 - Avoid testing implementation details
+
+

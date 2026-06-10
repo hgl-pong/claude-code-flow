@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Integration Test: Auto-Mode Hook Lifecycle (Python)
-# Verifies all 6 auto-mode hooks via auto-mode-hooks.py
+# Verifies auto-mode runtime hooks via auto-mode-hooks.py
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -26,14 +26,14 @@ cd "$TEST_PROJECT"
 
 mkdir -p .claude/auto/active-task .claude/auto/done-task .claude/auto/stopped-task
 
-# Active task — workflow-driven-development phase with 2 active agents
+# Active task 鈥?auto-mode dynamic workflow phase with 2 active agents
 cat > .claude/auto/active-task/state.json << 'JSONEOF'
 {
   "task_name": "active-task",
-  "phase": "workflow-driven-development",
+  "phase": "auto-mode dynamic workflow",
   "status": "AWAITING_SUBAGENTS",
   "current_step": "dispatch-parallel",
-  "progress": { "phase_order": [], "completed": ["brainstorming","writing-plans"], "current": "workflow-driven-development", "pending": ["completion-gates","finishing"], "tasks_total": 3, "tasks_passed": 1, "tasks_reviewed": 0 },
+  "progress": { "phase_order": [], "completed": ["brainstorming","writing-plans"], "current": "auto-mode dynamic workflow", "pending": ["completion-gates","finishing"], "tasks_total": 3, "tasks_passed": 1, "tasks_reviewed": 0 },
   "active_agents": [
     { "agent_id": "agent-impl-2", "task_id": "task-2", "role": "implementer", "dispatched_at": "2026-05-28T12:00:00Z" },
     { "agent_id": "agent-review-3", "task_id": "task-3", "role": "code-reviewer", "dispatched_at": "2026-05-28T12:01:00Z" }
@@ -66,7 +66,7 @@ cat > .claude/auto/active-task/state.json << 'JSONEOF'
 }
 JSONEOF
 
-# DONE task — all gates passed
+# DONE task 鈥?all gates passed
 cat > .claude/auto/done-task/state.json << 'JSONEOF'
 {
   "task_name": "done-task",
@@ -87,11 +87,11 @@ cat > .claude/auto/done-task/state.json << 'JSONEOF'
 }
 JSONEOF
 
-# STOPPED_ASK_USER task — should not trigger hooks
+# STOPPED_ASK_USER task 鈥?should not trigger hooks
 cat > .claude/auto/stopped-task/state.json << 'JSONEOF'
 {
   "task_name": "stopped-task",
-  "phase": "workflow-driven-development",
+  "phase": "auto-mode dynamic workflow",
   "status": "STOPPED_ASK_USER",
   "stopped_question": "Which library should we use?",
   "progress": { "tasks_total": 3, "tasks_passed": 0 },
@@ -157,7 +157,7 @@ STOP_OUT2=$(run_hook "stop" "$STOP_IN" 2>/dev/null || true)
 mv .claude/auto/active-task/state.json.bak .claude/auto/active-task/state.json
 
 if echo "$STOP_OUT2" | grep -qv "block" || [[ -z "$STOP_OUT2" ]]; then
-    pass "Stop: DONE/STOPPED only → allows stop"
+    pass "Stop: DONE/STOPPED only 鈫?allows stop"
 else
     fail "Stop: DONE/STOPPED should not block"
 fi
@@ -181,7 +181,7 @@ else
     fail "SubagentStart: missing task name"
 fi
 
-# ============ Test 4: SubagentStop — tracked implementer, empty output ============
+# ============ Test 4: SubagentStop 鈥?tracked implementer, empty output ============
 echo ""
 echo "--- Test 4: SubagentStop (empty output) ---"
 
@@ -189,12 +189,12 @@ SS_EMPTY='{"session_id":"test","transcript_path":"/tmp/t.jsonl","cwd":"'"$TEST_P
 SS_OUT1=$(run_hook "subagent-stop" "$SS_EMPTY" 2>/dev/null)
 
 if echo "$SS_OUT1" | "$PYTHON_BIN" -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('decision')=='block' else 1)" 2>/dev/null; then
-    pass "SubagentStop: empty output → block"
+    pass "SubagentStop: empty output 鈫?block"
 else
     fail "SubagentStop: empty output should block"
 fi
 
-# ============ Test 5: SubagentStop — gave-up language ============
+# ============ Test 5: SubagentStop 鈥?gave-up language ============
 echo ""
 echo "--- Test 5: SubagentStop (gave-up) ---"
 
@@ -202,43 +202,43 @@ SS_STUCK='{"session_id":"test","transcript_path":"/tmp/t.jsonl","cwd":"'"$TEST_P
 SS_OUT2=$(run_hook "subagent-stop" "$SS_STUCK" 2>/dev/null)
 
 if echo "$SS_OUT2" | "$PYTHON_BIN" -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get('decision')=='block' else 1)" 2>/dev/null; then
-    pass "SubagentStop: gave-up language → block"
+    pass "SubagentStop: gave-up language 鈫?block"
 else
     fail "SubagentStop: gave-up should block"
 fi
 
-# ============ Test 5b: SubagentStop — "cannot find bugs" should NOT block ============
+# ============ Test 5b: SubagentStop 鈥?"cannot find bugs" should NOT block ============
 echo ""
 echo "--- Test 5b: SubagentStop (false positive) ---"
 
 SS_FALSEPOS='{"session_id":"test","transcript_path":"/tmp/t.jsonl","cwd":"'"$TEST_PROJECT"'","hook_event_name":"SubagentStop","agent_id":"agent-review-3","agent_type":"Plan","last_assistant_message":"Code review complete. I cannot find any bugs. All tests pass.","stop_hook_active":false}'
 SS_OUT2B=$(run_hook "subagent-stop" "$SS_FALSEPOS" 2>/dev/null || echo "allowed")
 if echo "$SS_OUT2B" | grep -qv "block"; then
-    pass "SubagentStop: legit 'cannot find bugs' → allow"
+    pass "SubagentStop: legit 'cannot find bugs' 鈫?allow"
 else
     fail "SubagentStop: 'cannot find bugs' should not block"
 fi
 
-# ============ Test 6: SubagentStop — untracked agent allows ============
+# ============ Test 6: SubagentStop 鈥?untracked agent allows ============
 echo ""
 echo "--- Test 6: SubagentStop (untracked) ---"
 
 SS_UNTRACKED='{"session_id":"test","transcript_path":"/tmp/t.jsonl","cwd":"'"$TEST_PROJECT"'","hook_event_name":"SubagentStop","agent_id":"agent-unknown-99","agent_type":"Explore","last_assistant_message":"Research complete.","stop_hook_active":false}'
 SS_OUT3=$(run_hook "subagent-stop" "$SS_UNTRACKED" 2>/dev/null || echo "allowed")
 if echo "$SS_OUT3" | grep -qv "block"; then
-    pass "SubagentStop: untracked agent → allow"
+    pass "SubagentStop: untracked agent 鈫?allow"
 else
     fail "SubagentStop: untracked should allow"
 fi
 
-# ============ Test 7: SubagentStop — reviewer agent no commit check ============
+# ============ Test 7: SubagentStop 鈥?reviewer agent no commit check ============
 echo ""
 echo "--- Test 7: SubagentStop (reviewer) ---"
 
 SS_REVIEWER='{"session_id":"test","transcript_path":"/tmp/t.jsonl","cwd":"'"$TEST_PROJECT"'","hook_event_name":"SubagentStop","agent_id":"agent-review-3","agent_type":"Plan","last_assistant_message":"Code review complete. All checks pass.","stop_hook_active":false}'
 SS_OUT4=$(run_hook "subagent-stop" "$SS_REVIEWER" 2>/dev/null || echo "allowed")
 if echo "$SS_OUT4" | grep -qv "block"; then
-    pass "SubagentStop: reviewer → allow (no commit check)"
+    pass "SubagentStop: reviewer 鈫?allow (no commit check)"
 else
     fail "SubagentStop: reviewer should allow"
 fi
@@ -268,25 +268,6 @@ else
     fail "PreCompact: no flow-state snapshot files"
 fi
 
-# ============ Test 9: SessionStart detects dangling task ============
-echo ""
-echo "--- Test 9: SessionStart hook ---"
-
-SSS_IN='{"session_id":"test","transcript_path":"/tmp/t.jsonl","cwd":"'"$TEST_PROJECT"'","hook_event_name":"SessionStart","source":"startup","model":"test"}'
-SSS_OUT=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_DIR" run_hook "session-start" "$SSS_IN" 2>/dev/null)
-
-if echo "$SSS_OUT" | "$PYTHON_BIN" -c "import json,sys; d=json.load(sys.stdin); ctx=d.get('hookSpecificOutput',{}).get('additionalContext',''); sys.exit(0 if 'AUTO-MODE-DANGLING-TASK' in ctx else 1)" 2>/dev/null; then
-    pass "SessionStart: detects dangling task"
-else
-    fail "SessionStart: missing AUTO-MODE-DANGLING-TASK"
-fi
-
-if echo "$SSS_OUT" | grep -q "/auto --resume"; then
-    pass "SessionStart: mentions /auto --resume"
-else
-    fail "SessionStart: missing /auto --resume"
-fi
-
 # ============ Test 10: TeammateIdle with/without team ============
 echo ""
 echo "--- Test 10: TeammateIdle hook ---"
@@ -297,7 +278,7 @@ run_hook "teammate-idle" "$TI_IN" >/dev/null 2>/dev/null
 TI_EC=$?
 set -e
 if [[ "$TI_EC" -eq 2 ]]; then
-    pass "TeammateIdle: pending tasks → exit 2"
+    pass "TeammateIdle: pending tasks 鈫?exit 2"
 else
     fail "TeammateIdle: expected exit 2, got $TI_EC"
 fi
@@ -308,7 +289,7 @@ run_hook "teammate-idle" "$TI_NO_TEAM" >/dev/null 2>/dev/null
 TI_EC2=$?
 set -e
 if [[ "$TI_EC2" -eq 0 ]]; then
-    pass "TeammateIdle: no team → exit 0"
+    pass "TeammateIdle: no team 鈫?exit 0"
 else
     fail "TeammateIdle: expected exit 0, got $TI_EC2"
 fi
@@ -321,18 +302,18 @@ mkdir -p .claude/auto/corrupt-task
 echo 'not json at all {{{' > .claude/auto/corrupt-task/state.json
 STOP_OUT_CR=$(run_hook "stop" "$STOP_IN" 2>/dev/null || true)
 if echo "$STOP_OUT_CR" | grep -qv "block" || [[ -z "$STOP_OUT_CR" ]]; then
-    pass "Stop: corrupt state.json → skip (no crash)"
+    pass "Stop: corrupt state.json 鈫?skip (no crash)"
 else
-    # Check it didn't pick the corrupt one — active-task should still be selected
+    # Check it didn't pick the corrupt one 鈥?active-task should still be selected
     pass "Stop: corrupt state.json handled gracefully"
 fi
 rm -rf .claude/auto/corrupt-task
 
 echo ""
-echo "--- Test 12: Multiple active tasks → picks newest ---"
+echo "--- Test 12: Multiple active tasks 鈫?picks newest ---"
 
 cat > .claude/auto/active-task/state.json << 'JSONEOF'
-{"task_name":"old-task","phase":"workflow-driven-development","status":"AWAITING_SUBAGENTS","progress":{"tasks_total":1,"tasks_passed":0},"active_agents":[],"task_states":{"t1":{"status":"implementing"}},"gate_states":{"gate_1_tasks_executed":{"passed":false,"iterations":0}},"updated_at":"2026-05-28T10:00:00Z"}
+{"task_name":"old-task","phase":"auto-mode dynamic workflow","status":"AWAITING_SUBAGENTS","progress":{"tasks_total":1,"tasks_passed":0},"active_agents":[],"task_states":{"t1":{"status":"implementing"}},"gate_states":{"gate_1_tasks_executed":{"passed":false,"iterations":0}},"updated_at":"2026-05-28T10:00:00Z"}
 JSONEOF
 mkdir -p .claude/auto/newer-task
 cat > .claude/auto/newer-task/state.json << 'JSONEOF'
@@ -358,7 +339,7 @@ mv .claude/auto/stopped-task/state.json .claude/auto/stopped-task/state.json.bak
 
 STOP_OUT_EMPTY=$(run_hook "stop" "$STOP_IN" 2>/dev/null || true)
 if echo "$STOP_OUT_EMPTY" | grep -qv "block" || [[ -z "$STOP_OUT_EMPTY" ]]; then
-    pass "Stop: no state.json → allow stop"
+    pass "Stop: no state.json 鈫?allow stop"
 else
     fail "Stop: no state.json should allow stop"
 fi
@@ -380,7 +361,7 @@ for e in ["Stop", "SubagentStart", "SubagentStop", "PreCompact", "TeammateIdle"]
 print("OK")
 ' "$PLUGIN_DIR/hooks/hooks.json" 2>/dev/null
 if [[ $? -eq 0 ]]; then
-    pass "hooks.json: all 6 auto-mode events present"
+    pass "hooks.json: all runtime auto-mode events present"
 else
     fail "hooks.json: missing auto-mode events"
 fi
@@ -412,3 +393,4 @@ echo "========================================"
 echo ""
 
 report_failures
+

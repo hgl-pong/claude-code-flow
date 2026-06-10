@@ -1,4 +1,4 @@
-// Invoked by the workflow-driven-development skill via:
+﻿// Invoked by the auto-mode dynamic workflow via:
 //   Workflow({ script: <this file>, args: { groups, tasks, worktree, model_tasks } })
 //
 // Each agent prompt is built inline from the task data — the behavioral guards,
@@ -805,3 +805,4 @@ return {
   final_review: finalReview,
   state_patch,
 }
+

@@ -139,6 +139,10 @@ Each task that passes produces an evidence record:
 }
 ```
 
+## Result Partitions
+
+Each task appears in exactly one partition: `passed`, `completed`, `blocked`, `stalled`, `failed_review`, or `needs_escalation`. `completed` is a compatibility alias for passed task IDs.
+
 ## Escalation Events
 
 When a task is blocked, the pipeline climbs the escalation ladder. Each step is recorded:

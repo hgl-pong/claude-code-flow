@@ -1,4 +1,4 @@
-﻿// Invoked by the workflow-driven-development skill for the full-auto pipeline mode.
+﻿// Invoked by the auto-mode dynamic workflow for the full-auto pipeline mode.
 // Orchestrates: scope → research → synthesize spec → review spec → write plan →
 // review plan → parse plan → execute (delegates to execute-plan workflow) → 7 gates.
 //
@@ -1436,3 +1436,4 @@ return {
   evidence_dir: evidence_dir || null,
   resume_cursor: finalResumeCursor,
 }
+

@@ -1,4 +1,4 @@
-# Design Reviewer Subagent Prompt Template
+﻿# Design Reviewer Subagent Prompt Template
 
 Use this template when dispatching a reviewer subagent for dedicated DESIGN.md review. The reviewer checks whether the design is research-grounded, implementable, accessible, and scoped before forge UI implementation begins.
 

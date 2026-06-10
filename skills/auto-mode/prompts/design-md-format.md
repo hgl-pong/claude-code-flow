@@ -1,4 +1,4 @@
-# DESIGN.md Format Reference
+﻿# DESIGN.md Format Reference
 
 Root `DESIGN.md` is a developer-usable UI/UX design system spec. It is not a pitch, architecture overview, component inventory, or data-model doc. It must be specific enough that an implementation agent can build without guessing.
 

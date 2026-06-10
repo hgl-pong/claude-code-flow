@@ -4,9 +4,9 @@ REM Cross-platform polyglot wrapper for hook scripts.
 REM On Windows: cmd.exe runs the batch portion, which finds and calls bash.
 REM On Unix: the shell interprets this as a script (: is a no-op in bash).
 REM
-REM Hook scripts use extensionless filenames (e.g. "session-start" not
-REM "session-start.sh") so Claude Code's Windows auto-detection -- which
-REM prepends "bash" to any command containing .sh -- doesn't interfere.
+REM Hook scripts may use extensionless filenames so Claude Code's Windows
+REM auto-detection -- which prepends "bash" to any command containing .sh --
+REM doesn't interfere.
 REM
 REM Usage: run-hook.cmd <script-name> [args...]
 
@@ -35,7 +35,6 @@ if %ERRORLEVEL% equ 0 (
 )
 
 REM No bash found - exit silently rather than error
-REM (plugin still works, just without SessionStart context injection)
 exit /b 0
 CMDBLOCK
 

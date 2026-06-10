@@ -67,7 +67,7 @@ Task tool (general-purpose):
 
     ## 2D Game Planning
 
-    For 2D browser-game requests, default to Phaser unless the spec names another engine. Use `skills/workflow-driven-development/references/2d-game-workflow.md` as the planning reference. Preserve a simulation/renderer boundary: simulation owns rules, collisions, progression, turns, timers, combat, inventory, objectives, and saveable state; Phaser scenes adapt state into sprites, camera, animation, FX, and input plumbing. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Plan the camera model, input action map, and stable asset manifest keys. Prefer the reference layout (`src/game/simulation`, `src/game/assets/manifest`, `src/phaser/scenes`, `src/ui`) unless existing project structure says otherwise. For sprite or image asset generation/editing, create separate artist/image tasks that use claude-code-flow:image-generation, then make implementation tasks consume the returned files and manifests. Include a browser smoke/playtest verification task for runnable game deliverables.
+    For 2D browser-game requests, default to Phaser unless the spec names another engine. Use `skills/auto-mode/references/2d-game-workflow.md` as the planning reference. Preserve a simulation/renderer boundary: simulation owns rules, collisions, progression, turns, timers, combat, inventory, objectives, and saveable state; Phaser scenes adapt state into sprites, camera, animation, FX, and input plumbing. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Plan the camera model, input action map, and stable asset manifest keys. Prefer the reference layout (`src/game/simulation`, `src/game/assets/manifest`, `src/phaser/scenes`, `src/ui`) unless existing project structure says otherwise. For sprite or image asset generation/editing, create separate artist/image tasks that use auto-mode image-generation.md capability, then make implementation tasks consume the returned files and manifests. Include a browser smoke/playtest verification task for runnable game deliverables.
 
     ## Task Granularity
 
@@ -85,7 +85,7 @@ Task tool (general-purpose):
     ```markdown
     # [Feature Name] Implementation Plan
 
-    > **For agentic workers:** Use `skills/workflow-driven-development/execute-plan.workflow.js` to implement this plan task-by-task.
+    > **For agentic workers:** Use `skills/auto-mode/workflows/execute-plan.workflow.js` to implement this plan task-by-task.
 
     **Goal:** [One sentence describing what this builds]
 
@@ -160,3 +160,4 @@ Task tool (general-purpose):
     - **Risks:** [identified risks and mitigations]
     - **Self-review findings** (if any)
 ```
+

@@ -1,4 +1,4 @@
-# Forge Implementer Subagent Prompt Template
+﻿# Forge Implementer Subagent Prompt Template
 
 Use this template when dispatching a forge implementer subagent for tasks requiring production-quality implementation with behavioral guards.
 

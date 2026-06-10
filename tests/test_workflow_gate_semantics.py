@@ -1,4 +1,4 @@
-"""Tests for workflow completion-gate semantics.
+﻿"""Tests for workflow completion-gate semantics.
 
 Validates that the canonical gate set is enforced, gate predicates are
 correct, retry caps work, manifest structure is correct, and resume
@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "dynamic_workflow"
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow-driven-development"
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "workflows"
 FULL_AUTO = SKILLS_DIR / "full-auto-pipeline.workflow.js"
 
 CANONICAL_GATES = [

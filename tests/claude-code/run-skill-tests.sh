@@ -58,17 +58,11 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Static Tests (always run, zero-cost):"
             echo "  test-plugin-health.sh                  All skill/hook/script files valid"
-            echo "  test-workflow-driven-development-structure.sh  Workflow script JS validity"
             echo "  test-designer-prompt-content.sh        Designer prompt content checks"
             echo "  test-researcher-prompt-content.sh      Researcher prompt content checks"
-            echo "  test-pipeline-chain.sh                 Full pipeline cross-references"
             echo ""
             echo "Behavioral Tests (use claude -p):"
-            echo "  test-bootstrap-e2e.sh                  Bootstrap skill loading"
-            echo "  test-git-worktrees-e2e.sh              Git worktrees skill"
-            echo "  test-finishing-e2e.sh                  Finishing branch options"
             echo "  test-debugging-e2e.sh                  Systematic debugging process"
-            echo "  test-worktree-native-preference.sh     EnterWorktree tool preference"
             echo ""
             echo "Integration Tests (use --integration):"
             exit 0
@@ -84,19 +78,13 @@ done
 # Zero-cost static tests (no Claude Code invocation)
 static_tests=(
     "test-plugin-health.sh"
-    "test-workflow-driven-development-structure.sh"
     "test-designer-prompt-content.sh"
     "test-researcher-prompt-content.sh"
-    "test-pipeline-chain.sh"
 )
 
 # Fast behavioral tests (use claude -p, ~2 min each)
 fast_tests=(
-    "test-bootstrap-e2e.sh"
-    "test-git-worktrees-e2e.sh"
-    "test-finishing-e2e.sh"
     "test-debugging-e2e.sh"
-    "test-worktree-native-preference.sh"
 )
 
 # Integration tests (slow, full subagent dispatch / hook verification)
@@ -214,3 +202,4 @@ else
     echo "STATUS: PASSED"
     exit 0
 fi
+

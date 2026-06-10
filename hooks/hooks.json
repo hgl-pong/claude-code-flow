@@ -1,27 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|clear|compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start",
-            "async": false
-          }
-        ]
-      },
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/auto-mode/auto-mode-hooks.py session-start",
-            "async": false
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "EnterPlanMode",

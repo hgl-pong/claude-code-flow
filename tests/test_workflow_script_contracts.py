@@ -1,4 +1,4 @@
-"""Tests for workflow script contract constants and helpers.
+﻿"""Tests for workflow script contract constants and helpers.
 
 Validates that the canonical constants, enums, threshold tables, and
 validation functions defined in the workflow scripts match the spec.
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow-driven-development"
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "workflows"
 FULL_AUTO = SKILLS_DIR / "full-auto-pipeline.workflow.js"
 EXECUTE_PLAN = SKILLS_DIR / "execute-plan.workflow.js"
 

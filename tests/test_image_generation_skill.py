@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,41 +29,37 @@ def test_frontmatter_parser_allows_colons_in_values():
     assert parsed["description"] == "Use when input has http://example.test"
 
 
-def test_image_generation_skill_frontmatter_and_routing_contract():
-    skill = read("skills/image-generation/SKILL.md")
+def test_auto_mode_frontmatter_mentions_image_capability():
+    skill = read("skills/auto-mode/SKILL.md")
     meta = frontmatter(skill)
 
-    assert meta["name"] == "image-generation"
-    assert "generate" in meta["description"].lower()
+    assert meta["name"] == "auto-mode"
     assert "image" in meta["description"].lower()
-    assert "artist" in meta["description"].lower()
-    assert "artist" in skill.lower()
-    assert "manifest" in skill.lower()
-    assert "BLOCKED" in skill
-    assert "cx/gpt-5.5-image" in skill
-    assert "generate-image.py" in skill
-    assert "NINEROUTER_URL" in skill
-    assert "NINEROUTER_KEY" in skill
+    assert "image-generation.md" in skill
 
 
-def test_artist_prompt_status_protocol_and_manifest_contract():
-    prompt = read("skills/workflow-driven-development/artist-prompt.md")
+def test_image_generation_reference_protocol_and_manifest_contract():
+    ref = read("skills/auto-mode/references/image-generation.md")
 
     for status in ["DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED"]:
-        assert status in prompt
+        assert status in ref
 
-    assert "manifest" in prompt.lower()
-    assert "output path" in prompt.lower() or "output paths" in prompt.lower()
-    assert "cx/gpt-5.5-image" in prompt
-    assert "generate-image.py" in prompt
-    assert "NINEROUTER_URL" in prompt
-    assert "NINEROUTER_KEY" in prompt
-    assert "rate limit" in prompt.lower()
+    assert "artist" in ref.lower()
+    assert "manifest" in ref.lower()
+    assert "output path" in ref.lower() or "output paths" in ref.lower()
+    assert "cx/gpt-5.5-image" in ref
+    assert "generate-image.py" in ref
+    assert "NINEROUTER_URL" in ref
+    assert "NINEROUTER_KEY" in ref
+    assert "rate" in ref.lower()
 
 
-def test_workflow_engine_lists_artist_prompt():
-    skill = read("skills/workflow-driven-development/workflow-engine.md")
+def test_auto_mode_lists_image_and_2d_game_references():
+    skill = read("skills/auto-mode/SKILL.md")
+    game_ref = read("skills/auto-mode/references/2d-game-workflow.md")
 
-    assert "artist-prompt.md" in skill
+    assert "image-generation.md" in skill
+    assert "2d-game-workflow.md" in skill
     assert "image generation" in skill.lower()
-    assert "image editing" in skill.lower() or "editing images" in skill.lower()
+    assert "sprite" in game_ref
+    assert "Phaser" in game_ref

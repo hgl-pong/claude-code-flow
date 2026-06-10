@@ -5,7 +5,6 @@ Covers:
 - Resume prompt generation with enriched data
 - Stale artifact invalidation in hook context
 - _call_flow_state_resume integration
-- SessionStart dangling task detection
 """
 
 import importlib.util
@@ -299,39 +298,6 @@ class TestStopHookStateIntegration:
         reason = out["reason"]
         assert "task-1=passed" in reason
         assert "task-2=implementing" in reason
-
-
-# ========================================================================
-# 4. SessionStart hook state integration
-# ========================================================================
-
-
-class TestSessionStartStateIntegration:
-    """Test SessionStart hook detects dangling tasks with state."""
-
-    def test_session_start_detects_dangling(self, tmp_path, capsys, monkeypatch):
-        """SessionStart hook detects active auto-mode tasks."""
-        _, state_file = _init_run(tmp_path, task_name="dangling")
-        _update_state(state_file, {"phase": "execute"})
-
-        monkeypatch.chdir(tmp_path)
-
-        capsys.readouterr()
-        with patch.object(hooks, "auto_mode_active", return_value=state_file):
-            with pytest.raises(SystemExit) as exc_info:
-                hooks.hook_session_start()
-
-        assert exc_info.value.code == 0
-        out = json.loads(capsys.readouterr().out)
-        assert "hookSpecificOutput" in out
-        assert "AUTO-MODE-DANGLING-TASK" in out["hookSpecificOutput"]["additionalContext"]
-
-    def test_session_start_no_dangling(self, monkeypatch):
-        """SessionStart hook passes when no auto-mode is active."""
-        with patch.object(hooks, "auto_mode_active", return_value=None):
-            with pytest.raises(SystemExit) as exc_info:
-                hooks.hook_session_start()
-        assert exc_info.value.code == 0
 
 
 # ========================================================================

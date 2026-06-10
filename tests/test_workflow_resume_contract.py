@@ -1,4 +1,4 @@
-"""Tests for workflow resume contract and state-writer integration.
+﻿"""Tests for workflow resume contract and state-writer integration.
 
 Covers two areas:
 1. execute-plan resume contract (state_patch, partitions, evidence propagation)
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "workflow-driven-development"
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "workflows"
 EXECUTE_PLAN = SKILLS_DIR / "execute-plan.workflow.js"
 
 RESULT_PARTITIONS = ["passed", "completed", "blocked", "stalled", "failed_review", "needs_escalation"]

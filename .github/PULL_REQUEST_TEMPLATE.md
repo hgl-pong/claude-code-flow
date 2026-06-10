@@ -56,28 +56,23 @@ of human involvement will be closed without review.
      runner), you MUST include a session transcript proving the
      integration actually works.
 
-     A real integration loads the `using-claude-code-flow` bootstrap at session
-     start. The bootstrap is what causes skills to auto-trigger. Without
-     it, the skills are dead weight — present on disk but never invoked
-     at the right moments.
-
      ACCEPTANCE TEST: Open a clean session in the new harness and send
      exactly this user message:
 
          Let's make a react todo list
 
-     A working integration auto-triggers the `brainstorming` skill before
-     any code is written. Paste the complete transcript below.
+     A working integration routes the task into `auto-mode` before
+     implementation. Paste the complete transcript below.
 
      These are NOT real integrations and PRs that ship them will be closed:
 
      - Manually copying skill files into the harness
      - Wrapping with `npx skills` or similar at-runtime shims
-     - Anything that requires the user to opt in to skills per-session
-     - Anything where brainstorming does not auto-trigger on the test above
+     - Anything that requires the user to opt in to the workflow per-session
+     - Anything where auto-mode does not engage on the test above
 
-     If you are not sure whether your integration loads the bootstrap at
-     session start, it does not.
+     If you are not sure whether the harness can trigger auto-mode at
+     the right moment, it does not.
 -->
 
 <details>

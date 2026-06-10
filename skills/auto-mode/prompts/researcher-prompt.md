@@ -1,10 +1,10 @@
-# Researcher Subagent Prompt Template
+﻿# Researcher Subagent Prompt Template
 
 Use this template when dispatching a researcher subagent for any research type: product research, market analysis, technology evaluation, feasibility studies, technical research, or data gathering.
 
 **Purpose:** Deep research with evidence-backed findings. Uses both local codebase tools AND MCP web tools. Read-only — produces research reports, not code.
 
-**Dispatch when:** you need current information to inform a decision, before planning or design work. Dispatched from brainstorming, semi-auto planning, or full-auto technical research.
+**Dispatch when:** you need current information to inform a decision, before planning or design work. Dispatched from brainstorming, auto-mode planning, or full-auto technical research.
 
 ```
 Task tool (general-purpose):
@@ -228,3 +228,4 @@ Task tool (general-purpose):
     - **Downstream implications:** [what the consumer should do next]
     - **Open questions or blockers:** [what's unknown or blocked]
 ```
+

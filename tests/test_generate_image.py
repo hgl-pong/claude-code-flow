@@ -1,6 +1,6 @@
 """Tests for scripts/generate-image.py.
 
-Tests cover arg parsing, env validation, and API call via subprocess + mock HTTP server.
+Tests cover arg parsing, default endpoint behavior, and API call via subprocess + mock HTTP server.
 """
 
 import contextlib
@@ -59,22 +59,12 @@ def test_missing_output_exits_2():
     assert code == 2
 
 
-def test_missing_ninerouter_url_exits_2():
-    code, _, err = run_script(
-        "--prompt", "cat", "--output", "out.png",
-        env_extra={"NINEROUTER_KEY": "test-key"},
-    )
-    assert code == 2
-    assert "NINEROUTER_URL" in err
+def test_missing_env_uses_local_defaults(tmp_path, monkeypatch):
+    out_file = tmp_path / "out.png"
+    code, _, err = run_script("--prompt", "cat", "--output", str(out_file))
 
-
-def test_missing_ninerouter_key_exits_2():
-    code, _, err = run_script(
-        "--prompt", "cat", "--output", "out.png",
-        env_extra={"NINEROUTER_URL": "http://localhost:3000"},
-    )
-    assert code == 2
-    assert "NINEROUTER_KEY" in err
+    assert code == 1
+    assert "request failed" in err or "API returned" in err
 
 
 class MockHandler(BaseHTTPRequestHandler):
@@ -82,8 +72,10 @@ class MockHandler(BaseHTTPRequestHandler):
     response_body = b"\x89PNG\r\n\x1a\nfake"
     response_code = 200
     last_request = None
+    last_path = None
 
     def do_POST(self):
+        MockHandler.last_path = self.path
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
         MockHandler.last_request = json.loads(body)
@@ -98,6 +90,7 @@ class MockHandler(BaseHTTPRequestHandler):
 @pytest.fixture
 def mock_server():
     MockHandler.last_request = None
+    MockHandler.last_path = None
     MockHandler.response_body = b"\x89PNG\r\n\x1a\nfake"
     MockHandler.response_code = 200
     server = HTTPServer(("127.0.0.1", 0), MockHandler)
@@ -130,7 +123,8 @@ def test_success_writes_file_and_manifest(tmp_path, mock_server):
     assert manifest["size"] == "1024x1024"
     assert manifest["quality"] == "high"
 
-    # Verify request sent correct payload
+    # Verify request sent correct endpoint and payload
+    assert MockHandler.last_path == "/v1/images/generations?response_format=binary"
     assert MockHandler.last_request["model"] == "cx/gpt-5.5-image"
     assert MockHandler.last_request["prompt"] == "watercolor cat"
 

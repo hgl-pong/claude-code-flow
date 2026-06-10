@@ -224,10 +224,10 @@ Current state summary:
 - Evidence dir: {evidence_dir or 'none'}
 {resume_section}
 Instructions by phase:
-- brainstorming / semi-auto planning: Continue from current_step={step}. Auto-decide everything. Log to audit trail. Proceed to next phase when done.
-- workflow-driven-development: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter completion-gates.
-- completion-gates: Run gates in order ({failing}). Do NOT re-check passed gates. After all 7 pass, enter finishing.
-- finishing: Complete the merge, set status to DONE.
+- scope/research/spec/plan: Continue from current_step={step}. Auto-decide routine choices. Log to audit trail. Proceed to next phase when done.
+- execute: Check git log for commits from active agents. Advance task_states for agents that completed. Re-dispatch failed/missing tasks. Fill pool to max_parallel_agents. If all tasks done, enter gates.
+- gates: Run gates in order ({failing}). Do NOT re-check passed gates. After all 7 pass, enter finalize.
+- finalize: Complete local finalization, set status to DONE.
 
 CRITICAL RULES:
 1. Log every decision to .claude/auto/{task_name}/decisions.md
@@ -584,49 +584,6 @@ State file: {sf}
     sys.exit(0)
 
 
-def hook_session_start():
-    """SessionStart hook: discover active states, emit resume/new/list prompt.
-
-    Scans all state files in .claude/auto/*/state.json for active (nonterminal)
-    states and generates a context prompt listing them with resume options.
-    """
-    active_states = discover_active_states()
-
-    if not active_states:
-        sys.exit(0)
-
-    # Build a summary of all active states
-    lines = []
-    for i, st in enumerate(active_states, 1):
-        lines.append(
-            f"{i}. {st['task_name']} — phase: {st['phase']}, status: {st['status']}, "
-            f"updated: {st['updated_at'] or 'unknown'}"
-        )
-
-    state_list = "\n".join(lines)
-    first_state = active_states[0]
-
-    # Build resume commands
-    resume_lines = []
-    for st in active_states:
-        resume_lines.append(f"- Resume `{st['task_name']}`: /auto --resume {st['task_name']}")
-    resume_cmds = "\n".join(resume_lines)
-
-    context = f"""<AUTO-MODE-DANGLING-TASK>
-Auto-mode has {len(active_states)} active task(s) from a previous session.
-
-{state_list}
-
-Options:
-{resume_cmds}
-- Start fresh: /auto --new <new task>
-- List all: /auto --list
-</AUTO-MODE-DANGLING-TASK>"""
-
-    emit_context_json(context, "SessionStart")
-    sys.exit(0)
-
-
 def hook_teammate_idle():
     """TeammateIdle hook: block teammate idle if unfinished tasks remain.
 
@@ -684,7 +641,6 @@ COMMANDS = {
     "subagent-stop": hook_subagent_stop,
     "subagent-start": hook_subagent_start,
     "pre-compact": hook_pre_compact,
-    "session-start": hook_session_start,
     "teammate-idle": hook_teammate_idle,
 }
 
