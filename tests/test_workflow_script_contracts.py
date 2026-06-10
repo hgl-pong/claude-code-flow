@@ -602,6 +602,46 @@ class TestExecutePlanConstants:
         assert result["failed_review"] == []
         assert result["completed"][0]["id"] == "task-final"
         assert result["final_review"]["branch_diff_evidence"]["diff_verified"] is True
+        assert result["final_review_run"] is True
+        assert result["state_patch"]["final_review_run"] is True
+        assert result["state_patch"]["final_review"] == result["final_review"]
+        assert result["state_patch"]["final_review_evidence"] == [result["final_review"]["branch_diff_evidence"]]
+        assert result["state_patch"]["final_review_blocking_issues"] == result["final_review"]["issues"]
+        assert result["state_patch"]["unresolved_final_review_issues"] == result["final_review"]["unresolved_issue_ids"]
+        assert result["state_patch"]["base_ref"] == result["final_review"]["branch_diff_evidence"]["base_ref"]
+        assert result["state_patch"]["base_sha"] == result["final_review"]["branch_diff_evidence"]["base_sha"]
+        assert result["state_patch"]["head_sha"] == "3333333"
+        assert result["state_patch"]["dirty"] is False
+        assert result["state_patch"]["diff_command"] == "git diff --name-status main...HEAD && git diff main...HEAD"
+        assert result["state_patch"]["diff_files"] == ["src/a.js"]
+        assert result["state_patch"]["diff_verified"] is True
+        assert result["state_patch"]["diff_truncated"] is False
+        assert result["state_patch"]["iterations"]["final_fix_attempts"] == 1
+        assert result["state_patch"]["tasks_stale_after_final_fix"] == []
+
+    def test_resume_state_patch_preferred_over_top_level_with_defaults(self):
+        result = self._eval_evidence_helper(r'''
+            normalizeResumeState({
+              result: {
+                final_review_run: true,
+                diff_verified: true,
+                final_review_evidence: [{ top: true }],
+                state_patch: {
+                  final_review_run: false,
+                  diff_verified: false,
+                  final_review_evidence: [{ patch: true }]
+                }
+              }
+            })
+        ''')
+        assert result["final_review_run"] is False
+        assert result["diff_verified"] is False
+        assert result["enforcement_mode"] == "prompt_only"
+        assert result["final_review_evidence"] == [{"patch": True}]
+        assert result["final_review_blocking_issues"] == []
+        assert result["unresolved_final_review_issues"] == []
+        assert "resume_state_patch_preferred: final_review_run" in result["warnings"]
+        assert "resume_state_patch_preferred: diff_verified" in result["warnings"]
 
     def test_final_review_severity_blocks_even_with_false_blocking_flag(self):
         result = self._eval_workflow(r'''

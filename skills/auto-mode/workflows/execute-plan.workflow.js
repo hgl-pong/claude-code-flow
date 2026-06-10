@@ -21,10 +21,11 @@ export const meta = {
 
 const workflowArgs = typeof args === 'undefined' ? {} : args
 const { groups, tasks, worktree, model_tasks } = workflowArgs
-const result_replay = workflowArgs.result_replay || []
 const MAX_RETRIES = 5
 const COMMAND_EXECUTION_PRIMITIVE = 'workflow_agent_only'
 const ENFORCEMENT_MODE = 'prompt_only'
+const resumeState = normalizeResumeState(workflowArgs.resume_from || workflowArgs.resume_state || workflowArgs.previous_result || {})
+const result_replay = workflowArgs.result_replay || resumeState.result_replay || []
 
 // ── Contract constants (shared with full-auto-pipeline) ────────────────
 
@@ -52,6 +53,49 @@ const ESCALATION_ATTEMPTS = {
 
 const REVIEW_SEVERITIES = ['Critical', 'High', 'Important', 'Minor', 'Info']
 const TASK_RISKS = ['low', 'medium', 'high', 'critical']
+
+function asArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
+function pickCanonical(source, fallback, field, warnings) {
+  if (source && Object.prototype.hasOwnProperty.call(source, field)) {
+    if (fallback && Object.prototype.hasOwnProperty.call(fallback, field) && JSON.stringify(source[field]) !== JSON.stringify(fallback[field])) {
+      warnings.push('resume_state_patch_preferred: ' + field)
+    }
+    return source[field]
+  }
+  return fallback && Object.prototype.hasOwnProperty.call(fallback, field) ? fallback[field] : undefined
+}
+
+function normalizeResumeState(saved) {
+  const input = saved || {}
+  const top = input.execute_result || input.result || input
+  const patch = top.state_patch || input.state_patch || {}
+  const warnings = []
+  const get = field => pickCanonical(patch, top, field, warnings)
+  return {
+    result_replay: asArray(input.result_replay || top.result_replay),
+    warnings,
+    final_review_run: get('final_review_run') === true,
+    final_review: get('final_review') || null,
+    final_review_evidence: asArray(get('final_review_evidence')),
+    final_review_blocking_issues: asArray(get('final_review_blocking_issues')),
+    unresolved_final_review_issues: asArray(get('unresolved_final_review_issues') || get('final_review_unresolved_issue_ids')),
+    final_review_blocked: get('final_review_blocked') === true,
+    enforcement_mode: get('enforcement_mode') || ENFORCEMENT_MODE,
+    base_ref: get('base_ref') || '',
+    base_sha: get('base_sha') || '',
+    head_sha: get('head_sha') || '',
+    dirty: get('dirty') === true,
+    diff_command: get('diff_command') || '',
+    diff_files: asArray(get('diff_files')),
+    diff_verified: get('diff_verified') === true,
+    diff_truncated: get('diff_truncated') === true,
+    iterations: get('iterations') || 0,
+    tasks_stale_after_final_fix: asArray(get('tasks_stale_after_final_fix')),
+  }
+}
 
 // ── Diff anchor resolution (helper-only; no command primitive) ───────────
 
@@ -2002,6 +2046,7 @@ let finalReview = null
 let finalFixAttempts = 0
 let tasksStaleAfterFinalFixList = []
 let finalReviewNextAction = ''
+let finalBranchDiffEvidence = null
 if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && totalTasks > 0) {
   phase('Final Review')
   const allFiles = partitions.completed.flatMap(r => r.files || r.evidence?.files_modified || []).filter(Boolean)
@@ -2009,6 +2054,7 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
   const finalTask = { id: 'final', description: 'Final review for ' + allIds, files: allFiles }
   let finalImpl = { summary: 'Entire implementation: ' + allIds, files_modified: allFiles }
   let branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
+  finalBranchDiffEvidence = branchDiffEvidence
 
   finalReview = await agentWithSchemaRetry(
     finalReviewPrompt(partitions.completed, finalTask, finalImpl),
@@ -2050,6 +2096,7 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
     if (invalidatesEvidence) finalReviewNextAction = 'rerun_task_review'
     const priorFinalReview = finalReview
     branchDiffEvidence = collectFinalBranchDiffEvidence(workflowArgs, finalTask, finalImpl)
+    finalBranchDiffEvidence = branchDiffEvidence
     finalReview = await agentWithSchemaRetry(
       finalReviewPrompt(partitions.completed, finalTask, finalImpl, priorFinalReview),
       opts('final-review-r' + fixAttempt, 'Final Review', REVIEW_REREVIEW_RESULT),
@@ -2097,7 +2144,16 @@ const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha ||
   task_attempt_base_dirty: !!e.task_attempt_base_dirty,
   task_attempt_base_capture_failed: e.task_attempt_base_capture_failed || '',
 }))
+const finalReviewRun = finalReview !== null
 const finalReviewBlocked = !!(finalReview && finalReview.passed === false)
+const finalReviewEvidence = finalReview && finalReview.branch_diff_evidence ? [finalReview.branch_diff_evidence] : (finalBranchDiffEvidence ? [finalBranchDiffEvidence] : [])
+const finalReviewBlockingIssues = finalReviewBlocked ? (finalReview.issues || []).filter(issue => isIssueBlocking('final_review', 'medium', issue.severity, issue.blocking)) : []
+const unresolvedFinalReviewIssues = finalReviewBlocked ? unresolvedIssueIds(finalReview) : []
+const finalDiffEvidence = finalReviewEvidence[0] || {}
+const iterations = {
+  final_fix_attempts: finalFixAttempts,
+  task_fix_attempts: resultEntries.map(e => ({ id: e.id, spec_fix_attempts: e.spec_fix_attempts || 0, code_fix_attempts: e.code_fix_attempts || 0 })),
+}
 
 const state_patch = {
   task_attempt_bases: attemptBaseEvidence,
@@ -2112,11 +2168,26 @@ const state_patch = {
     needs_escalation: partitions.needs_escalation.map(e => e.id),
   },
   total_tasks: totalTasks,
-  final_review_run: finalReview !== null,
+  final_review_run: finalReviewRun,
+  final_review: finalReview,
+  final_review_evidence: finalReviewEvidence,
+  final_review_blocking_issues: finalReviewBlockingIssues,
+  unresolved_final_review_issues: unresolvedFinalReviewIssues,
   final_review_blocked: finalReviewBlocked,
-  final_review_unresolved_issue_ids: finalReviewBlocked ? unresolvedIssueIds(finalReview) : [],
-  final_fix_attempts: finalFixAttempts,
+  base_ref: finalDiffEvidence.base_ref || workflowArgs.base_ref || '',
+  base_sha: finalDiffEvidence.base_sha || workflowArgs.base_sha || '',
+  head_sha: finalDiffEvidence.head_sha || '',
+  dirty: !!finalDiffEvidence.dirty,
+  diff_command: finalDiffEvidence.diff_command || '',
+  diff_files: finalDiffEvidence.diff_files || [],
+  diff_verified: finalDiffEvidence.diff_verified === true,
+  diff_truncated: finalDiffEvidence.diff_truncated === true,
+  iterations,
   tasks_stale_after_final_fix: tasksStaleAfterFinalFixList,
+  final_review_unresolved_issue_ids: unresolvedFinalReviewIssues,
+  final_fix_attempts: finalFixAttempts,
+  enforcement_mode: ENFORCEMENT_MODE,
+  resume_warnings: resumeState.warnings || [],
 }
 
 return {
@@ -2126,7 +2197,9 @@ return {
   stalled: partitions.stalled,
   failed_review: partitions.failed_review,
   needs_escalation: partitions.needs_escalation,
+  final_review_run: finalReviewRun,
   final_review: finalReview,
   state_patch,
 }
+
 
