@@ -863,8 +863,8 @@ WORKFLOW_SCRIPT
     def test_validate_fix_scope_blocks_unrelated_config_delete_and_rename(self):
         result = self._eval_evidence_helper(r'''
             (() => {
-              const task = { files: ['src/feature/a.js'], tests: ['tests/test_a.py'] };
-              const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }];
+              const task = { files: ['src/feature/a.js', 'package.json'], tests: ['tests/test_a.py'] };
+              const issues = [{ id: 'issue-1', file: 'src/feature/a.js' }, { id: 'issue-2', file: 'package.json' }];
               const unrelated = validateFixScope(['src/other/b.js'], issues, { task });
               const config = validateFixScope(['package.json'], issues, { task });
               const deleted = validateFixScope(['src/feature/a.js'], issues, { task, deleted_files: ['src/feature/a.js'] });

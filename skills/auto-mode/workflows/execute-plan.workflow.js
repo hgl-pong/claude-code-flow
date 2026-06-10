@@ -1045,7 +1045,7 @@ function validateFixScope(diffFiles, allowedFiles, fixResult) {
 
   for (const file of changed) {
     const scoped = allowed.has(file) || isSameDirectoryTestPattern(file, Array.from(allowed))
-    if (isBroadConfigFile(file) && !allowed.has(file)) reasons.push('broad_config_change: ' + file)
+    if (isBroadConfigFile(file)) reasons.push('broad_config_change: ' + file)
     else if (!scoped) reasons.push(formattingOnly.has(file) ? 'formatting_only_outside_scope: ' + file : 'unrelated_file_changed: ' + file)
   }
   for (const file of deleted) reasons.push('delete_outside_fix_scope: ' + file)
@@ -1063,6 +1063,17 @@ function validateFixScope(diffFiles, allowedFiles, fixResult) {
     diff_files: changed,
     advisory: { unrelated_files_changed: result.unrelated_files_changed || [] },
   }
+}
+
+function validateLatestFixScope(ctx, issues, updated, task) {
+  const latest = ((ctx && ctx.attempt_diff_evidence) || []).slice(-1)[0] || {}
+  return validateFixScope(latest.diff_files || [], issues, {
+    ...(updated || {}),
+    task: task || ctx || {},
+    issues,
+    deleted_files: latest.special_statuses && latest.special_statuses.deleted,
+    renamed_files: latest.special_statuses && latest.special_statuses.renamed,
+  })
 }
 
 function validateImplementationEvidence(task, impl, controllerEvidence, reviewOverride) {
@@ -1395,6 +1406,10 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
+            const fixScope = validateLatestFixScope(ctx, blockingIssues, updated, ctx)
+            if (!fixScope.passed) {
+              return { ...ctx, fix_scope_validation: fixScope, spec_review: null, spec_passed: false, _blocked: true, _reason: fixScope.reasons.join('; '), _fix_scope_blocked: true }
+            }
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
             controllerEvidence = controllerEvidenceFromAttempts(ctx)
             implementationEvidence = validateImplementationEvidence(ctx, ctx.impl, controllerEvidence, null)
@@ -1468,6 +1483,10 @@ for (const [gi, group] of groups.entries()) {
               0,
             )
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
+            const fixScope = validateLatestFixScope(ctx, blockingIssues, updated, ctx)
+            if (!fixScope.passed) {
+              return { ...ctx, fix_scope_validation: fixScope, code_review: null, code_passed: false, _blocked: true, _reason: fixScope.reasons.join('; '), _fix_scope_blocked: true }
+            }
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
             const priorCodeReview = review
