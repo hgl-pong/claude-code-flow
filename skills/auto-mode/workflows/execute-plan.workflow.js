@@ -1148,6 +1148,17 @@ function tasksStaleAfterFinalFix(completed, touchedFiles) {
   return stale
 }
 
+function mergeTasksStaleAfterFinalFix(existing, next) {
+  const merged = new Map()
+  for (const item of [...(existing || []), ...(next || [])]) {
+    if (!item || !item.task_id) continue
+    const current = merged.get(item.task_id) || { task_id: item.task_id, files: [], reason: 'final_fix_touched_completed_task_files' }
+    current.files = [...new Set([...current.files, ...(item.files || [])].map(normalizePathForScope).filter(Boolean))]
+    merged.set(item.task_id, current)
+  }
+  return [...merged.values()]
+}
+
 function finalFixInvalidatesTaskEvidence(completed, staleTasks) {
   const staleIds = new Set((staleTasks || []).map(item => item && item.task_id).filter(Boolean))
   return (completed || []).some(entry => staleIds.has(entry.id) && (!entry.evidence_validation || entry.evidence_validation.status !== 'pass'))
@@ -2033,7 +2044,8 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
     }
     finalImpl = { ...finalImpl, ...updated, attempt_diff_evidence: finalTask.attempt_diff_evidence || [] }
     const touchedFiles = collectFinalFixTouchedFiles(finalTask)
-    tasksStaleAfterFinalFixList = tasksStaleAfterFinalFix(partitions.completed, touchedFiles)
+    const staleAfterAttempt = tasksStaleAfterFinalFix(partitions.completed, touchedFiles)
+    tasksStaleAfterFinalFixList = mergeTasksStaleAfterFinalFix(tasksStaleAfterFinalFixList, staleAfterAttempt)
     const invalidatesEvidence = finalFixInvalidatesTaskEvidence(partitions.completed, tasksStaleAfterFinalFixList)
     if (invalidatesEvidence) finalReviewNextAction = 'rerun_task_review'
     const priorFinalReview = finalReview

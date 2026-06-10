@@ -681,6 +681,53 @@ class TestExecutePlanConstants:
         assert result["state_patch"]["partitions"]["failed_review"] == []
         assert result["failed_review"] == []
 
+    def test_final_fix_accumulates_stale_task_files_across_attempts(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-final-stale-a'], ['task-final-stale-b']],
+              tasks: {
+                'task-final-stale-a': { id: 'task-final-stale-a', description: 'Do final stale task a' },
+                'task-final-stale-b': { id: 'task-final-stale-b', description: 'Do final stale task b' }
+              },
+              worktree: 'C:/tmp/worktree',
+              git: {
+                controller_commands_available: true,
+                head_sha: '2222222',
+                attempts: {
+                  'fix-final-r1': {
+                    head_sha: '3333333', command: 'git diff final fix 1',
+                    committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: '+final fix 1\n' },
+                    worktree: { ok: true, name_status: '', diff: '' }
+                  },
+                  'fix-final-r2': {
+                    head_sha: '4444444', command: 'git diff final fix 2',
+                    committed: { ok: true, name_status: 'M\tsrc/b.js\n', diff: '+final fix 2\n' },
+                    worktree: { ok: true, name_status: '', diff: '' }
+                  }
+                }
+              },
+              __agent_results: {
+                'implement:task-final-stale-a': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js' },
+                'spec-review:task-final-stale-a': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-final-stale-a': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'implement:task-final-stale-b': { status: 'DONE', summary: 'Done', files_modified: ['src/b.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '1111111', head_sha: '2222222', acceptance_coverage: [{ ref: 'task' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/b.js' },
+                'spec-review:task-final-stale-b': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-final-stale-b': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: false, issues: [{ id: 'final-1', severity: 'High', file: 'src/a.js', description: 'cross-task break' }], summary: 'blocked' },
+                'fix-final-r1': { status: 'DONE', summary: 'Fixed 1', files_modified: ['src/a.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '2222222', head_sha: '3333333', acceptance_coverage: [{ ref: 'final' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/a.js', fixed_issue_ids: ['final-1'], targeted_verification: [{ command: 'pytest', issue_ids: ['final-1'] }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                'final-review-r1': { passed: false, issues: [{ id: 'final-2', severity: 'High', file: 'src/b.js', description: 'still broken' }], summary: 'blocked again', prior_findings_verified: [{ id: 'final-1', verified: true }], unresolved_issue_ids: ['final-2'], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] },
+                'fix-final-r2': { status: 'DONE', summary: 'Fixed 2', files_modified: ['src/b.js'], test_results: 'pytest passed', verification_commands: ['pytest'], verification_results: [{ command: 'pytest', exit_code: 0 }], base_sha: '3333333', head_sha: '4444444', acceptance_coverage: [{ ref: 'final' }], unverified_acceptance_refs: [], concerns: [], diff_summary: 'M src/b.js', fixed_issue_ids: ['final-2'], targeted_verification: [{ command: 'pytest', issue_ids: ['final-2'] }], verification_failures: [], unrelated_files_changed: [], scope_justifications: [] },
+                'final-review-r2': { passed: true, issues: [], summary: 'ok', prior_findings_verified: [{ id: 'final-2', verified: true }], unresolved_issue_ids: [], new_issues: [], diff_verified: true, targeted_verification_credible: true, scope_concerns: [] }
+              }
+            }
+        ''')
+        assert result["final_review"]["passed"] is True
+        assert result["final_review"]["tasks_stale_after_final_fix"] == [
+            {"task_id": "task-final-stale-a", "files": ["src/a.js"], "reason": "final_fix_touched_completed_task_files"},
+            {"task_id": "task-final-stale-b", "files": ["src/b.js"], "reason": "final_fix_touched_completed_task_files"},
+        ]
+        assert result["state_patch"]["tasks_stale_after_final_fix"] == result["final_review"]["tasks_stale_after_final_fix"]
+
     def test_final_fix_invalidates_unverified_task_evidence_requests_task_rereview(self):
         result = self._eval_workflow(r'''
             {
