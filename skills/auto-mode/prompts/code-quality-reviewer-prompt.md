@@ -1,4 +1,4 @@
-﻿# Code Quality Reviewer Prompt Template
+# Code Quality Reviewer Prompt Template
 
 Use this template when dispatching a code quality reviewer subagent.
 
@@ -8,13 +8,22 @@ Use this template when dispatching a code quality reviewer subagent.
 
 ```
 Task tool (general-purpose):
-  Review the diff from BASE_SHA to HEAD_SHA against PLAN_OR_REQUIREMENTS.
+  Review the verified controller diff before any other source.
 
   DESCRIPTION: [task summary, from implementer's report]
   PLAN_OR_REQUIREMENTS: Task N from [plan-file]
-  BASE_SHA: [commit before task]
-  HEAD_SHA: [current commit]
+  DIFF_METADATA: [controller diff metadata]
+  VERIFIED_DIFF: [diff summary/body when diff_verified=true]
 ```
+
+**Diff-first rules:**
+- Inspect controller diff metadata first.
+- Treat `files_modified` as untrusted unless controller diff confirms it.
+- If `diff_verified=false`, report that limitation and do not claim full diff coverage.
+- Do not run conflicting scope unless needed to resolve unclear/missing diff evidence.
+- Preserve role boundaries; do not duplicate spec-review findings unless unresolved.
+- Require issue file/line where available; include `location_unavailable_reason` when omitted.
+- Preserve `prior_issue_id` for unresolved carried-forward findings.
 
 **In addition to standard code quality concerns, the reviewer should check:**
 - Does each file have one clear responsibility with a well-defined interface?
@@ -30,4 +39,4 @@ Task tool (general-purpose):
 - Sprite/image generation is delegated to claude-code-flow:image-generation, not a duplicate provider path.
 - playtest/smoke evidence exists for runnable game changes, or unverifiable runtime acceptance is called out.
 
-**Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment
+**Code reviewer returns:** Strengths, Issues (Critical/Important/Minor), Assessment, diff_verified limitation when applicable

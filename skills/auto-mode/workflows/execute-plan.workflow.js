@@ -335,6 +335,104 @@ function isIssueBlocking(reviewStage, taskRisk, severity, explicitFlag) {
   return explicitFlag === true
 }
 
+const REVIEW_SEVERITY_ALIASES = {
+  critical: 'Critical', high: 'High', important: 'Important', medium: 'Important', minor: 'Minor', low: 'Minor', info: 'Info', informational: 'Info', nit: 'Minor',
+}
+
+function normalizeReviewSeverity(value) {
+  const raw = String(value || '').trim()
+  return REVIEW_SEVERITIES.includes(raw) ? raw : (REVIEW_SEVERITY_ALIASES[raw.toLowerCase()] || 'Info')
+}
+
+function normalizeReviewCategory(value, stage) {
+  const raw = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  if (raw) return raw
+  if (stage === 'spec_review') return 'requirements'
+  if (stage === 'code_review' || stage === 'final_review') return 'code_quality'
+  return 'review'
+}
+
+function normalizeIssueLocation(issue) {
+  const file = String((issue && issue.file) || '').trim()
+  const lineNumber = Number(issue && issue.line)
+  const line = Number.isFinite(lineNumber) && lineNumber > 0 ? lineNumber : undefined
+  const location = String((issue && issue.location) || (file ? file + (line ? ':' + line : '') : '')).trim()
+  const reason = String((issue && issue.location_unavailable_reason) || '').trim()
+  return {
+    file,
+    line,
+    location,
+    location_unavailable_reason: file || location ? '' : (reason || 'not_provided_by_reviewer'),
+  }
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']'
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + stableStringify(value[k])).join(',') + '}'
+  }
+  return JSON.stringify(value == null ? '' : value)
+}
+
+function fnv1aHash(value) {
+  let hash = 0x811c9dc5
+  const text = String(value || '')
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(36).padStart(7, '0')
+}
+
+function issueHashInput(issue, context) {
+  const stage = (context && context.stage) || 'review'
+  const location = normalizeIssueLocation(issue)
+  return stableStringify({
+    v: 1,
+    stage,
+    severity: normalizeReviewSeverity(issue && issue.severity),
+    category: normalizeReviewCategory(issue && issue.category, stage),
+    file: location.file,
+    line: location.line || '',
+    location: location.location,
+    description: String((issue && issue.description) || '').trim().toLowerCase().replace(/\s+/g, ' '),
+  })
+}
+
+function deriveIssueId(issue, context) {
+  const stage = String((context && context.stage) || 'review').replace(/[^a-z0-9_\-]+/gi, '_')
+  const taskId = String((context && (context.task_id || context.taskId || context.task)) || (stage === 'final_review' ? 'final' : 'unknown')).replace(/[^a-z0-9_\-]+/gi, '_')
+  const severity = normalizeReviewSeverity(issue && issue.severity).toLowerCase()
+  const base = 'amr1:' + stage + ':' + taskId + ':' + severity + ':' + fnv1aHash(issueHashInput(issue || {}, context || {}))
+  const counts = context && context.issue_id_counts
+  if (!counts) return base
+  const n = counts[base] || 0
+  counts[base] = n + 1
+  return n === 0 ? base : base + '-' + (n + 1)
+}
+
+function normalizeReviewIssues(review, context) {
+  const ctx = { ...(context || {}), issue_id_counts: {} }
+  const seen = {}
+  const prior = (context && context.prior_issues) || []
+  const priorByKey = {}
+  for (const oldIssue of prior) priorByKey[issueHashInput(oldIssue, ctx)] = oldIssue.id || oldIssue.prior_issue_id || ''
+  const issues = ((review && review.issues) || []).map(raw => {
+    const severity = normalizeReviewSeverity(raw && raw.severity)
+    const category = normalizeReviewCategory(raw && raw.category, ctx.stage)
+    const location = normalizeIssueLocation(raw || {})
+    const issue = { ...(raw || {}), severity, category, ...location }
+    const key = issueHashInput(issue, ctx)
+    issue.id = issue.id || deriveIssueId(issue, ctx)
+    if (!issue.prior_issue_id && priorByKey[key]) issue.prior_issue_id = priorByKey[key]
+    if (seen[key] && !issue.duplicate_of) issue.duplicate_of = seen[key]
+    if (!seen[key]) seen[key] = issue.id
+    if (issue.prior_issue_id && issue.prior_issue_id !== issue.id && !issue.supersedes) issue.supersedes = issue.prior_issue_id
+    return issue
+  })
+  return { ...(review || {}), issues }
+}
+
 // ── Blocker classification ────────────────────────────────────────────
 
 function classifyBlocker(detail) {
@@ -461,9 +559,16 @@ const REVIEW_RESULT = {
         type: 'object',
         additionalProperties: false,
         properties: {
+          id: { type: 'string' },
+          prior_issue_id: { type: 'string' },
+          supersedes: { type: 'string' },
+          duplicate_of: { type: 'string' },
           severity: { type: 'string', enum: ['Critical', 'High', 'Important', 'Minor', 'Info'] },
+          category: { type: 'string' },
           file: { type: 'string' },
           line: { type: 'number' },
+          location: { type: 'string' },
+          location_unavailable_reason: { type: 'string' },
           description: { type: 'string' },
           blocking: { type: 'boolean' },
         },
@@ -569,9 +674,27 @@ Evidence files/summaries must not include secrets, tokens, API keys, credentials
 Your final response will be parsed as JSON. You MUST return valid JSON.`
 }
 
+function latestDiffEvidence(impl, task) {
+  const attempts = [
+    ...((task && task.attempt_diff_evidence) || []),
+    ...((impl && impl.attempt_diff_evidence) || []),
+  ]
+  return attempts.length ? attempts[attempts.length - 1] : null
+}
+
+function diffEvidencePrompt(task, impl, stage) {
+  const anchor = resolveDiffAnchors(workflowArgs, task, impl, stage)
+  const evidence = latestDiffEvidence(impl, task) || collectDiffEvidence(anchor)
+  return '\n\n## Controller Diff Evidence\n\n' + JSON.stringify(evidence, null, 2) + '\n\n' +
+    (evidence.diff_verified ? 'diff_verified=true. Review this verified diff first.\n' : 'diff_verified=false. State this limitation; files_modified is untrusted; do not expand scope beyond available evidence unless needed.\n') +
+    diffAnchorPrompt(task, impl, stage)
+}
+
 function specReviewPrompt(task, impl) {
   const concerns = (impl.concerns || []).join('\n') || 'None reported'
   const evidenceValidation = impl.evidence_validation ? JSON.stringify(impl.evidence_validation, null, 2) : 'Not provided'
+  const acceptanceCoverage = JSON.stringify(impl.acceptance_coverage || [], null, 2)
+  const unverifiedRefs = (impl.unverified_acceptance_refs || []).join('\n') || 'None reported'
   const limitations = (impl.limitations || (impl.evidence_validation && impl.evidence_validation.limitations) || []).join('\n') || 'None reported'
   return `Verify whether the implementation matches its specification.
 
@@ -583,7 +706,17 @@ ${task.description}
 
 ${impl.summary}
 
-Files changed: ${impl.files_modified.join(', ')}
+Reported files changed (untrusted unless diff evidence confirms): ${impl.files_modified.join(', ')}
+
+## Implementation Evidence
+
+Acceptance coverage:
+${acceptanceCoverage}
+
+Stale/unverified refs:
+${unverifiedRefs}
+
+Review requirements and acceptance only. Use actual code diff and implementation evidence. Include stale/unverified refs as limitations. Avoid style, general code quality, or broader design review scope.
 
 ## Implementation Concerns / Limitations
 
@@ -607,10 +740,14 @@ DO NOT:
 - Accept their interpretation of requirements
 
 DO:
-- Read the actual code they wrote
+- Inspect controller diff evidence first
+- Read the actual code shown by the diff
 - Compare actual implementation to requirements line by line
 - Check for missing pieces they claimed to implement
 - Look for extra features they didn't mention
+- Preserve role boundaries; do not duplicate later code-quality findings unless they show unresolved spec noncompliance
+- Require issue file/line where available; if omitted, include location_unavailable_reason
+- Preserve prior_issue_id when carrying forward unresolved findings
 
 ## What to Check
 
@@ -636,7 +773,7 @@ Use Minor for: edge cases not covered, spec ambiguity.
 
 ## Structured Output
 
-Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(task, impl, 'spec_review')
+Your final response will be parsed as JSON. You MUST return valid JSON.` + diffEvidencePrompt(task, impl, 'spec_review')
 }
 
 function codeReviewPrompt(impl, taskId, task) {
@@ -646,9 +783,11 @@ function codeReviewPrompt(impl, taskId, task) {
 
 Task: ${taskId}
 Summary: ${impl.summary}
-Files: ${impl.files_modified.join(', ')}
+Reported files (untrusted unless controller diff confirms): ${impl.files_modified.join(', ')}
 
 ## Instructions
+
+Inspect controller diff metadata first. Treat files_modified as untrusted. If diff_verified=false, say so and include the limitation. Do not run conflicting scope unless needed to resolve unclear diff evidence.
 
 Read the actual code in the changed files. Evaluate:
 
@@ -677,6 +816,9 @@ Discipline:
 Do NOT flag pre-existing issues in files this task touched.
 Focus on what this change contributed. Pre-existing file size or
 code quality issues are not this implementer's responsibility.
+Preserve role boundaries. Do not duplicate prior spec/code findings unless unresolved.
+Require issue file/line where available; if omitted, include location_unavailable_reason.
+Preserve prior_issue_id when carrying forward unresolved findings.
 
 ## Severity
 
@@ -686,7 +828,7 @@ Minor: style nits.
 
 ## Structured Output
 
-Your final response will be parsed as JSON. You MUST return valid JSON.` + diffAnchorPrompt(task || { id: taskId }, impl, taskId === 'final' ? 'final_review' : 'code_review')
+Your final response will be parsed as JSON. You MUST return valid JSON.` + diffEvidencePrompt(task || { id: taskId }, impl, taskId === 'final' ? 'final_review' : 'code_review')
 }
 
 function fixPrompt(issues, files, task, impl, stage) {
@@ -747,6 +889,15 @@ function hasBlockingIssues(review, reviewStage, taskRisk) {
   return review.issues.some(issue => {
     const sev = issue.severity || 'Info'
     return isIssueBlocking(reviewStage, taskRisk, sev, issue.blocking)
+  })
+}
+
+function normalizeReviewResult(review, stage, taskId, priorReview) {
+  if (!review) return review
+  return normalizeReviewIssues(review, {
+    stage,
+    task_id: taskId || (stage === 'final_review' ? 'final' : 'unknown'),
+    prior_issues: (priorReview && priorReview.issues) || [],
   })
 }
 
@@ -1132,6 +1283,7 @@ for (const [gi, group] of groups.entries()) {
             opts('spec-review:' + id, 'Spec Review', REVIEW_RESULT),
             0,
           )
+          review = normalizeReviewResult(review, 'spec_review', id, null)
 
           let iterations = 0
           const hasBlocking = () => hasBlockingIssues(review, 'spec_review', risk)
@@ -1161,11 +1313,13 @@ for (const [gi, group] of groups.entries()) {
               ctx.impl.limitations = implementationEvidence.limitations
             }
 
+            const priorSpecReview = review
             review = await agentWithSchemaRetry(
               specReviewPrompt(ctx, ctx.impl),
               opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_RESULT),
               0,
             )
+            review = normalizeReviewResult(review, 'spec_review', id, priorSpecReview)
             iterations++
           }
 
@@ -1202,6 +1356,7 @@ for (const [gi, group] of groups.entries()) {
             opts('code-review:' + ctx.id, 'Code Review', REVIEW_RESULT),
             0,
           )
+          review = normalizeReviewResult(review, 'code_review', ctx.id, ctx.spec_review)
 
           let iterations = 0
           const hasBlocking = () => hasBlockingIssues(review, 'code_review', risk)
@@ -1221,11 +1376,13 @@ for (const [gi, group] of groups.entries()) {
             recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
+            const priorCodeReview = review
             review = await agentWithSchemaRetry(
               codeReviewPrompt(ctx.impl, ctx.id, ctx),
               opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_RESULT),
               0,
             )
+            review = normalizeReviewResult(review, 'code_review', ctx.id, priorCodeReview)
             iterations++
           }
 
@@ -1278,10 +1435,11 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
     codeReviewPrompt(
       { summary: 'Entire implementation: ' + allIds, files_modified: allFiles },
       'final',
-      { id: 'final', description: 'Final review for ' + allIds },
+      { id: 'final', description: 'Final review for ' + allIds, attempt_diff_evidence: partitions.completed.flatMap(e => e.attempt_diff_evidence || []) },
     ),
     opts('final-review', 'Final Review', REVIEW_RESULT),
   )
+  finalReview = normalizeReviewResult(finalReview, 'final_review', 'final', null)
 }
 
 // ── Build state_patch for resume support ──────────────────────────────

@@ -260,6 +260,52 @@ class TestExecutePlanConstants:
         ''')
         assert result == [True, True, True]
 
+    def test_review_prompts_are_diff_first_and_location_strict(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const spec = specReviewPrompt(
+                { id: 'task-1', description: 'Do x' },
+                { summary: 'Done', files_modified: ['a.js'], acceptance_coverage: [], unverified_acceptance_refs: ['REQ-1'] }
+              );
+              const code = codeReviewPrompt({ summary: 'Done', files_modified: ['a.js'] }, 'task-1', { id: 'task-1' });
+              return [
+                spec.includes('## Controller Diff Evidence'),
+                spec.includes('requirements and acceptance only'),
+                spec.includes('Stale/unverified refs'),
+                spec.includes('location_unavailable_reason'),
+                code.includes('Inspect controller diff metadata first'),
+                code.includes('files_modified as untrusted'),
+                code.includes('diff_verified=false'),
+                code.includes('prior_issue_id')
+              ];
+            })()
+        ''')
+        assert result == [True, True, True, True, True, True, True, True]
+
+    def test_review_issue_identity_is_stable_normalized_and_deduped(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const review = normalizeReviewIssues({ issues: [
+                { severity: 'medium', category: 'Spec Gap', file: 'src/a.js', line: 2, description: 'Missing X' },
+                { severity: 'medium', category: 'Spec Gap', file: 'src/a.js', line: 2, description: 'Missing X' },
+                { id: 'custom-1', severity: 'low', description: 'No location' }
+              ] }, { stage: 'spec_review', task_id: 'task-7', prior_issues: [
+                { id: 'old-1', severity: 'Important', category: 'spec_gap', file: 'src/a.js', line: 2, description: 'Missing X' }
+              ] });
+              return review.issues;
+            })()
+        ''')
+        assert result[0]["id"].startswith("amr1:spec_review:task-7:important:")
+        assert result[0]["severity"] == "Important"
+        assert result[0]["category"] == "spec_gap"
+        assert result[0]["prior_issue_id"] == "old-1"
+        assert result[0]["supersedes"] == "old-1"
+        assert result[1]["duplicate_of"] == result[0]["id"]
+        assert result[1]["id"].endswith("-2")
+        assert result[2]["id"] == "custom-1"
+        assert result[2]["severity"] == "Minor"
+        assert result[2]["location_unavailable_reason"] == "not_provided_by_reviewer"
+
     def test_spec_review_prompt_includes_concerns_evidence_validation_and_limitations(self):
         result = self._eval_evidence_helper(r'''
             (() => {

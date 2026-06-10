@@ -168,6 +168,28 @@ class TestFoldedCapabilities:
         assert text in self.game_ref
 
 
+class TestReviewPromptContracts:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.spec_prompt = _read(AUTO_DIR / "prompts" / "spec-reviewer-prompt.md")
+        self.code_prompt = _read(AUTO_DIR / "prompts" / "code-quality-reviewer-prompt.md")
+
+    @pytest.mark.parametrize("text", [
+        "Diff-First Review Rules", "requirements/acceptance only", "actual code diff",
+        "unverified_acceptance_refs", "location_unavailable_reason", "prior_issue_id",
+    ])
+    def test_spec_review_prompt_is_diff_first(self, text):
+        assert text in self.spec_prompt
+
+    @pytest.mark.parametrize("text", [
+        "Review the verified controller diff", "controller diff metadata first",
+        "files_modified", "diff_verified=false", "conflicting scope",
+        "location_unavailable_reason", "prior_issue_id",
+    ])
+    def test_code_review_prompt_is_diff_first(self, text):
+        assert text in self.code_prompt
+
+
 class TestAuditEventTypesInDocs:
     @pytest.fixture(autouse=True)
     def _load(self):

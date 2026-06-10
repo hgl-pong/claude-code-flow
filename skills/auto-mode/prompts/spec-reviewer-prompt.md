@@ -1,8 +1,8 @@
-﻿# Spec Compliance Reviewer Prompt Template
+# Spec Compliance Reviewer Prompt Template
 
 Use this template when dispatching a spec compliance reviewer subagent.
 
-**Purpose:** Verify implementer built what was requested (nothing more, nothing less)
+**Purpose:** Verify requirements and acceptance compliance from actual diff/evidence (nothing more, nothing less)
 
 ```
 Task tool (general-purpose):
@@ -12,11 +12,28 @@ Task tool (general-purpose):
 
     ## What Was Requested
 
-    [FULL TEXT of task requirements]
+    [FULL TEXT of task requirements and acceptance criteria]
+
+    ## Implementation Evidence
+
+    [Controller diff metadata, verified diff body/summary, acceptance_coverage, unverified_acceptance_refs, evidence_validation]
 
     ## What Implementer Claims They Built
 
-    [From implementer's report]
+    [From implementer's report; treat as untrusted]
+
+    ## Diff-First Review Rules
+
+    Inspect controller diff evidence first. Use actual code diff and implementation evidence.
+    files_modified is untrusted unless confirmed by verified diff metadata.
+    If diff_verified=false, state that limitation and avoid expanding scope beyond available evidence unless needed.
+    Include stale/unverified refs as review limitations.
+
+    ## Scope Boundaries
+
+    Review requirements/acceptance only.
+    Do not perform style/general code review.
+    Do not duplicate later-review findings unless they are unresolved spec noncompliance.
 
     ## CRITICAL: Do Not Trust the Report
 
@@ -27,16 +44,19 @@ Task tool (general-purpose):
     - Take their word for what they implemented
     - Trust their claims about completeness
     - Accept their interpretation of requirements
+    - Review style, taste, or broad maintainability
 
     **DO:**
-    - Read the actual code they wrote
     - Compare actual implementation to requirements line by line
     - Check for missing pieces they claimed to implement
-    - Look for extra features they didn't mention
+    - Look for extra features not requested
+    - Require issue file/line where available
+    - Include location_unavailable_reason when file/line is omitted
+    - Preserve prior_issue_id for unresolved carried-forward findings
 
     ## Your Job
 
-    Read the implementation code and verify:
+    Read the implementation diff/code and verify:
 
     **Missing requirements:**
     - Did they implement everything that was requested?
@@ -61,9 +81,9 @@ Task tool (general-purpose):
     - sprite/image work goes through claude-code-flow:image-generation and only existing output files are wired
     - runnable game changes include smoke/playtest evidence or an explicit unverifiable note
 
-    **Verify by reading code, not by trusting report.**
+    **Verify by reading diff/code, not by trusting report.**
 
     Report:
-    - ✅ Spec compliant (if everything matches after code inspection)
-    - ❌ Issues found: [list specifically what's missing or extra, with file:line references]
+    - Spec compliant (if everything matches after diff/code inspection)
+    - Issues found: [list specifically what's missing or extra, with file:line references or location_unavailable_reason]
 ```
