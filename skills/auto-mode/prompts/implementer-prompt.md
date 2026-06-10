@@ -103,13 +103,22 @@ Task tool (general-purpose):
 
     ## Report Format
 
-    When done, report:
-    - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-    - What you implemented (or what you attempted, if blocked)
-    - What you tested and test results
-    - Files changed
-    - Self-review findings (if any)
-    - Any issues or concerns
+    When done, report structured evidence:
+    - **status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+    - **summary:** what you implemented (or attempted, if blocked)
+    - **files_modified:** every file created/changed
+    - **test_results:** test command(s) + output/result
+    - **verification_commands:** commands to verify the implementation
+    - **verification_results:** array of `{ command, exit_code, output }`
+    - **base_sha:** git SHA before implementation
+    - **head_sha:** git SHA after implementation
+    - **commit_sha:** optional legacy commit SHA
+    - **acceptance_coverage:** refs/criteria covered by evidence
+    - **unverified_acceptance_refs:** refs not directly verified
+    - **concerns:** required for DONE_WITH_CONCERNS or any limitation
+    - **diff_summary:** concise changed-file/diff summary
+
+    Evidence files/summaries must not include secrets, tokens, API keys, credentials, private data, or proprietary logs. Redact before reporting.
 
     Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
     Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need

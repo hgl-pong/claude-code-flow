@@ -628,8 +628,53 @@ WORKFLOW_SCRIPT
         assert "missing_runtime_command_evidence" in result[1]["reasons"]
         assert "missing_concerns" in result[2]["reasons"]
 
+    def test_validate_implementation_evidence_classifies_review_override_and_prompt_only(self):
+        result = self._eval_evidence_helper(r'''
+            [
+              validateImplementationEvidence(
+                { acceptance_refs: ['REQ-1'] },
+                { status: 'DONE_WITH_CONCERNS', concerns: ['REQ-1 manually inspected'], acceptance_coverage: [{ ref: 'REQ-1', status: 'covered' }], base_sha: '1111111', head_sha: '2222222', diff_summary: 'M src/a.js' },
+                { prompt_only: true },
+                { prompt_only: true }
+              ),
+              validateImplementationEvidence(
+                { acceptance_refs: ['REQ-2'] },
+                { status: 'DONE', unverified_acceptance_refs: ['REQ-2'], concerns: ['REQ-2 prompt-only'], base_sha: '1111111', head_sha: '2222222', diff_summary: 'M src/a.js' },
+                { prompt_only: true },
+                { prompt_only: true }
+              )
+            ]
+        ''')
+        assert result[0]["passed"] is True
+        assert result[0]["status"] == "needs_review_override"
+        assert "prompt_only_evidence_unverified" in result[0]["limitations"]
+        assert result[0]["evidence"]["base_sha"] == "1111111"
+        assert result[0]["evidence"]["head_sha"] == "2222222"
+        assert result[0]["evidence"]["acceptance_coverage"][0]["ref"] == "REQ-1"
+        assert result[1]["passed"] is True
+        assert result[1]["status"] == "prompt_only_unverified"
+        assert "unverified_acceptance_refs: REQ-2" in result[1]["limitations"]
+
+    def test_implementation_evidence_gate_blocks_before_spec_review(self):
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-5']],
+              tasks: { 'task-5': { id: 'task-5', description: 'Do evidence-gated task', required_commands: ['pytest'] } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-5': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], base_sha: '1111111', head_sha: '2222222', diff_summary: 'M src/a.js' },
+                'spec-review:task-5': { passed: true, issues: [], summary: 'should not run', prompt_only: true }
+              }
+            }
+        ''')
+        assert result["blocked"][0]["id"] == "task-5"
+        assert "missing_required_command: pytest" in result["blocked"][0]["reason"]
+        assert result["state_patch"]["task_evidence_validations"][0]["status"] == "blocked"
+        assert result["final_review"] is None
+
     def test_classification_wires_implementation_evidence_validation(self):
-        assert "validateImplementationEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review)" in self.script
+        assert "validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)" in self.script
         assert "evidence_validation: implementationEvidence" in self.script
         assert "partition: 'blocked'" in self.script
 

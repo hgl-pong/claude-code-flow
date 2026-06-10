@@ -406,8 +406,13 @@ const IMPLEMENT_RESULT = {
     summary: { type: 'string', description: 'What was implemented and how' },
     files_modified: { type: 'array', items: { type: 'string' }, description: 'Every file created or changed' },
     test_results: { type: 'string', description: 'Test command and output' },
-    commit_sha: { type: 'string', description: 'Git commit SHA (short)' },
-    concerns: { type: 'array', items: { type: 'string' }, description: 'If DONE_WITH_CONCERNS, list each concern' },
+    base_sha: { type: 'string', description: 'Git base SHA before implementation' },
+    head_sha: { type: 'string', description: 'Git head SHA after implementation' },
+    commit_sha: { type: 'string', description: 'Optional legacy Git commit SHA (short)' },
+    concerns: { type: 'array', items: { type: 'string' }, description: 'If DONE_WITH_CONCERNS or evidence is limited, list each concern' },
+    diff_summary: { type: 'string', description: 'Summary of files/diff changed; do not include secrets' },
+    acceptance_coverage: { type: 'array', items: { type: 'object', additionalProperties: true }, description: 'Acceptance criteria covered by evidence' },
+    unverified_acceptance_refs: { type: 'array', items: { type: 'string' }, description: 'Acceptance refs not directly verified' },
     blocker_detail: { type: 'string', description: 'If BLOCKED: what blocks you, what you tried' },
     verification_results: {
       type: 'array',
@@ -541,6 +546,9 @@ Testing:
 If you find issues during self-review, fix them now before reporting.
 
 ## Structured Output
+
+For DONE/DONE_WITH_CONCERNS include: test_results, verification_commands, verification_results[], base_sha, head_sha, optional legacy commit_sha, acceptance_coverage, unverified_acceptance_refs, concerns, diff_summary.
+Evidence files/summaries must not include secrets, tokens, API keys, credentials, private data, or proprietary logs. Redact before reporting.
 
 Your final response will be parsed as JSON. You MUST return valid JSON.`
 }
@@ -735,6 +743,8 @@ function extractEvidence(task, impl, controllerEvidence, codeReview) {
   const controllerPromptOnly = controllerCommands.length === 0 && reviews.every(r => r.prompt_only || !r.command_results)
   const agentCommands = (impl && impl.verification_results) || []
   return {
+    base_sha: (impl && impl.base_sha) || '',
+    head_sha: (impl && impl.head_sha) || '',
     commit_sha: (impl && (impl.commit_sha || impl.dirty_commit_sha)) || '',
     test_results: (impl && impl.test_results) || '',
     verification_commands: (impl && impl.verification_commands) || [],
@@ -742,6 +752,9 @@ function extractEvidence(task, impl, controllerEvidence, codeReview) {
     executed_commands: controllerCommands.length > 0 || !controllerPromptOnly ? controllerCommands : agentCommands,
     evidence_paths: reviews.flatMap(r => r.evidence_paths || []).concat((impl && impl.evidence_paths) || []),
     concerns: (impl && impl.concerns) || [],
+    acceptance_coverage: (impl && impl.acceptance_coverage) || [],
+    unverified_acceptance_refs: (impl && impl.unverified_acceptance_refs) || [],
+    diff_summary: (impl && impl.diff_summary) || '',
     files_modified: (impl && impl.files_modified) || [],
     runtime_evidence_required: normalizeRuntimeEvidenceRequirement(task),
   }
@@ -801,7 +814,17 @@ function validateImplementationEvidence(task, impl, controllerEvidence, reviewOv
     }
   }
 
-  return { passed: reasons.length === 0, status: reasons.length === 0 ? 'passed' : 'blocked', reasons, evidence }
+  const limitations = []
+  const promptOnly = [controllerEvidence, reviewOverride].filter(Boolean).some(r => r.prompt_only)
+  if (promptOnly) limitations.push('prompt_only_evidence_unverified')
+  if (evidence.unverified_acceptance_refs.length > 0) limitations.push('unverified_acceptance_refs: ' + evidence.unverified_acceptance_refs.join(', '))
+
+  let status = 'passed'
+  if (reasons.length > 0) status = 'blocked'
+  else if (evidence.unverified_acceptance_refs.length > 0) status = 'prompt_only_unverified'
+  else if (impl && impl.status === 'DONE_WITH_CONCERNS' && promptOnly) status = 'needs_review_override'
+
+  return { passed: reasons.length === 0, status, reasons, limitations, evidence }
 }
 
 // ── Result adapter: classify task into exactly one partition ──────────
@@ -823,6 +846,8 @@ function classifyTaskResult(taskId, task, ctx) {
         reason: ctx._reason,
         classification,
         impl: ctx.impl,
+        evidence: ctx.evidence_validation && ctx.evidence_validation.evidence,
+        evidence_validation: ctx.evidence_validation,
         ...attemptBase,
         attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
@@ -861,7 +886,7 @@ function classifyTaskResult(taskId, task, ctx) {
     }
   }
 
-  const implementationEvidence = validateImplementationEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review)
+  const implementationEvidence = ctx.evidence_validation || validateImplementationEvidence(task, ctx.impl, ctx.implementation_evidence, ctx.code_review)
 
   if (!implementationEvidence.passed) {
     return {
@@ -1021,11 +1046,19 @@ for (const [gi, group] of groups.entries()) {
           return { ...t, impl: result }
         },
 
-        // Stage 2: Spec Review (with review threshold enforcement)
+        // Stage 2: Evidence Gate + Spec Review (with review threshold enforcement)
         async (ctx) => {
           const { impl, id } = ctx
           if (!impl || impl.status === 'BLOCKED') {
             return { ...ctx, spec_review: null, spec_passed: false, _blocked: true, _reason: (impl && impl.blocker_detail) || 'BLOCKED' }
+          }
+
+          const implementationEvidence = validateImplementationEvidence(ctx, impl, { prompt_only: true }, null)
+          if (!implementationEvidence.passed) {
+            return { ...ctx, implementation_evidence: { prompt_only: true }, evidence_validation: implementationEvidence, spec_review: null, spec_passed: false, _blocked: true, _reason: implementationEvidence.reasons.join('; '), _evidence_blocked: true }
+          }
+          if (implementationEvidence.status !== 'passed') {
+            impl.concerns = [...(impl.concerns || []), ...implementationEvidence.limitations]
           }
 
           let review = await agentWithSchemaRetry(
@@ -1065,6 +1098,8 @@ for (const [gi, group] of groups.entries()) {
 
           return {
             ...ctx,
+            implementation_evidence: { prompt_only: true },
+            evidence_validation: implementationEvidence,
             spec_review: review,
             spec_passed: specPassed,
             _iterations_spec: iterations,
@@ -1184,6 +1219,13 @@ const resultEntries = [
 ]
 
 const attemptDiffEvidence = resultEntries.flatMap(e => e.attempt_diff_evidence || e.impl?.attempt_diff_evidence || [])
+const taskEvidenceValidations = resultEntries.filter(e => e.evidence_validation).map(e => ({
+  id: e.id,
+  status: e.evidence_validation.status,
+  reasons: e.evidence_validation.reasons || [],
+  limitations: e.evidence_validation.limitations || [],
+  evidence: e.evidence_validation.evidence || {},
+}))
 const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha || e.task_attempt_base_capture_failed).map(e => ({
   id: e.id,
   task_attempt_base_sha: e.task_attempt_base_sha,
@@ -1194,6 +1236,7 @@ const attemptBaseEvidence = resultEntries.filter(e => e.task_attempt_base_sha ||
 const state_patch = {
   task_attempt_bases: attemptBaseEvidence,
   task_attempt_diff_evidence: attemptDiffEvidence,
+  task_evidence_validations: taskEvidenceValidations,
   partitions: {
     passed: partitions.passed.map(e => e.id),
     completed: partitions.completed.map(e => e.id),
