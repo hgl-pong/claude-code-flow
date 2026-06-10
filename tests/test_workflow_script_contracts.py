@@ -260,6 +260,35 @@ class TestExecutePlanConstants:
         ''')
         assert result == [True, True, True]
 
+    def test_spec_review_prompt_includes_concerns_evidence_validation_and_limitations(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const prompt = specReviewPrompt(
+                { id: 'task-1', description: 'Do x' },
+                {
+                  summary: 'Done',
+                  files_modified: ['a.js'],
+                  concerns: ['needs_review_override'],
+                  evidence_validation: { status: 'prompt_only_unverified', limitations: ['prompt_only_evidence_unverified'] }
+                }
+              );
+              return [
+                prompt.includes('## Implementation Concerns / Limitations'),
+                prompt.includes('needs_review_override'),
+                prompt.includes('prompt_only_unverified'),
+                prompt.includes('prompt_only_evidence_unverified')
+              ];
+            })()
+        ''')
+        assert result == [True, True, True, True]
+
+    def test_spec_review_handoff_wires_evidence_validation_to_prompt(self):
+        for text in [
+            "impl.evidence_validation = implementationEvidence",
+            "impl.limitations = implementationEvidence.limitations",
+        ]:
+            assert text in self.script
+
     def test_collect_diff_evidence_inventory(self):
         for text in [
             "function collectDiffEvidence(anchor)", "name_status", "diff_summary",

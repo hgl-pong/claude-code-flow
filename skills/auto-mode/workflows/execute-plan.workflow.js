@@ -561,6 +561,9 @@ Your final response will be parsed as JSON. You MUST return valid JSON.`
 }
 
 function specReviewPrompt(task, impl) {
+  const concerns = (impl.concerns || []).join('\n') || 'None reported'
+  const evidenceValidation = impl.evidence_validation ? JSON.stringify(impl.evidence_validation, null, 2) : 'Not provided'
+  const limitations = (impl.limitations || (impl.evidence_validation && impl.evidence_validation.limitations) || []).join('\n') || 'None reported'
   return `Verify whether the implementation matches its specification.
 
 ## What Was Requested
@@ -572,6 +575,17 @@ ${task.description}
 ${impl.summary}
 
 Files changed: ${impl.files_modified.join(', ')}
+
+## Implementation Concerns / Limitations
+
+Concerns:
+${concerns}
+
+Evidence validation:
+${evidenceValidation}
+
+Limitations:
+${limitations}
 
 ## CRITICAL: Do Not Trust the Report
 
@@ -1093,6 +1107,8 @@ for (const [gi, group] of groups.entries()) {
           }
           if (implementationEvidence.status !== 'passed') {
             impl.concerns = [...(impl.concerns || []), ...implementationEvidence.limitations]
+            impl.evidence_validation = implementationEvidence
+            impl.limitations = implementationEvidence.limitations
           }
 
           let review = await agentWithSchemaRetry(
