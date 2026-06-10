@@ -326,51 +326,64 @@ class TestExecutePlanConstants:
             assert text in self.script
 
     def test_attempt_diff_capture_pre_post_fields(self):
-        result = self._eval_evidence_helper(r'''
-            (() => {
-              const task = { id: 'task-1' }
-              const ctx = {}
-              const captureArgs = { git: { controller_commands_available: true, head_sha: '1111111', dirty: true } }
-              captureAttemptBase(captureArgs, task, ctx, 'implement:task-1')
-              const evidence = recordAttemptDiffEvidence(
-                { git: { attempts: { 'implement:task-1': {
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-1']],
+              tasks: { 'task-1': { id: 'task-1', description: 'Do x' } },
+              worktree: 'C:/tmp/worktree',
+              git: {
+                controller_commands_available: true,
+                head_sha: '1111111',
+                dirty: true,
+                attempts: { 'implement:task-1': {
                   head_sha: '2222222', dirty: true, command: 'git diff --name-status 1111111...HEAD && git diff',
                   committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: '+change\n' },
                   worktree: { ok: true, name_status: 'A\tsrc/wip.js\n', diff: '+wip\n' }
-                } } } },
-                task,
-                ctx,
-                'implement:task-1'
-              )
-              return { task, ctx, evidence }
-            })()
+                } }
+              },
+              __agent_results: {
+                'implement:task-1': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'spec-review:task-1': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-1': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
         ''')
-        assert result["task"]["task_attempt_base_sha"] == "1111111"
-        assert result["task"]["task_attempt_base_dirty"] is True
-        assert result["evidence"]["base_sha"] == "1111111"
-        assert result["evidence"]["head_sha"] == "2222222"
-        assert result["evidence"]["dirty"] is True
-        assert result["evidence"]["worktree_diff_included"] is True
-        assert result["evidence"]["diff_verified"] is True
-        assert result["evidence"]["diff_command"] == "git diff --name-status 1111111...HEAD && git diff"
-        assert result["evidence"]["diff_files"] == ["src/a.js", "src/wip.js"]
-        assert result["evidence"]["diff_truncated"] is False
-        assert result["ctx"]["attempt_diff_evidence"][0]["label"] == "implement:task-1"
+        evidence = result["state_patch"]["task_attempt_diff_evidence"][0]
+        assert evidence["label"] == "implement:task-1"
+        assert evidence["base_sha"] == "1111111"
+        assert evidence["head_sha"] == "2222222"
+        assert evidence["dirty"] is True
+        assert evidence["worktree_diff_included"] is True
+        assert evidence["diff_verified"] is True
+        assert evidence["diff_command"] == "git diff --name-status 1111111...HEAD && git diff"
+        assert evidence["diff_files"] == ["src/a.js", "src/wip.js"]
+        assert evidence["diff_truncated"] is False
+        assert result["passed"][0]["attempt_diff_evidence"][0] == evidence
 
     def test_attempt_diff_capture_prompt_only_fallback(self):
-        result = self._eval_evidence_helper(r'''
-            (() => {
-              const task = { id: 'task-2' }
-              const ctx = {}
-              captureAttemptBase({ git: { head_sha: '1111111' } }, task, ctx, 'implement:task-2')
-              return recordAttemptDiffEvidence({}, task, ctx, 'implement:task-2')
-            })()
+        result = self._eval_workflow(r'''
+            {
+              groups: [['task-2']],
+              tasks: { 'task-2': { id: 'task-2', description: 'Do y' } },
+              worktree: 'C:/tmp/worktree',
+              git: { controller_commands_available: true, head_sha: '1111111' },
+              __agent_results: {
+                'implement:task-2': { status: 'DONE', summary: 'Done', files_modified: ['src/a.js'], verification_results: [{ command: 'pytest', exit_code: 0 }] },
+                'spec-review:task-2': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'code-review:task-2': { passed: true, issues: [], summary: 'ok', prompt_only: true },
+                'final-review': { passed: true, issues: [], summary: 'ok' }
+              }
+            }
         ''')
-        assert result["enforcement_mode"] == "prompt_only"
-        assert result["diff_verified"] is False
-        assert result["worktree_diff_included"] is False
-        assert result["diff_command"] == ""
-        assert result["diff_files"] == []
+        evidence = result["state_patch"]["task_attempt_diff_evidence"][0]
+        assert evidence["label"] == "implement:task-2"
+        assert evidence["base_sha"] == "1111111"
+        assert evidence["enforcement_mode"] == "prompt_only"
+        assert evidence["diff_verified"] is False
+        assert evidence["worktree_diff_included"] is False
+        assert evidence["diff_command"] == ""
+        assert evidence["diff_files"] == []
 
     def test_state_resume_inventory(self):
         """Contract: resume/state patch paths remain discoverable."""
@@ -400,19 +413,56 @@ class TestExecutePlanConstants:
         helper_prefix = self.script.split("// ── Result adapter", 1)[0]
         helper_prefix = re.sub(r"export const meta", "const meta", helper_prefix)
         node_script = helper_prefix + "\nconsole.log(JSON.stringify(" + expression + "))"
+        return self._run_node_script(node_script)
+
+    def _eval_workflow(self, args_expression):
+        workflow = re.sub(r"export const meta", "const meta", self.script)
+        node_script = """
+let args = ARGS_EXPRESSION;
+const logs = [];
+function log(message) { logs.push(message); }
+function phase(message) { logs.push('phase:' + message); }
+function opts(label, phase, schema) {
+  const o = { label, phase, schema };
+  if (typeof model_tasks !== 'undefined' && model_tasks) o.model = model_tasks;
+  return o;
+}
+async function agent(prompt, agentOpts) {
+  const result = args.__agent_results && args.__agent_results[agentOpts.label];
+  if (Array.isArray(result)) return result.shift();
+  return result || null;
+}
+async function parallel(tasks) { return Promise.all(tasks.map(fn => fn())); }
+async function pipeline(items, ...stages) {
+  let current = items;
+  for (const stage of stages) current = await Promise.all(current.map(item => stage(item)));
+  return current;
+}
+(async () => {
+WORKFLOW_SCRIPT
+})().then(result => console.log(JSON.stringify(result))).catch(error => {
+  console.error(error && error.stack || error);
+  process.exit(1);
+});
+"""
+        node_script = node_script.replace("ARGS_EXPRESSION", args_expression)
+        node_script = node_script.replace("WORKFLOW_SCRIPT", workflow.replace("return {", "return {", 1))
+        return self._run_node_script(node_script)
+
+    def _run_node_script(self, node_script):
         with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as f:
             f.write(node_script)
             node_path = f.name
+        out_path = tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False).name
+        err_path = tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False).name
         try:
-            result = subprocess.run(
-                ["node", node_path],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
+            command = f'node "{node_path}" > "{out_path}" 2> "{err_path}"'
+            subprocess.run(command, check=True, shell=True)
+            return json.loads(Path(out_path).read_text(encoding="utf-8"))
         finally:
             Path(node_path).unlink(missing_ok=True)
-        return json.loads(result.stdout)
+            Path(out_path).unlink(missing_ok=True)
+            Path(err_path).unlink(missing_ok=True)
 
     def test_extract_evidence_normalizes_sources_and_requirement(self):
         result = self._eval_evidence_helper(r'''
