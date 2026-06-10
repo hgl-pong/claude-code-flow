@@ -315,6 +315,63 @@ class TestExecutePlanConstants:
         assert result[2]["source"] == "unverified"
         assert result[2]["anchor_error"] == {"code": "missing_base_ref", "detail": "origin/main unavailable"}
 
+    def test_attempt_diff_capture_inventory(self):
+        """Contract: implementation/fix attempts persist controller diff evidence."""
+        for text in [
+            "function captureAttemptBase", "function recordAttemptDiffEvidence",
+            "task_attempt_base_sha", "task_attempt_base_dirty",
+            "head_sha", "worktree_diff_included", "diff_verified", "diff_command",
+            "diff_files", "diff_truncated", "attempt_diff_evidence", "state_patch",
+        ]:
+            assert text in self.script
+
+    def test_attempt_diff_capture_pre_post_fields(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const task = { id: 'task-1' }
+              const ctx = {}
+              const captureArgs = { git: { controller_commands_available: true, head_sha: '1111111', dirty: true } }
+              captureAttemptBase(captureArgs, task, ctx, 'implement:task-1')
+              const evidence = recordAttemptDiffEvidence(
+                { git: { attempts: { 'implement:task-1': {
+                  head_sha: '2222222', dirty: true, command: 'git diff --name-status 1111111...HEAD && git diff',
+                  committed: { ok: true, name_status: 'M\tsrc/a.js\n', diff: '+change\n' },
+                  worktree: { ok: true, name_status: 'A\tsrc/wip.js\n', diff: '+wip\n' }
+                } } } },
+                task,
+                ctx,
+                'implement:task-1'
+              )
+              return { task, ctx, evidence }
+            })()
+        ''')
+        assert result["task"]["task_attempt_base_sha"] == "1111111"
+        assert result["task"]["task_attempt_base_dirty"] is True
+        assert result["evidence"]["base_sha"] == "1111111"
+        assert result["evidence"]["head_sha"] == "2222222"
+        assert result["evidence"]["dirty"] is True
+        assert result["evidence"]["worktree_diff_included"] is True
+        assert result["evidence"]["diff_verified"] is True
+        assert result["evidence"]["diff_command"] == "git diff --name-status 1111111...HEAD && git diff"
+        assert result["evidence"]["diff_files"] == ["src/a.js", "src/wip.js"]
+        assert result["evidence"]["diff_truncated"] is False
+        assert result["ctx"]["attempt_diff_evidence"][0]["label"] == "implement:task-1"
+
+    def test_attempt_diff_capture_prompt_only_fallback(self):
+        result = self._eval_evidence_helper(r'''
+            (() => {
+              const task = { id: 'task-2' }
+              const ctx = {}
+              captureAttemptBase({ git: { head_sha: '1111111' } }, task, ctx, 'implement:task-2')
+              return recordAttemptDiffEvidence({}, task, ctx, 'implement:task-2')
+            })()
+        ''')
+        assert result["enforcement_mode"] == "prompt_only"
+        assert result["diff_verified"] is False
+        assert result["worktree_diff_included"] is False
+        assert result["diff_command"] == ""
+        assert result["diff_files"] == []
+
     def test_state_resume_inventory(self):
         """Contract: resume/state patch paths remain discoverable."""
         for text in [

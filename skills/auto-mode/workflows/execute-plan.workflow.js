@@ -210,6 +210,10 @@ function collectDiffEvidence(anchor) {
   if (worktree.error) command_errors.push({ scope: 'worktree', error: worktree.error })
   if (anchor && anchor.anchor_error) command_errors.push({ scope: 'anchor', error: anchor.anchor_error })
   const scope_complete = committed.ok && worktree.ok && !command_errors.length
+  const worktreeIncluded = worktree.name_status.length > 0 || worktree.diff_body.length > 0
+  const diffFiles = [...new Set([...committed.files, ...worktree.files])]
+  const verified = scope_complete
+  const truncated = committed.truncated || worktree.truncated
   return {
     stage: anchor && anchor.stage,
     enforcement_mode: ENFORCEMENT_MODE,
@@ -218,15 +222,76 @@ function collectDiffEvidence(anchor) {
     base_ref: (anchor && anchor.base_ref) || '',
     head_sha: (anchor && anchor.head_sha) || '',
     dirty: !!(anchor && anchor.dirty),
-    includes_worktree_diff: worktree.name_status.length > 0 || worktree.diff_body.length > 0,
+    includes_worktree_diff: worktreeIncluded,
+    worktree_diff_included: worktreeIncluded,
     scope_complete,
-    verified_diff: scope_complete,
+    verified_diff: verified,
+    diff_verified: verified,
+    diff_command: (anchor && anchor.command) || '',
+    diff_files: diffFiles,
+    diff_truncated: truncated,
     committed_diff: committed,
     worktree_diff: worktree,
     special_statuses: mergeSpecialStatuses(committedSpecial, worktreeSpecial),
-    truncated: committed.truncated || worktree.truncated,
+    truncated,
     command_errors,
   }
+}
+
+function controllerCommandsExist(args) {
+  const git = (args && args.git) || {}
+  if (git.controller_commands_available === false) return false
+  return !!(git.controller_commands_available || git.head_sha || git.dirty !== undefined || git.attempts)
+}
+
+function captureAttemptBase(args, task, ctx, label) {
+  if (!controllerCommandsExist(args)) return null
+  const git = (args && args.git) || {}
+  const baseSha = git.head_sha || git.base_sha || ''
+  if (!baseSha) return null
+  if (!task.task_attempt_base_sha) {
+    task.task_attempt_base_sha = baseSha
+    task.task_attempt_base_dirty = !!git.dirty
+  }
+  const capture = {
+    label,
+    task_attempt_base_sha: task.task_attempt_base_sha,
+    task_attempt_base_dirty: !!task.task_attempt_base_dirty,
+  }
+  ctx.task_attempt_base_sha = capture.task_attempt_base_sha
+  ctx.task_attempt_base_dirty = capture.task_attempt_base_dirty
+  return capture
+}
+
+function recordAttemptDiffEvidence(args, task, ctx, label) {
+  const git = (args && args.git) || {}
+  const attempts = git.attempts || {}
+  const attempt = attempts[label] || {}
+  const baseSha = (task && task.task_attempt_base_sha) || (ctx && ctx.task_attempt_base_sha) || ''
+  const hasAttempt = !!attempt.head_sha || !!attempt.committed || !!attempt.worktree || !!attempt.command
+  const anchor = hasAttempt ? {
+    stage: label,
+    base_sha: baseSha,
+    head_sha: attempt.head_sha || git.head_sha || '',
+    dirty: attempt.dirty !== undefined ? attempt.dirty : !!git.dirty,
+    command: attempt.command || '',
+    committed: attempt.committed || {},
+    worktree: attempt.worktree || {},
+    anchor_error: attempt.anchor_error || null,
+    max_diff_chars: attempt.max_diff_chars,
+  } : {
+    stage: label,
+    base_sha: baseSha,
+    head_sha: git.head_sha || '',
+    dirty: !!git.dirty,
+    committed: { ok: false, error: 'prompt_only_no_controller_diff' },
+    worktree: { ok: false, error: 'prompt_only_no_controller_diff' },
+  }
+  const evidence = collectDiffEvidence(anchor)
+  const entry = { label, ...evidence }
+  if (ctx) ctx.attempt_diff_evidence = [...(ctx.attempt_diff_evidence || []), entry]
+  if (task) task.attempt_diff_evidence = [...(task.attempt_diff_evidence || []), entry]
+  return entry
 }
 
 const REVIEW_THRESHOLD = {
@@ -743,6 +808,7 @@ function classifyTaskResult(taskId, task, ctx) {
         reason: ctx._reason,
         classification,
         impl: ctx.impl,
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
   }
@@ -757,6 +823,7 @@ function classifyTaskResult(taskId, task, ctx) {
         classification: ctx._escalation_classification,
         rung_reached: ctx._escalation_rung,
         impl: ctx.impl,
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
   }
@@ -771,6 +838,7 @@ function classifyTaskResult(taskId, task, ctx) {
         blocking_issues: (ctx.spec_review && ctx.spec_review.issues) || [],
         iterations: ctx._iterations_spec || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, null),
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
   }
@@ -787,6 +855,7 @@ function classifyTaskResult(taskId, task, ctx) {
         impl: ctx.impl,
         evidence: implementationEvidence.evidence,
         evidence_validation: implementationEvidence,
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
   }
@@ -801,6 +870,7 @@ function classifyTaskResult(taskId, task, ctx) {
         blocking_issues: (ctx.code_review && ctx.code_review.issues) || [],
         iterations: ctx._iterations_code || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
   }
@@ -816,6 +886,7 @@ function classifyTaskResult(taskId, task, ctx) {
         spec_iterations: ctx._iterations_spec || 0,
         code_iterations: ctx._iterations_code || 0,
         evidence: extractEvidence(task, ctx.impl, ctx.spec_review, ctx.code_review),
+        attempt_diff_evidence: ctx.attempt_diff_evidence || [],
       },
     }
   }
@@ -882,11 +953,14 @@ for (const [gi, group] of groups.entries()) {
 
         // Stage 1: Implement (with schema retry)
         async (t) => {
+          const attemptLabel = 'implement:' + t.id
+          captureAttemptBase(workflowArgs, t, t, attemptLabel)
           let result = await agentWithSchemaRetry(
             implementPrompt(t),
-            opts('implement:' + t.id, 'Implement', IMPLEMENT_RESULT),
+            opts(attemptLabel, 'Implement', IMPLEMENT_RESULT),
             ESCALATION_ATTEMPTS.schema_retry,
           )
+          recordAttemptDiffEvidence(workflowArgs, t, t, attemptLabel)
 
           if (result && result.status === 'BLOCKED') {
             // Run escalation ladder for blocked tasks
@@ -945,11 +1019,14 @@ for (const [gi, group] of groups.entries()) {
               isIssueBlocking('spec_review', risk, i.severity, i.blocking)
             )
             log(id + ': spec review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
+            const fixLabel = 'fix-spec:' + id + '-r' + (iterations + 1)
+            captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
               fixPrompt(blockingIssues, impl.files_modified, ctx, impl, 'spec_fix'),
-              opts('fix-spec:' + id, 'Spec Review', IMPLEMENT_RESULT),
+              opts(fixLabel, 'Spec Review', IMPLEMENT_RESULT),
               0,
             )
+            recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
             review = await agentWithSchemaRetry(
@@ -1000,11 +1077,14 @@ for (const [gi, group] of groups.entries()) {
               isIssueBlocking('code_review', risk, i.severity, i.blocking)
             )
             log(ctx.id + ': code review found ' + blockingIssues.length + ' blocking issue(s) — fixing')
+            const fixLabel = 'fix-code:' + ctx.id + '-r' + (iterations + 1)
+            captureAttemptBase(workflowArgs, ctx, ctx, fixLabel)
             const updated = await agentWithSchemaRetry(
               fixPrompt(blockingIssues, ctx.impl.files_modified, ctx, ctx.impl, 'code_fix'),
-              opts('fix-code:' + ctx.id, 'Code Review', IMPLEMENT_RESULT),
+              opts(fixLabel, 'Code Review', IMPLEMENT_RESULT),
               0,
             )
+            recordAttemptDiffEvidence(workflowArgs, ctx, ctx, fixLabel)
             if (updated) ctx.impl = { ...ctx.impl, ...updated }
 
             review = await agentWithSchemaRetry(
@@ -1072,7 +1152,16 @@ if (partitions.completed.length === totalTasks && allOtherPartitionsEmpty && tot
 
 // ── Build state_patch for resume support ──────────────────────────────
 
+const attemptDiffEvidence = [
+  ...partitions.passed,
+  ...partitions.blocked,
+  ...partitions.stalled,
+  ...partitions.failed_review,
+  ...partitions.needs_escalation,
+].flatMap(e => e.attempt_diff_evidence || e.impl?.attempt_diff_evidence || [])
+
 const state_patch = {
+  task_attempt_diff_evidence: attemptDiffEvidence,
   partitions: {
     passed: partitions.passed.map(e => e.id),
     completed: partitions.completed.map(e => e.id),
