@@ -75,6 +75,10 @@ const {
 const REVIEW_RETRY_CAP_DEFAULT = 5
 const GATE_RETRY_CAP_DEFAULT = 10
 
+if (!task || typeof task !== 'string') {
+  throw new Error('full-auto-pipeline: args.task is required (string describing the task)')
+}
+
 const specId = task
   .replace(/[^a-z0-9]+/gi, '-')
   .replace(/^-+|-+$/g, '')
