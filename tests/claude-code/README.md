@@ -89,7 +89,7 @@ Comprehensive plugin health check:
 - All 16 skill SKILL.md files exist with valid YAML frontmatter (name + description)
 - All 4 hook scripts have valid Python syntax
 - Hook configuration files (hooks.json) are valid JSON
-- Workflow scripts (execute-plan, full-auto-pipeline) have balanced brackets + meta blocks
+- Workflow scripts (full-auto-pipeline) have balanced brackets + meta blocks
 - Prompt template files (implementer, spec-reviewer, code-reviewer, designer, researcher, forge, oracle, prism, artist) all exist
 - Support scripts (render-hooks.py, statusline.sh) exist
 - Cross-skill references resolve to existing SKILL.md files

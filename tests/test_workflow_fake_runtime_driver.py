@@ -7,7 +7,7 @@ machine behavior at the boundary.
 
 Covers:
 - Full-auto phase transitions through all canonical phases
-- execute-plan interruption at mid-group and mid-review
+- execute phase interruption at mid-group and mid-review
 - Compaction snapshot creation and restore
 - Resume cursor mapping to correct entrypoint
 - Replay of passed tasks (no re-run)

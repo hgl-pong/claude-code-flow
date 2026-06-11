@@ -14,7 +14,7 @@ import pytest
 
 SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "workflows"
 FULL_AUTO = SKILLS_DIR / "full-auto-pipeline.workflow.js"
-EXECUTE_PLAN = SKILLS_DIR / "execute-plan.workflow.js"
+EXECUTE_PLAN = FULL_AUTO  # consolidated into single file
 
 CANONICAL_GATES = [
     "tasks_executed",
@@ -556,14 +556,14 @@ class TestExecutePlanConstants:
         """Contract: final review is guarded for Gate 6 consumption."""
         for text in [
             "Final Review only when ALL tasks passed", "partitions.completed.length === totalTasks",
-            "allOtherPartitionsEmpty", "final_review: canonicalFinalReview", "opts('final-review'",
+            "allOtherPartitionsEmpty", "final_review: canonicalFinalReview", "agentOpts('final-review'",
         ]:
             assert text in self.script
 
     def test_final_review_uses_dedicated_branch_diff_prompt(self):
         """Contract: final review uses branch-level diff evidence, not task attempt diffs."""
         for text in [
-            "function finalReviewPrompt", "resolveDiffAnchors(workflowArgs, finalTask, finalImpl, 'final')",
+            "function finalReviewPrompt", "resolveDiffAnchors(args, finalTask, finalImpl, 'final')",
             "## Branch Diff Evidence", "git diff --name-status BASE...HEAD",
             "git diff BASE...HEAD", "BASE_SHA..HEAD", "cross-task integration bugs",
             "conflicts", "duplicated changes", "missing shared tests", "regression risk",
@@ -869,15 +869,68 @@ class TestExecutePlanConstants:
         assert result["final_review"]["branch_diff_evidence"]["diff_verified"] is False
 
     def _eval_evidence_helper(self, expression):
-        helper_prefix = self.script.split("// ── Result adapter", 1)[0]
-        helper_prefix = re.sub(r"export const meta", "const meta", helper_prefix)
-        node_script = helper_prefix + "\nconsole.log(JSON.stringify(" + expression + "))"
+        # Extract helpers/constants: from meta to Phase 1: Scope (skipping pipeline phases)
+        pre_scope = self.script.split("// ── Phase 1: Scope", 1)[0]
+        helper_prefix = re.sub(r"export const meta", "const meta", pre_scope)
+        # The consolidated file destructures `args` at top level — provide a stub
+        node_script = "const args = { task: 'test' };\n" + helper_prefix + "\nconsole.log(JSON.stringify(" + expression + "))"
         return self._run_node_script(node_script)
 
     def _eval_workflow(self, args_expression):
-        workflow = re.sub(r"export const meta", "const meta", self.script)
+        # The consolidated file has both pipeline phases and execute helpers.
+        # Extract only the execute helpers + body (before the Scope phase runs).
+        script = re.sub(r"export const meta", "const meta", self.script)
+        # Take everything from the start up to "Phase 1: Scope" to get helpers/constants,
+        # then add the execute body from "const partitions = {" onward.
+        pre_scope = script.split("// ── Phase 1: Scope", 1)[0]
+        # Neutralize args.task validation — tests only exercise execute-phase logic
+        pre_scope = re.sub(
+            r"if\s*\(!task\s*\|\|\s*typeof task !== 'string'\)\s*\{\s*\n\s*throw new Error\('[^']+'\)\s*\n\s*\}",
+            "/* args.task validation removed for test */",
+            pre_scope,
+        )
+        # Neutralize specId/specPath/planPath — they use task.replace which may fail
+        pre_scope = re.sub(
+            r"const specId = task\s*\n\s*\.replace\([^)]+\)\s*\n\s*\.replace\([^)]+\)\s*\n\s*\.toLowerCase\(\)\s*\n\s*\.slice\([^)]+\)",
+            "const specId = 'test-spec'",
+            pre_scope,
+        )
+        pre_scope = re.sub(
+            r"const specPath = [^\n]+",
+            "const specPath = '.claude/specs/test-spec.md'",
+            pre_scope,
+        )
+        pre_scope = re.sub(
+            r"const planPath = [^\n]+",
+            "const planPath = '.claude/plans/test-spec-plan.md'",
+            pre_scope,
+        )
+        # Extract execute body starting from phase('Execute') to include local vars
+        # like result_replay, MAX_RETRIES, etc. that are defined before const partitions
+        exec_body_marker = "phase('Execute')"
+        gates_marker = "// ── Phase 9: Gates"
+        if exec_body_marker in script:
+            raw = script.split(exec_body_marker, 1)[1]
+            # Stop before Gates phase — it calls phase('Gates') which the mock can't handle
+            if gates_marker in raw:
+                raw = raw.split(gates_marker, 1)[0]
+            # Strip trailing "} // end execute skip guard" — it closes an if/else
+            # branch that isn't present in the test harness
+            raw = re.sub(r"\n\s*\}\s*// end execute skip guard\s*$", "", raw)
+            exec_body = exec_body_marker + raw
+        else:
+            exec_body = ""
+        workflow = pre_scope + "\n// ── Execute body (inlined) ──\n" + exec_body
         node_script = """
-let args = ARGS_EXPRESSION;
+let args = Object.assign({ task: 'test-task', specs_dir: '.claude/specs', plans_dir: '.claude/plans',
+  state_file: '.claude/auto/test/state.json', audit_dir: '.claude/auto/test/audit',
+  max_retries: 5, resume_from: {} }, ARGS_EXPRESSION);
+const groups = args.groups || [];
+const tasks = args.tasks || {};
+const git = args.git || {};
+const worktree = args.worktree || '';
+const resume_from = args.resume_from || {};
+const resumeTaskReplay = ((resume_from && resume_from.result_replay) || []);
 const logs = [];
 function log(message) { logs.push(message); }
 function phase(message) { logs.push('phase:' + message); }
@@ -916,7 +969,10 @@ WORKFLOW_SCRIPT
         err_path = tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False).name
         try:
             command = f'node "{node_path}" > "{out_path}" 2> "{err_path}"'
-            subprocess.run(command, check=True, shell=True)
+            result = subprocess.run(command, check=False, shell=True, capture_output=False)
+            if result.returncode != 0:
+                err_text = Path(err_path).read_text(encoding="utf-8")
+                raise AssertionError(f"Node script failed:\n{err_text}")
             return json.loads(Path(out_path).read_text(encoding="utf-8"))
         finally:
             Path(node_path).unlink(missing_ok=True)
@@ -1333,8 +1389,8 @@ WORKFLOW_SCRIPT
             "const REVIEW_REREVIEW_RESULT", "...REVIEW_RESULT",
             "'prior_findings_verified', 'unresolved_issue_ids', 'new_issues'",
             "'diff_verified', 'targeted_verification_credible', 'scope_concerns'",
-            "opts('spec-review:' + id + '-r' + (iterations + 1), 'Spec Review', REVIEW_REREVIEW_RESULT)",
-            "opts('code-review:' + ctx.id + '-r' + (iterations + 1), 'Code Review', REVIEW_REREVIEW_RESULT)",
+            "agentOpts('spec-review:' + id + '-r' + fixAttempt, 'Spec Review', REVIEW_REREVIEW_RESULT)",
+            "agentOpts('code-review:' + ctx.id + '-r' + fixAttempt, 'Code Review', REVIEW_REREVIEW_RESULT)",
         ]:
             assert text in self.script
 
@@ -1344,8 +1400,8 @@ WORKFLOW_SCRIPT
             "verification_failures", "unrelated_files_changed", "scope_justifications",
         ]:
             assert text in self.script
-        assert "opts(fixLabel, 'Spec Review', FIX_RESULT)" in self.script
-        assert "opts(fixLabel, 'Code Review', FIX_RESULT)" in self.script
+        assert "agentOpts(fixLabel, 'Spec Review', FIX_RESULT)" in self.script
+        assert "agentOpts(fixLabel, 'Code Review', FIX_RESULT)" in self.script
 
     def test_fix_loops_scope_prompts_to_blocking_issue_files(self):
         assert "fixPrompt(blockingIssues, fixIssueFiles(blockingIssues), ctx, impl, 'spec_fix'" in self.script

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "workflows"
-EXECUTE_PLAN = SKILLS_DIR / "execute-plan.workflow.js"
+EXECUTE_PLAN = SKILLS_DIR / "full-auto-pipeline.workflow.js"  # consolidated into single file
 
 RESULT_PARTITIONS = ["passed", "completed", "blocked", "stalled", "failed_review", "needs_escalation"]
 
@@ -285,8 +285,8 @@ class TestFullAutoStateWriterArgs:
     def test_allow_commit_arg(self):
         assert "allow_commit" in self.script
 
-    def test_flow_state_script_path_arg(self):
-        assert "flow_state_script_path" in self.script
+    def test_flow_state_cli_path_arg(self):
+        assert "flow_state_cli_path" in self.script
 
 
 class TestFullAutoFlowStateHelper:
@@ -300,23 +300,25 @@ class TestFullAutoFlowStateHelper:
         assert "async function flowState" in self.script
 
     def test_flow_state_accepts_cmd_and_payload(self):
-        assert "flowState(cmd, payload)" in self.script
+        assert "flowState(cmd, data)" in self.script
 
     def test_flow_state_noop_when_no_script(self):
-        assert "if (!flowStateScriptPath)" in self.script
+        assert "if (!flowStateCliPath)" in self.script
         assert "{ ok: true }" in self.script
 
-    def test_flow_state_calls_workflow(self):
-        assert "workflow({ scriptPath: flowStateScriptPath }" in self.script
+    def test_flow_state_calls_agent_directly(self):
+        # Consolidated: calls agent() with CLI args instead of workflow({ scriptPath })
+        assert "flowStateCliPath" in self.script
+        assert "flow-state:" in self.script
 
     def test_flow_state_tracks_revision(self):
         assert "currentRevision" in self.script
 
     def test_flow_state_passes_state_file(self):
-        assert "state_file: state_file" in self.script
+        assert "'--state-file', state_file" in self.script
 
     def test_flow_state_passes_expected_revision(self):
-        assert "expected_revision: currentRevision" in self.script
+        assert "'--expected-revision', String(currentRevision)" in self.script
 
 
 class TestFullAutoPhaseTransitionEvents:

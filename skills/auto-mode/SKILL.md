@@ -51,7 +51,6 @@ Workflow({
     state_file: ".claude/auto/<task-name>/state.json",
     audit_dir: ".claude/auto/<task-name>/audit",
     evidence_dir: ".claude/auto/<task-name>/evidence",
-    flow_state_script_path: "<skills_dir>/auto-mode/workflows/flow-state-adapter.workflow.js",
     flow_state_cli_path: "<plugin>/hooks/scripts/flow-state.py",
     allow_commit: true,
     model_tasks: { default: "sonnet" },

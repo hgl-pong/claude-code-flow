@@ -136,7 +136,6 @@ echo "--- Section 4: Workflow Scripts ---"
 echo ""
 
 WF_SCRIPTS=(
-    "skills/auto-mode/workflows/execute-plan.workflow.js"
     "skills/auto-mode/workflows/full-auto-pipeline.workflow.js"
 )
 

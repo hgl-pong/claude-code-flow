@@ -85,7 +85,7 @@ Task tool (general-purpose):
     ```markdown
     # [Feature Name] Implementation Plan
 
-    > **For agentic workers:** Use `skills/auto-mode/workflows/execute-plan.workflow.js` to implement this plan task-by-task.
+    > **For agentic workers:** Use `skills/auto-mode/workflows/full-auto-pipeline.workflow.js` to implement this plan task-by-task.
 
     **Goal:** [One sentence describing what this builds]
 

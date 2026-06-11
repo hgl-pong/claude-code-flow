@@ -12,7 +12,7 @@ AUDIT_TRAIL_REF = AUTO_DIR / "references" / "audit-trail.md"
 IMAGE_REF = AUTO_DIR / "references" / "image-generation.md"
 GAME_REF = AUTO_DIR / "references" / "2d-game-workflow.md"
 FULL_AUTO = AUTO_DIR / "workflows" / "full-auto-pipeline.workflow.js"
-EXECUTE_PLAN = AUTO_DIR / "workflows" / "execute-plan.workflow.js"
+EXECUTE_PLAN = FULL_AUTO  # consolidated into single file
 
 CANONICAL_GATES = [
     "tasks_executed", "reviews_passed", "tests_pass",
