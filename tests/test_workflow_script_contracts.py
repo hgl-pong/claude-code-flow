@@ -131,6 +131,13 @@ class TestFullAutoConstants:
         assert "Use web fetch" in self.script
         assert "Prefer official/primary sources" in self.script
 
+    def test_asset_generation_guidance_in_spec_plan_and_implement(self):
+        assert "Asset Requirements" in self.script
+        assert "skills/auto-mode/prompts/artist-prompt.md" in self.script
+        assert "skills/auto-mode/references/image-generation.md" in self.script
+        assert "scripts/generate-image.py" in self.script
+        assert "Never claim missing files were generated" in self.script
+
 
 # ── execute-plan.workflow.js contract tests ────────────────────────────
 

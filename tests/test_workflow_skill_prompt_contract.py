@@ -11,6 +11,7 @@ AUTO_SKILL = AUTO_DIR / "SKILL.md"
 AUDIT_TRAIL_REF = AUTO_DIR / "references" / "audit-trail.md"
 IMAGE_REF = AUTO_DIR / "references" / "image-generation.md"
 GAME_REF = AUTO_DIR / "references" / "2d-game-workflow.md"
+ARTIST_PROMPT = AUTO_DIR / "prompts" / "artist-prompt.md"
 FULL_AUTO = AUTO_DIR / "workflows" / "full-auto-pipeline.workflow.js"
 EXECUTE_PLAN = FULL_AUTO  # consolidated into single file
 
@@ -44,6 +45,9 @@ class TestDocFilesExist:
     def test_folded_refs_exist(self):
         assert IMAGE_REF.exists()
         assert GAME_REF.exists()
+
+    def test_artist_prompt_exists(self):
+        assert ARTIST_PROMPT.exists()
 
     def test_dynamic_workflow_internals_exist(self):
         assert FULL_AUTO.exists()
@@ -154,14 +158,19 @@ class TestFoldedCapabilities:
         self.auto_skill = _read(AUTO_SKILL)
         self.image_ref = _read(IMAGE_REF)
         self.game_ref = _read(GAME_REF)
+        self.artist_prompt = _read(ARTIST_PROMPT)
 
     @pytest.mark.parametrize("text", ["image-generation.md", "2d-game-workflow.md", "image generation", "sprite"])
     def test_auto_mode_links_folded_capabilities(self, text):
         assert text in self.auto_skill
 
-    @pytest.mark.parametrize("text", ["cx/gpt-5.5-image", "generate-image.py", "NINEROUTER_URL", "NINEROUTER_KEY", "BLOCKED", "manifest"])
+    @pytest.mark.parametrize("text", ["cx/gpt-5.5-image", "generate-image.py", "NINEROUTER_URL", "NINEROUTER_KEY", "BLOCKED", "manifest", "artist-prompt.md"])
     def test_image_generation_contract(self, text):
         assert text in self.image_ref
+
+    @pytest.mark.parametrize("text", ["scripts/generate-image.py", "output_paths", "manifest", "NEEDS_CONTEXT", "Never describe missing files as generated"])
+    def test_artist_prompt_contract(self, text):
+        assert text in self.artist_prompt
 
     @pytest.mark.parametrize("text", ["Phaser", "simulation", "renderer", "DOM", "asset", "image-generation.md", "playtest"])
     def test_2d_game_guidance(self, text):

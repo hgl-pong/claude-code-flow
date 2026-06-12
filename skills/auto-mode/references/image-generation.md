@@ -50,7 +50,9 @@ with JSON body including `model`, `prompt`, `size`, `quality`, and `n`.
 
 ## Dispatch
 
-Coordinator does not do ad hoc image work. One image or tightly-coupled set → one artist task. Independent batch → split jobs and run bounded parallel artists. Do not parallelize dependent variants.
+Coordinator does not do ad hoc image work. Use `skills/auto-mode/prompts/artist-prompt.md` for artist subagents.
+
+One image or tightly-coupled set → one artist task. Independent batch → split jobs and run bounded parallel artists. Do not parallelize dependent variants.
 
 Inputs to infer unless missing detail fundamentally changes output: brief, count, aspect/size, quality (`draft`/`normal`/`final`), output path, refs/masks.
 

@@ -1244,9 +1244,10 @@ You work independently. If something is unclear:
 1. Read existing code for conventions and patterns
 2. Write failing test first (for behavior changes)
 3. Implement only what the task specifies — no scope creep
-4. Run tests, verify GREEN
-5. Commit with: feat(${task.id}): [what you built]
-6. Self-review before reporting (see below)
+4. If this task requires art/image assets, read skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py exclusively, verify output files exist, and report manifest/evidence paths. Never claim missing files were generated.
+5. Run tests, verify GREEN
+6. Commit with: feat(${task.id}): [what you built]
+7. Self-review before reporting (see below)
 
 ## Code Organization
 
@@ -2431,8 +2432,9 @@ ${openQuestionsText || 'None'}
 1. Resolve open questions with reasonable defaults. Record your decisions.
 2. Decision principles: YAGNI scope, existing codebase patterns first,
    simplest architecture, match project conventions
-3. Write spec to: ${specPath}
-4. Structure:
+3. Check whether this task requires art/image assets. If yes, include an Asset Requirements section that references skills/auto-mode/references/image-generation.md and records concrete asset briefs, count, size/aspect, quality, output path, and evidence requirements. If no assets are needed, state "Asset Requirements: none".
+4. Write spec to: ${specPath}
+5. Structure:
 
 \`\`\`markdown
 # Spec: ${task}
@@ -2451,6 +2453,9 @@ ${openQuestionsText || 'None'}
 
 ## Testing Strategy
 (unit tests for X, integration tests for Y, smoke check for Z)
+
+## Asset Requirements
+(none, or visual assets needed with brief/count/size/quality/output path/evidence; use skills/auto-mode/references/image-generation.md)
 
 ## Acceptance Criteria
 (numbered, verifiable — "when user does X, system does Y")
@@ -2549,7 +2554,8 @@ planResult = await agent(
    implementation details, depends_on list, verification command
 3. Rules: auto-split independent subsystems; each task completable in one session;
    every spec requirement covered by at least one task
-4. Format each task as:
+4. If the spec requires art/image assets, create explicit artist task(s). Artist tasks must reference skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py, list output paths as files, set runtime_evidence_required to required, and verify generated files plus manifest evidence. If no assets are needed, do not create artist tasks.
+5. Format each task as:
 
 \`\`\`markdown
 ## Task N: [name]
