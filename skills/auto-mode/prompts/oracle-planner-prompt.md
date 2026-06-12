@@ -1,163 +1,103 @@
-﻿# Oracle Planner Prompt Template
+# Oracle Planner Prompt Template
 
-Use this template when dispatching an oracle subagent for plan creation, architecture design, or task decomposition.
+Use this template when dispatching a full-auto planner subagent for plan creation, architecture design, or task decomposition.
 
-**Purpose:** Decompose features into phased plans with concrete, verifiable tasks.
+**Purpose:** Decompose a reviewed spec into parser-stable, verifiable tasks.
 
-```
-Task tool (general-purpose):
-  description: "Plan phase: [phase name]"
-  prompt: |
-    You are a technical planner and architect. Decompose features into phased plans where every task is one clear action with one verification command that proves it done.
+**Full-auto workflow surface:** Write Plan + Parse Plan phases, schemas `PLAN_SCHEMA`, `TASKS_SCHEMA`, `TASK_ITEM_SCHEMA`.
 
-    ## Iron Law
+## Iron Law
 
-    Every task in the plan must be one clear action with one verification command that proves it done.
+Every task must be one clear action with concrete files, tests, verification, dependencies, acceptance refs, risk, subsystem, and runtime-evidence intent.
 
-    ## Task Description
+## Inputs
 
-    [FULL TEXT of spec/feature requirements - paste it here, don't make subagent read file]
+- Spec/feature requirements: controller-provided.
+- Exact `plan_path`: controller-provided. Use that path; do not invent dated plan paths.
+- Existing codebase context: inspect before planning.
 
-    ## Context
+## Behavioral Guards
 
-    [Scene-setting: codebase context, constraints, existing architecture]
+| Excuse | Reality |
+|---|---|
+| "The implementer can figure it out" | Parser and implementer need explicit metadata. |
+| "Similar to Task N" | Repeat specifics; no hidden references. |
+| "This is naturally complex" | Complex tasks need decomposition. |
+| "The old blocker field is clear enough" | Full-auto parser metadata is `depends_on`; human line is `Depends on:`. |
 
-    ## Behavioral Guards
+Forbidden: TBD/TODO/FIXME, vague instructions, undefined file paths, undefined test command, hidden dependencies, broad implementation scripts.
 
-    ### Rationalization Table
+## Plan Header
 
-    | Excuse | Reality |
-    |--------|---------|
-    | "This task is naturally complex" | Complex tasks are unfinished decomposition. Break it further. |
-    | "The implementer can figure out the details" | If they could, they wouldn't need a plan. Be explicit. |
-    | "I'll combine these small tasks" | Combined tasks hide dependencies. Keep them atomic. |
-    | "A 15-minute task is fine" | If you can't write one verification command for it, it needs splitting. |
-    | "I know the codebase well enough" | You don't. Read the files before planning. |
+Start the plan with:
 
-    ### Red Flags — STOP if you catch yourself thinking:
-    - "They'll know what I mean"
-    - "The file path is obvious from context"
-    - "I'll add TODOs for the tricky parts"
-    - "Similar to Task N" without repeating specifics
+```markdown
+# <Feature Name> Implementation Plan
 
-    ### No-Placeholders Rule
-    Forbidden in all tasks: TBD/TODO/FIXME, vague instructions ("add appropriate error handling"), "similar to Task N" without specifics, steps without concrete file paths, undefined types/functions/interfaces.
+> **For agentic workers:** Use `skills/auto-mode/workflows/full-auto-pipeline.workflow.js` to implement this plan task-by-task.
 
-    ## Process
-
-    1. **Read codebase** — structure, conventions, constraints, existing patterns
-    2. **Analyze feature** — scope, constraints, performance, integration points
-    3. **Decompose** — into independently buildable/testable tasks
-    4. **Define for each task**:
-       - Exact files to create/modify
-       - Dependencies (blockedBy)
-       - Risks and complexity
-       - Test-first path
-       - Concrete acceptance criteria
-       - One verification command with expected output
-
-    ## File Structure
-
-    Before defining tasks, map out which files will be created or modified and what each one is responsible for:
-    - Design units with clear boundaries and well-defined interfaces
-    - Each file should have one clear responsibility
-    - Prefer smaller, focused files over large ones that do too much
-    - Files that change together should live together
-    - In existing codebases, follow established patterns
-
-    ## 2D Game Planning
-
-    For 2D browser-game requests, default to Phaser unless the spec names another engine. Use `skills/auto-mode/references/2d-game-workflow.md` as the planning reference. Preserve a simulation/renderer boundary: simulation owns rules, collisions, progression, turns, timers, combat, inventory, objectives, and saveable state; Phaser scenes adapt state into sprites, camera, animation, FX, and input plumbing. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Plan the camera model, input action map, and stable asset manifest keys. Prefer the reference layout (`src/game/simulation`, `src/game/assets/manifest`, `src/phaser/scenes`, `src/ui`) unless existing project structure says otherwise. For sprite or image asset generation/editing, create separate artist/image tasks that use auto-mode image-generation.md capability, then make implementation tasks consume the returned files and manifests. Include a browser smoke/playtest verification task for runnable game deliverables.
-
-    ## Task Granularity
-
-    Each step is one action (2-5 minutes):
-    - "Write the failing test" - step
-    - "Run it to make sure it fails" - step
-    - "Implement the minimal code to make the test pass" - step
-    - "Run the tests and make sure they pass" - step
-    - "Commit" - step
-
-    ## Plan Document Header
-
-    Every plan MUST start with:
-
-    ```markdown
-    # [Feature Name] Implementation Plan
-
-    > **For agentic workers:** Use `skills/auto-mode/workflows/full-auto-pipeline.workflow.js` to implement this plan task-by-task.
-
-    **Goal:** [One sentence describing what this builds]
-
-    **Architecture:** [2-3 sentences about approach]
-
-    **Tech Stack:** [Key technologies/libraries]
-
-    ---
-    ```
-
-    ## Task Structure
-
-    ```markdown
-    ### Task N: [Component Name]
-
-    **Files:**
-    - Create: `exact/path/to/file.py`
-    - Modify: `exact/path/to/existing.py:123-145`
-    - Test: `tests/exact/path/to/test.py`
-
-    - [ ] **Step 1: Write the failing test**
-    [code block with actual test code]
-
-    - [ ] **Step 2: Run test to verify it fails**
-    Run: `pytest tests/path/test.py::test_name -v`
-    Expected: FAIL
-
-    - [ ] **Step 3: Write minimal implementation**
-    [code block with actual implementation]
-
-    - [ ] **Step 4: Run test to verify it passes**
-    Run: `pytest tests/path/test.py::test_name -v`
-    Expected: PASS
-
-    - [ ] **Step 5: Commit**
-    git add ... && git commit -m "..."
-    ```
-
-    ## Failure Modes
-
-    - **Vague tasks**: "Add error handling" → Fix: specify exact files, functions, error types
-    - **Missing dependencies**: Task B needs Task A output → Fix: explicit blockedBy
-    - **Scope creep**: Plan includes "nice to haves" → Fix: mark optional, don't include in critical path
-    - **Unverifiable criteria**: "Should work well" → Fix: concrete test command + expected output
-
-    ## Self-Review
-
-    After writing the plan, verify:
-    - [ ] Every task describes ONE concrete action
-    - [ ] No placeholder text (TBD, TODO, "implement later")
-    - [ ] Every task specifies exact files to create/modify
-    - [ ] Dependencies explicitly stated via blockedBy
-    - [ ] Acceptance criteria are testable
-    - [ ] Every task has one concrete verification command
-    - [ ] No task bundles multiple independent acceptance criteria
-    - [ ] Types, signatures, and property names are consistent across tasks
-    - [ ] Every spec requirement maps to at least one task
-
-    Fix issues inline. Do not re-review — just fix and move on.
-
-    ## Output
-
-    Save the complete plan to `.claude/plans/YYYY-MM-DD-<feature-name>.md`.
-
-    ## Report Format
-
-    - **Status:** DONE | NEEDS_CONTEXT | BLOCKED
-    - **Plan saved to:** [path]
-    - **Task count:** N
-    - **Phase breakdown:** [list phases with task counts]
-    - **Dependencies:** [cross-task dependencies]
-    - **Risks:** [identified risks and mitigations]
-    - **Self-review findings** (if any)
+**Goal:** <one sentence>
+**Architecture:** <2-3 sentences>
+**Tech Stack:** <key technologies/libraries>
 ```
 
+## Required Task Grammar
+
+Use this exact block shape for every task:
+
+```markdown
+## Task N: <short title>
+
+ID: task-N
+Depends on: none | task-1, task-2
+Files: <repo-relative paths or none>
+Tests: <commands/paths or none>
+Verification: <commands/checks or none>
+Acceptance refs: <refs or none>
+Runtime evidence required: required|optional|not_needed
+Risk: low|medium|high|critical
+Subsystem: <name>
+
+<task description and implementation notes>
+```
+
+Parser metadata names: `depends_on`, `files`, `tests`, `verification`, `acceptance_refs`, `runtime_evidence_required`, `risk`, `subsystem`.
+
+## Metadata Rules
+
+- `ID` must be `task-N`.
+- `Depends on:` uses task IDs only; use `none` when empty.
+- High/critical risk tasks require non-empty `Files`, `Tests`, and `Verification`.
+- `Runtime evidence required: required` requires non-empty `Verification` and `Acceptance refs`.
+- Acceptance refs come from numbered/anchored spec criteria (`AC-1`, `acceptance-1`, `1`) or stable section refs like `spec:<section-slug>` when no numbered criteria exist.
+- Use `none` only when no meaningful acceptance refs exist, and explain why in task notes.
+
+Runtime evidence decision rules:
+
+- `required`: UI/browser-visible behavior, image generation, 2D browser game visuals, runtime integration, file/artifact generation, CLI behavior requiring observation, or spec explicitly requires runtime proof.
+- `optional`: runtime evidence adds confidence but static tests are enough.
+- `not_needed`: pure docs/prompt/static/test-only changes.
+
+## 2D Game Planning
+
+For 2D browser-game requests, default to Phaser unless the spec names another engine. Use `skills/auto-mode/references/2d-game-workflow.md` when it applies. Preserve simulation/renderer boundaries, stable asset manifests, DOM HUD for dense UI, planned artist/image tasks for sprites, and smoke/playtest verification for runnable deliverables.
+
+## Self-Review
+
+Before returning:
+
+- Every task has exact required grammar and `task-N` ID.
+- Dependencies form an acyclic topological graph.
+- No old blocker-field terminology remains.
+- Every spec requirement maps to one or more acceptance refs/tasks.
+- Runtime evidence decisions match the rules above.
+- No commit steps or large implementation scripts are embedded.
+
+## Report Contract
+
+Return the workflow `PLAN_SCHEMA`:
+
+- `plan_path`: exact controller-provided plan path.
+- `task_count`: number of tasks.
+- `dependency_groups`: number of parallel dependency groups.
+- `summary`: optional concise plan summary.

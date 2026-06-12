@@ -192,6 +192,70 @@ class TestReviewPromptContracts:
         assert text in self.code_prompt
 
 
+class TestPromptContractMirrors:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        prompts = AUTO_DIR / "prompts"
+        self.researcher = _read(prompts / "researcher-prompt.md")
+        self.planner = _read(prompts / "oracle-planner-prompt.md")
+        self.implementer = _read(prompts / "implementer-prompt.md")
+        self.forge = _read(prompts / "forge-implementer-prompt.md")
+        self.spec_prompt = _read(prompts / "spec-reviewer-prompt.md")
+        self.code_prompt = _read(prompts / "code-quality-reviewer-prompt.md")
+        self.prism = _read(prompts / "prism-verifier-prompt.md")
+
+    @pytest.mark.parametrize("prompt_name", ["researcher", "planner", "implementer", "forge", "spec_prompt", "code_prompt", "prism"])
+    @pytest.mark.parametrize("legacy", ["Task tool", "Task tool (general-purpose)", "general-purpose agent", "paste it here", "paste the report"])
+    def test_full_auto_prompt_mirrors_drop_dispatch_residue(self, prompt_name, legacy):
+        assert legacy not in getattr(self, prompt_name)
+
+    def test_researcher_matches_research_schema(self):
+        for text in ["RESEARCH_SCHEMA", "angle", "findings", "Markdown string", "key_insights", "open_questions"]:
+            assert text in self.researcher
+        assert ".claude/research" not in self.researcher
+
+    @pytest.mark.parametrize("text", [
+        "PLAN_SCHEMA", "TASKS_SCHEMA", "TASK_ITEM_SCHEMA", "ID: task-N", "Depends on:",
+        "Acceptance refs:", "Runtime evidence required:", "depends_on", "acceptance_refs",
+        "runtime_evidence_required", "risk", "subsystem",
+    ])
+    def test_planner_matches_parser_metadata(self, text):
+        assert text in self.planner
+
+    @pytest.mark.parametrize("prompt_name", ["implementer", "forge"])
+    def test_implementer_prompts_match_implement_result(self, prompt_name):
+        prompt = getattr(self, prompt_name)
+        assert "NEEDS_CONTEXT" not in prompt
+        for text in [
+            "IMPLEMENT_RESULT", "DONE", "DONE_WITH_CONCERNS", "BLOCKED",
+            "test_results", "verification_commands", "verification_results", "base_sha", "head_sha",
+            "acceptance_coverage", "unverified_acceptance_refs", "concerns", "diff_summary",
+            "concerns: []", "blocker_detail",
+        ]:
+            assert text in prompt
+
+    @pytest.mark.parametrize("prompt_name", ["implementer", "forge"])
+    @pytest.mark.parametrize("text", [
+        "FIX_RESULT", "fixed_issue_ids", "targeted_verification", "verification_failures",
+        "unrelated_files_changed", "scope_justifications",
+    ])
+    def test_fix_result_addendum_fields(self, prompt_name, text):
+        assert text in getattr(self, prompt_name)
+
+    @pytest.mark.parametrize("prompt_name", ["spec_prompt", "code_prompt"])
+    @pytest.mark.parametrize("text", [
+        "REVIEW_RESULT", "REVIEW_REREVIEW_RESULT", "prior_findings_verified",
+        "unresolved_issue_ids", "new_issues", "diff_verified", "targeted_verification_credible",
+        "scope_concerns", "passed: true", "blocking",
+    ])
+    def test_review_prompts_match_rereview_contract(self, prompt_name, text):
+        assert text in getattr(self, prompt_name)
+
+    @pytest.mark.parametrize("text", ["GATE_RESULT", "commands", "exit_codes", "logs", "screenshots", "artifacts", "crash", "hang", "unverified_acceptance_items", "blocking_risks", "generated_at", "evidence_dir"])
+    def test_prism_is_gate_evidence_companion(self, text):
+        assert text in self.prism
+
+
 class TestAuditEventTypesInDocs:
     @pytest.fixture(autouse=True)
     def _load(self):

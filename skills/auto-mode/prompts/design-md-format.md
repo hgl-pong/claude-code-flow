@@ -1,8 +1,8 @@
-﻿# DESIGN.md Format Reference
+# DESIGN.md Format Reference
 
-Root `DESIGN.md` is a developer-usable UI/UX design system spec. It is not a pitch, architecture overview, component inventory, or data-model doc. It must be specific enough that an implementation agent can build without guessing.
+Root `DESIGN.md` is a developer-usable UI/UX design system spec for the optional UI companion path. It is not a pitch, architecture overview, component inventory, or data-model doc. It must be specific enough that an implementation agent can build without guessing.
 
-Save `DESIGN.md` at project root only after `.claude/research/<task-name>/ui-research.md` exists.
+Create root `DESIGN.md` only when UI design work is explicitly dispatched. Use controller-provided research/evidence paths when present; otherwise summarize design evidence directly in `DESIGN.md`. Do not require a fixed research directory outside that optional path.
 
 ## Required Structure
 
@@ -14,10 +14,10 @@ Save `DESIGN.md` at project root only after `.claude/research/<task-name>/ui-res
 **Direction:** [1-2 sentences: warm/cool, dense/airy, playful/serious, key differentiator]
 
 ## Research Summary
-- Summarize `.claude/research/<task-name>/ui-research.md`
-- Include source-backed conclusions with URLs/access dates from the research file
-- Identify patterns users expect, differentiating choices, and rejected alternatives
-- Every major design decision below must cite the specific research finding that supports it
+- Summarize the UI research/evidence used for this design, or state why external research was not needed.
+- Include source-backed conclusions with URLs/access dates when external sources were used.
+- Identify patterns users expect, differentiating choices, and rejected alternatives.
+- Every major design decision below must cite the specific finding or task/domain rationale that supports it.
 
 ## Token Architecture
 
@@ -75,29 +75,29 @@ Define each interactive component in a way developers can implement exactly.
 - Motion: respect prefers-reduced-motion and define reduced alternatives for non-essential animation
 
 ## Decision Traceability
-- Map each major token family, layout choice, and component state rule back to the research summary
+- Map each major token family, layout choice, and component state rule back to the research summary or task/domain rationale
 - If a decision is an exception to common patterns, say why
 ```
 
 ## Quality Checklist
 
 Before reporting done:
-- [ ] UI research saved to `.claude/research/<task-name>/ui-research.md` with 3+ competitors, URLs, and access dates
+
 - [ ] DESIGN.md uses the required structure above
-- [ ] Research summary includes source-backed conclusions with URLs/access dates from ui-research.md
+- [ ] Research summary includes evidence or rationale appropriate to the task
 - [ ] Token architecture is split into primitive, semantic, and component layers
 - [ ] Theme groups cover color-scheme, breakpoint, and contrast with exact token overrides or explicit "no token changes"
 - [ ] Component specs include variants, states, required Variant × State Matrix, and token-backed Visual Contract
 - [ ] Breakpoints state exact layout changes
 - [ ] Accessibility section includes numeric WCAG contrast targets, focus tokens, 44px touch minimums, non-color state indicators, and reduced-motion behavior
-- [ ] Major decisions are traceable back to research
+- [ ] Major decisions are traceable back to evidence or task/domain rationale
 - [ ] DESIGN.md saved to project root
 
 ## Failure Modes
 
 | Failure | Fix |
-|---------|-----|
-| No research | Phase 1 is mandatory before tokens |
+|---|---|
+| No evidence/rationale | Add research summary or explain why task/domain context is sufficient |
 | Flat tokens | Use primitive, semantic, and component layers |
 | AI defaults | Every token family needs a decision rationale |
 | Missing states | Every interactive component needs the full state set |

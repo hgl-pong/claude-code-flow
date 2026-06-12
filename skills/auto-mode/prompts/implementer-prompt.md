@@ -1,129 +1,124 @@
-﻿# Implementer Subagent Prompt Template
+# Implementer Subagent Prompt Template
 
-Use this template when dispatching an implementer subagent.
+Use this template when dispatching a full-auto implementer subagent.
 
-```
-Task tool (general-purpose):
-  description: "Implement Task N: [task name]"
-  prompt: |
-    You are implementing Task N: [task name]
+**Purpose:** Implement one planned task with self-service investigation, narrow scope, verifiable evidence, and workflow-compatible structured output.
 
-    ## Task Description
+**Full-auto workflow surface:** Execute phase, labels `implement:<task-id>` and targeted fix labels, schemas `IMPLEMENT_RESULT` and `FIX_RESULT`.
 
-    [FULL TEXT of task from plan - paste it here, don't make subagent read file]
+## Inputs
 
-    ## Context
+- Task description, files, tests, verification, acceptance refs, risk, subsystem: controller-provided from the parsed plan.
+- Spec and plan excerpts: controller-provided.
+- Worktree path and diff/base metadata: controller-provided when available.
 
-    [Scene-setting: where this fits, dependencies, architectural context]
+## Autonomy Contract
 
-    ## Before You Begin
+Do not ask preflight questions in full-auto. Before returning `BLOCKED`, self-service first:
 
-    If you have questions about:
-    - The requirements or acceptance criteria
-    - The approach or implementation strategy
-    - Dependencies or assumptions
-    - Anything unclear in the task description
+1. Search/read relevant code and tests.
+2. Infer the simplest safe approach from existing patterns.
+3. Narrow scope to the assigned task.
+4. Record assumptions, limits, and unverified acceptance refs in the result.
 
-    **Ask them now.** Raise any concerns before starting work.
+Return `BLOCKED` only when safe progress is impossible after those attempts.
 
-    ## Your Job
+## Your Job
 
-    Once you're clear on requirements:
-    1. Implement exactly what the task specifies
-    2. Write tests (following TDD if task says to)
-    3. Verify implementation works
-    4. Commit your work
-    5. Self-review (see below)
-    6. Report back
+1. Implement exactly the assigned task.
+2. Write or update focused tests when behavior changes.
+3. Run the task's verification commands when possible.
+4. Preserve existing style and boundaries.
+5. Report structured evidence; do not rely on prose claims.
 
-    Work from: [directory]
+Commit only when the controller explicitly allows commits. Otherwise report `base_sha`, `head_sha`, and `diff_summary`.
 
-    **While you work:** If you encounter something unexpected or unclear, **ask questions**.
-    It's always OK to pause and clarify. Don't guess or make assumptions.
+## Code Organization
 
-    ## Code Organization
+- Follow the files and subsystem from the plan.
+- Each touched file should keep a clear responsibility.
+- If a created file grows beyond the plan's intent, report `DONE_WITH_CONCERNS`; do not invent a broad refactor.
+- If existing code is tangled, work surgically and note the limitation.
+- Do not restructure outside the assigned task.
 
-    You reason best about code you can hold in context at once, and your edits are more
-    reliable when files are focused. Keep this in mind:
-    - Follow the file structure defined in the plan
-    - Each file should have one clear responsibility with a well-defined interface
-    - If a file you're creating is growing beyond the plan's intent, stop and report
-      it as DONE_WITH_CONCERNS — don't split files on your own without plan guidance
-    - If an existing file you're modifying is already large or tangled, work carefully
-      and note it as a concern in your report
-    - In existing codebases, follow established patterns. Improve code you're touching
-      the way a good developer would, but don't restructure things outside your task.
+## 2D Game Implementation
 
-    ## 2D Game Implementation
+For 2D browser games, follow `skills/auto-mode/references/2d-game-workflow.md` when it applies. Keep Phaser scenes thin and simulation state outside the renderer. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Keep asset references behind a stable asset manifest. If the task needs sprites or image assets, use auto-mode image-generation.md capability through the planned artist/image task path; do not invent a second image provider path. For runnable game changes, gather smoke/playtest evidence or record why it is unverifiable.
 
-    For 2D browser games, follow `skills/auto-mode/references/2d-game-workflow.md` when it applies. Keep Phaser scenes thin and keep simulation state outside the renderer. Simulation owns rules, collisions, progression, timers, turns, combat, inventory, objectives, and saveable state; Phaser adapts that state into sprites, camera, animation, FX, scene lifecycle, and input. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Keep asset references behind a stable asset manifest. If the task needs sprites or image assets, use auto-mode image-generation.md capability through the planned artist/image task path; do not invent a second image provider path. For runnable game changes, gather smoke/playtest evidence or record why it is unverifiable.
+## Scope Discipline
 
-    ## When You're in Over Your Head
+Stop broadening when you catch yourself thinking:
 
-    It is always OK to stop and say "this is too hard for me." Bad work is worse than
-    no work. You will not be penalized for escalating.
+- "I'll clean this adjacent code while here."
+- "This helper would be nice for later."
+- "The plan probably meant this extra feature."
+- "I'll change config/renames/deletes to make it cleaner."
 
-    **STOP and escalate when:**
-    - The task requires architectural decisions with multiple valid approaches
-    - You need to understand code beyond what was provided and can't find clarity
-    - You feel uncertain about whether your approach is correct
-    - The task involves restructuring existing code in ways the plan didn't anticipate
-    - You've been reading file after file trying to understand the system without progress
+Broad config changes, renames, deletes, and unrelated files require explicit scope justification and usually belong in `DONE_WITH_CONCERNS` or `BLOCKED`.
 
-    **How to escalate:** Report back with status BLOCKED or NEEDS_CONTEXT. Describe
-    specifically what you're stuck on, what you've tried, and what kind of help you need.
-    The controller can provide more context, re-dispatch with a more capable model,
-    or break the task into smaller pieces.
+## IMPLEMENT_RESULT Contract
 
-    ## Before Reporting Back: Self-Review
+Return one status only:
 
-    Review your work with fresh eyes. Ask yourself:
+- `DONE`
+- `DONE_WITH_CONCERNS`
+- `BLOCKED`
 
-    **Completeness:**
-    - Did I fully implement everything in the spec?
-    - Did I miss any requirements?
-    - Are there edge cases I didn't handle?
+Missing context becomes self-service work first, then `BLOCKED` with `blocker_detail` if still impossible.
 
-    **Quality:**
-    - Is this my best work?
-    - Are names clear and accurate (match what things do, not how they work)?
-    - Is the code clean and maintainable?
+Always include:
 
-    **Discipline:**
-    - Did I avoid overbuilding (YAGNI)?
-    - Did I only build what was requested?
-    - Did I follow existing patterns in the codebase?
+- `status`
+- `summary`
+- `files_modified`
 
-    **Testing:**
-    - Do tests actually verify behavior (not just mock behavior)?
-    - Did I follow TDD if required?
-    - Are tests comprehensive?
+For `DONE` and `DONE_WITH_CONCERNS`, also include:
 
-    If you find issues during self-review, fix them now before reporting.
+- `test_results`
+- `verification_commands`
+- `verification_results` as `{ command, exit_code, output }` entries
+- `base_sha`
+- `head_sha`
+- `acceptance_coverage`
+- `unverified_acceptance_refs` as an array, empty if none
+- `concerns` as an array
+- `diff_summary`
 
-    ## Report Format
+Optional fields:
 
-    When done, report structured evidence. For DONE/DONE_WITH_CONCERNS, every evidence field below is required except commit_sha and evidence_paths (controller checks evidence_paths when available):
-    - **status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
-    - **summary:** what you implemented (or attempted, if blocked)
-    - **files_modified:** every file created/changed
-    - **test_results:** test command(s) + output/result
-    - **verification_commands:** commands to verify the implementation
-    - **verification_results:** array of `{ command, exit_code, output }`
-    - **base_sha:** git SHA before implementation
-    - **head_sha:** git SHA after implementation
-    - **commit_sha:** optional legacy commit SHA
-    - **acceptance_coverage:** refs/criteria covered by evidence
-    - **unverified_acceptance_refs:** refs not directly verified
-    - **concerns:** required for DONE_WITH_CONCERNS or any limitation
-    - **diff_summary:** concise changed-file/diff summary
+- `commit_sha` when a commit was actually created
+- `evidence_paths` for screenshots/logs/artifacts
+- `blocker_detail` for blocked results
 
-    Evidence files/summaries must not include secrets, tokens, API keys, credentials, private data, or proprietary logs. Redact before reporting.
+Concern rules:
 
-    Only clean `DONE` evidence with verified acceptance coverage is treated as a clean pass. Concerns, limitations, unverified evidence, or DONE_WITH_CONCERNS context is passed to spec review for explicit verification.
+- `DONE` requires `concerns: []`.
+- `DONE_WITH_CONCERNS` requires non-empty `concerns`.
+- Acceptance-related concerns must name the affected `acceptance_refs` or `unverified_acceptance_refs`.
 
-    Use DONE_WITH_CONCERNS if you completed the work but have doubts about correctness.
-    Use BLOCKED if you cannot complete the task. Use NEEDS_CONTEXT if you need
-    information that wasn't provided. Never silently produce work you're unsure about.
-```
+`BLOCKED` shape:
 
+- `status: BLOCKED`
+- `summary`
+- `files_modified`
+- `blocker_detail`: what blocks progress, what you tried, what evidence you found, and what decision/input would unblock it.
+
+## FIX_RESULT Addendum
+
+For targeted fix retries, return normal `IMPLEMENT_RESULT` fields plus these arrays for `DONE`/`DONE_WITH_CONCERNS`:
+
+- `fixed_issue_ids`
+- `targeted_verification`
+- `verification_failures`
+- `unrelated_files_changed`
+- `scope_justifications`
+
+Targeted fix scope is limited to prior blocking issue IDs and narrowly related files: issue files, pre-fix task files/tests, same-dir tests, and direct import support files. If you touch broad config, rename/delete files, or modify unrelated files, include `scope_justifications`; if unjustified, return `DONE_WITH_CONCERNS` or `BLOCKED`.
+
+## Self-Review Before Return
+
+- Did the diff implement the task and no extra feature?
+- Do tests/verification prove the acceptance refs?
+- Are all unverified refs listed?
+- Is `DONE` clean only when there are no concerns?
+- Are secrets/tokens/private logs absent or redacted?

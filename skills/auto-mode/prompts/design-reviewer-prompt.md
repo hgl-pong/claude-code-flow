@@ -1,83 +1,68 @@
-﻿# Design Reviewer Subagent Prompt Template
+# Design Reviewer Subagent Prompt Template
 
-Use this template when dispatching a reviewer subagent for dedicated DESIGN.md review. The reviewer checks whether the design is research-grounded, implementable, accessible, and scoped before forge UI implementation begins.
+Use this template for optional UI companion review of `DESIGN.md`. This is not a core full-auto phase unless the controller explicitly dispatches it.
 
-**Purpose:** Catch weak UI research, generic AI-default design choices, incomplete tokens/states, and implementation ambiguity in DESIGN.md.
+**Purpose:** Catch weak UI research, generic AI-default design choices, incomplete tokens/states, accessibility gaps, and implementation ambiguity before forge UI implementation.
 
-```
-Task tool (general-purpose):
-  description: "Review design: [feature/page name]"
-  prompt: |
-    You are a design reviewer. Your job is to review DESIGN.md against the design brief and UI research. You do NOT rewrite the design and you do NOT implement code. You identify concrete issues the designer must fix.
+## Inputs
 
-    ## Inputs
+- Design brief/task or spec excerpt.
+- `DESIGN.md` path, usually project root.
+- Optional UI research/evidence path supplied by controller. If absent, review the research summary embedded in `DESIGN.md` and report the limitation.
 
-    - Design brief/task: [PASTE TASK OR SPEC EXCERPT]
-    - DESIGN.md path: [usually DESIGN.md at project root]
-    - UI research path: `.claude/research/<task-name>/ui-research.md`
+## Review Requirements
 
-    ## Review Requirements
+1. **Research/evidence grounding**
+   - UI research or embedded research summary supports major visual decisions.
+   - Competitive/domain/platform references are concrete when external research was needed.
 
-    Check all of the following:
+2. **DESIGN.md uses the evidence**
+   - Major direction, tokens, layout, and component choices trace to stated rationale.
+   - No "looks good," "modern," or default-only justification.
 
-    1. **UI research exists**
-       - `.claude/research/<task-name>/ui-research.md` exists.
-       - It includes competitive/domain/platform research, not only generic statements.
+3. **Tokens are complete and non-generic**
+   - Color, typography, spacing, radius, shadow/elevation, and breakpoint tokens are present where relevant.
+   - Usage guidance says where/how tokens are used.
+   - Generic defaults are justified by task/domain/evidence.
 
-    2. **DESIGN.md uses the research**
-       - DESIGN.md cites or summarizes the UI research conclusions.
-       - Major design direction, token, layout, and component decisions trace back to research conclusions.
+4. **No AI-default drift without justification**
+   - Flag unjustified Inter/Roboto/system-ui, Tailwind blue/indigo, neutral gray defaults, rounded-xl everywhere, identical shadows, glassmorphism, transition-all, decorative icons everywhere, or similar defaults.
 
-    3. **Visual decisions have rationale**
-       - Colors, typography, spacing, radius, shadows/elevation, and layout choices explain why they fit the product/domain.
-       - No "looks good," "modern," or default-only justification.
+5. **Component states are complete**
+   - Interactive components include default, hover, active, focus, disabled, loading/error where applicable.
+   - States include concrete visual specs, not vague prose.
+   - Focus and disabled states are accessible and distinct.
 
-    4. **Tokens are complete and non-generic**
-       - Color, typography, spacing, radius, shadow/elevation, and breakpoint tokens are present.
-       - Tokens have specific values and usage guidance.
-       - Usage columns say where/how the token is used, not just what it is.
-       - Tokens are not generic Tailwind/default values unless explicitly justified.
+6. **Layout and breakpoints are implementable**
+   - Breakpoints include concrete widths and layout changes.
+   - Layout specifies grid/columns, max width, gutters, gaps, section rhythm, and responsive behavior.
 
-    5. **No AI-default drift without justification**
-       - Flag unjustified use of Inter/Roboto/system-ui, Tailwind blue/indigo, neutral gray defaults, rounded-xl everywhere, identical card shadows, glassmorphism, transition-all, decorative icons everywhere, or other AI-default visual patterns.
-       - If such choices appear, they must be specifically justified by the task/domain/research.
+7. **Accessibility is concrete**
+   - Contrast targets, focus treatment, touch target minimums, reduced-motion behavior, keyboard/state indicators, and non-color-only states are specified.
 
-    6. **Component states are complete**
-       - Every interactive component referenced by the design has default, hover, active, focus, disabled, and loading states where applicable.
-       - States include concrete visual specs, not vague descriptions.
-       - Focus and disabled states are distinct and accessible.
+8. **Scope discipline**
+   - Design covers the requested feature/page only.
+   - No unrelated redesigns, speculative surfaces, or broad design-system expansion beyond the task.
 
-    7. **Layout and breakpoints are implementable**
-       - Breakpoints include concrete min/max widths and layout changes.
-       - Layout specifies grid/columns, max width, gutters, gaps, section rhythm, and responsive behavior.
-       - Instructions are specific enough for forge to implement without inventing layout decisions.
+## Status Values
 
-    8. **Accessibility requirements are concrete**
-       - Contrast targets, focus treatment, touch target minimums, motion/reduced-motion behavior, keyboard/state indicators, and non-color-only states are specified.
-       - Requirements are tied to actual components/states where possible.
+Return exactly one status:
 
-    9. **Design is scoped to the task**
-       - DESIGN.md covers the requested feature/page only.
-       - No unrelated redesigns, new product surfaces, speculative components, or broad design-system expansion beyond what the task needs.
+- `APPROVED` — `DESIGN.md` is ready for forge implementation.
+- `NEEDS_REVISION` — fixable issues exist; include exact fix instructions.
+- `BLOCKED` — required context/artifacts are missing and review cannot proceed.
 
-    ## Status Values
+## Output Format
 
-    Return exactly one status:
+```markdown
+Status: APPROVED | NEEDS_REVISION | BLOCKED
 
-    - `APPROVED` — DESIGN.md is ready for forge implementation.
-    - `NEEDS_REVISION` — DESIGN.md is fixable but has specific issues. Include exact fix instructions. After the designer changes DESIGN.md, the same reviewer must re-review the revised DESIGN.md.
-    - `BLOCKED` — required context or artifacts are missing and review cannot proceed.
+Summary:
+- <1-3 bullets>
 
-    ## Output Format
+Findings:
+- <For NEEDS_REVISION/BLOCKED: specific issue, file/section, required fix>
 
-    Status: APPROVED | NEEDS_REVISION | BLOCKED
-
-    Summary:
-    - [1-3 bullets]
-
-    Findings:
-    - [For NEEDS_REVISION/BLOCKED: specific issue, file/section, required fix]
-
-    Re-review requirement:
-    - [For NEEDS_REVISION: "Designer must revise DESIGN.md and return to this same reviewer for re-review."]
+Re-review requirement:
+- <For NEEDS_REVISION: designer must revise DESIGN.md and return for re-review>
 ```
