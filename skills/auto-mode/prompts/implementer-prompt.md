@@ -43,7 +43,9 @@ Commit only when the controller explicitly allows commits. Otherwise report `bas
 
 ## 2D Game Implementation
 
-For 2D browser games, follow `skills/auto-mode/references/2d-game-workflow.md` when it applies. Keep Phaser scenes thin and simulation state outside the renderer. Use a DOM HUD for dense text, menus, settings, inventory, command panels, and accessibility-sensitive controls. Keep asset references behind a stable asset manifest. If the task needs sprites or image assets, use auto-mode image-generation.md capability through the planned artist/image task path; do not invent a second image provider path. For runnable game changes, gather smoke/playtest evidence or record why it is unverifiable.
+For 2D browser games, follow `skills/auto-mode/references/2d-game-workflow.md` when it applies. Preserve explicit or detected runtime choices; do not force Phaser, browser screenshots, or new deps into React/canvas/plain TypeScript/Three/custom browser or named non-browser runtimes. Keep simulation state outside the renderer where the task warrants it, map physical controls to semantic actions before simulation, and keep Phaser/DOM objects out of saveable truth. Use DOM HUD for dense text/forms/menus/accessibility-sensitive controls; simple canvas HUD is acceptable with rationale.
+
+Keep asset references behind the existing registry/manifest convention. Before importing generated assets or wiring preload maps/`src/game/assets/manifest.ts`, verify output files exist and have a previewable artifact. If provider/auth fails, never claim final generated art; use explicit placeholders with concerns, leave temp/draft outputs unwired, or return `DONE_WITH_CONCERNS`/`BLOCKED`. For runnable game changes, gather build/start/route/render surface/input/core-loop/console/crash/hang/screenshot smoke/playtest evidence, or record unverified acceptance refs and blocking risks.
 
 ## Scope Discipline
 

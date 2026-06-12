@@ -325,3 +325,48 @@ class TestPlanValidationIntegration:
     def test_required_metadata_for_runtime_required(self):
         """runtime_evidence_required tasks need verification and acceptance_refs."""
         assert "REQUIRED_FIELDS_FOR_RUNTIME" in self.script
+
+
+class TestGameTaskMetadataContracts:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_script()
+
+    def test_runnable_browser_game_plan_uses_existing_schema_fields(self):
+        plan_task = {
+            "id": "task-4",
+            "description": "Wire browser canvas renderer and HUD",
+            "depends_on": ["task-1", "task-2"],
+            "files": ["src/game/scenes/MainScene.ts", "src/game/assets/manifest.ts"],
+            "tests": ["npm run build"],
+            "verification": ["npm run build", "smoke/playtest route / with screenshot"],
+            "acceptance_refs": ["core-loop", "render-surface", "playtest-smoke"],
+            "runtime_evidence_required": "required",
+            "risk": "medium",
+            "subsystem": "renderer",
+        }
+        assert set(plan_task).issubset({
+            "id", "description", "depends_on", "files", "tests", "verification",
+            "acceptance_refs", "runtime_evidence_required", "risk", "subsystem",
+        })
+        assert plan_task["runtime_evidence_required"] == "required"
+        assert plan_task["verification"]
+        assert plan_task["acceptance_refs"]
+
+    @pytest.mark.parametrize("runtime_value", ["optional", "not_needed"])
+    def test_pure_sim_or_docs_can_avoid_visual_runtime_evidence(self, runtime_value):
+        plan_task = {
+            "id": "task-2",
+            "description": "Pure rules/docs/config game task",
+            "runtime_evidence_required": runtime_value,
+            "subsystem": "simulation" if runtime_value == "optional" else "docs-config",
+        }
+        assert plan_task["runtime_evidence_required"] in ["optional", "not_needed"]
+        assert "screenshot" not in plan_task["description"].lower()
+
+    def test_game_planner_contract_preserves_non_browser_runtimes_prompt_only(self):
+        prompts_dir = Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "prompts"
+        planner = (prompts_dir / "oracle-planner-prompt.md").read_text(encoding="utf-8")
+        assert "named non-browser runtimes" in planner
+        assert "preserve explicit user choices" in planner
+        assert "Do not add repo Phaser/Vite deps" in planner

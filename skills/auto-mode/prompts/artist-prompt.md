@@ -42,4 +42,6 @@ Include:
 - `manifest`: generation evidence and parameters.
 - `concerns`: limitations, quality concerns, failed jobs, unavailable provider, or unverified acceptance refs.
 
+For game assets, make the manifest additive and runtime-ready: asset_id, kind, output path, pixel size, logical size if used, transparency/background, scale, preview evidence, and concerns. For a sprite sheet/sprite strip include frame_width, frame_height, frame_count, layout columns/rows or strip direction, animation names, fps, loop, origin/anchor, and collision bounds/hitbox when relevant.
+
 Never describe missing files as generated.

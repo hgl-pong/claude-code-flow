@@ -413,8 +413,9 @@ const DESIGN_ARTIFACT_SCHEMA = {
   required: ['status', 'summary', 'artifact_paths'],
 }
 
-const DESIGN_CLASSIFICATION_CRITERIA = `Run design only for explicit UI/UX/frontend visual changes: page, view, component visuals, layout, styling, accessibility interaction, keyboard/focus behavior, visual states, user flow screens, form validation UX, UI copy/content, visual bugfixes, or product UI asset placement.
-Skip backend/API/DB/auth/data-only, CLI/config/docs-only, prompt-workflow, tests, refactor/internal architecture, nonvisual bugfixes, and weak ambiguous component/view/page mentions without explicit visual/interface delta.
+const DESIGN_CLASSIFICATION_CRITERIA = `Run design only for explicit UI/UX/frontend visual changes: page, view, component visuals, layout, styling, accessibility interaction, keyboard/focus behavior, visual states, user flow screens, form validation UX, UI copy/content, visual bugfixes, product UI asset placement, or 2D browser game playable canvas/HUD/menu/control/camera/readability/asset-presentation changes.
+Skip backend/API/DB/auth/data-only, CLI/config/docs-only, prompt-workflow, tests, refactor/internal architecture, nonvisual bugfixes, pure game simulation/rules/data/docs/config/internal work, and weak ambiguous component/view/page mentions without explicit visual/interface delta.
+Mixed game requests should split design-backed visual/playable work from non-design simulation/internal tasks.
 Ambiguous cases default to design_applicable=false with skip_reason starting exactly: Non-UI task:`
 
 function defaultDesignContext(status, skipReason) {
@@ -1325,7 +1326,8 @@ You work independently. If something is unclear:
 2. Write failing test first (for behavior changes)
 3. Implement only what the task specifies — no scope creep
 4. If this task requires art/image assets, read skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py exclusively, verify output files exist, and report manifest/evidence paths. Never claim missing files were generated.
-5. Run tests, verify GREEN
+5. For 2D/browser game tasks, read skills/auto-mode/references/2d-game-workflow.md. Preserve explicit/detected runtime, keep simulation/input/renderer/HUD boundaries when applicable, verify generated asset file existence and preview before manifest/preload wiring, and gather smoke/playtest evidence or list unverified refs/risks.
+6. Run tests, verify GREEN
 6. Commit with: feat(${task.id}): [what you built]
 7. Self-review before reporting (see below)
 
@@ -1620,6 +1622,8 @@ If this is a re-review:
 Inspect controller diff metadata first. Treat files_modified as untrusted. If diff_verified=false, say so and include the limitation. Do not run conflicting scope unless needed to resolve unclear diff evidence.
 
 Read the actual code in the changed files. Evaluate:
+
+For changed game/2D/canvas/Phaser/sprite code, treat these as blockers when introduced by this change: gameplay truth embedded in render loops without rationale, direct device reads in simulation, unserializable save state, scattered raw asset paths outside existing manifest/preload convention, asset wiring before files/previews exist, unrequested engine swap/dependency, dense/a11y HUD forced into canvas without reason, or runnable game completion without valid smoke/playtest evidence or limitation.
 
 Cleanliness:
 - Are names clear and accurate (describe WHAT, not HOW)?
@@ -2598,7 +2602,8 @@ ${designContext && designContext.design_applicable ? `Accepted DESIGN.md: ${desi
 2. Decision principles: YAGNI scope, existing codebase patterns first,
    simplest architecture, match project conventions
 3. Check whether this task requires art/image assets. If yes, include an Asset Requirements section that references skills/auto-mode/references/image-generation.md and records concrete asset briefs, count, size/aspect, quality, output path, and evidence requirements. If no assets are needed, state "Asset Requirements: none".
-4. Write spec to: ${specPath}
+4. For 2D/browser game tasks, read/use skills/auto-mode/references/2d-game-workflow.md. Record runtime choice and compatibility rationale, assumptions, controls, route, camera/readability if relevant, MVP core loop, failure/restart policy, asset policy, smoke/playtest plan, accepted Design mapping when Design ran, and stable acceptance refs. Preserve explicit/detected React/canvas/plain TS/Three/custom or non-browser runtimes; use Phaser + TypeScript + Vite only as prompt-only greenfield default.
+5. Write spec to: ${specPath}
 5. Structure:
 
 \`\`\`markdown
@@ -2721,7 +2726,8 @@ planResult = await agent(
 3. Rules: auto-split independent subsystems; each task completable in one session;
    every spec requirement covered by at least one task
 4. If the spec requires art/image assets, create explicit artist task(s). Artist tasks must reference skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py, list output paths as files, set runtime_evidence_required to required, and verify generated files plus manifest evidence. If no assets are needed, do not create artist tasks.
-5. Format each task as:
+5. For 2D/browser game work, follow skills/auto-mode/references/2d-game-workflow.md. Split data-contract, simulation, input, assets, asset-manifest/preload, renderer, HUD/UI, and playtest tasks where applicable. Include parser-stable lines: Acceptance refs, Runtime evidence required, Risk, Subsystem. Runnable visual/browser game tasks need runtime_evidence_required: required, smoke/playtest verification, and screenshots/logs/artifacts or explicit unverified refs/risks.
+6. Format each task as:
 
 \`\`\`markdown
 ## Task N: [name]
@@ -3535,7 +3541,8 @@ if (isGateAlreadyPassed(GATE_RUNTIME_EVIDENCE, 3)) {
       `Verify the implementation works at runtime.
 1. If this is a runnable project: build and run a smoke test
    (start server, run CLI, etc.), capture exit code/output/crashes
-2. If library/config-only: report as unverifiable (auto-pass)
+2. For runnable browser games: verify build/start, route/page load, render surface/canvas, semantic inputs from acceptance refs, core-loop observation, conditional failure/restart and asset load, console status, crash/hang, and screenshot/log/artifact evidence when tooling permits. Do not clean-pass visual/playtest refs with generic build logs only; list unverified refs and blocking risks instead.
+3. If library/config-only: report as unverifiable only when no runtime acceptance exists (auto-pass)
 Report what you observed.`,
       agentOpts('gate-4-runtime', 'Gates', GATE_RESULT),
     )

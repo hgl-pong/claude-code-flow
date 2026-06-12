@@ -80,7 +80,11 @@ Runtime evidence decision rules:
 
 ## 2D Game Planning
 
-For 2D browser-game requests, default to Phaser unless the spec names another engine. Use `skills/auto-mode/references/2d-game-workflow.md` when it applies. Preserve simulation/renderer boundaries, stable asset manifests, DOM HUD for dense UI, planned artist/image tasks for sprites, and smoke/playtest verification for runnable deliverables.
+For 2D browser-game requests, read and apply `skills/auto-mode/references/2d-game-workflow.md`. Default greenfield ambiguous small 2D browser games to prompt-only Phaser + TypeScript + Vite, but preserve explicit user choices and detected React/canvas/plain TypeScript/Three/custom browser or named non-browser runtimes. Do not add repo Phaser/Vite deps unless the target app plan explicitly requires them.
+
+Plan dependency order where applicable: data-contract, simulation, input map, artist assets, asset manifest/preload, renderer adapter, HUD/UI, playtest evidence. Asset manifest/preload tasks must depend on real file paths from artist tasks; renderer tasks must depend on verified assets/manifest before consuming file assets.
+
+Every runnable visual/browser game task must include parser-stable text fields: `Acceptance refs:`, `Runtime evidence required: required`, `Risk:`, and `Subsystem:`. Use canonical subsystems such as `data-contract`, `simulation`, `input`, `renderer`, `hud-ui`, `assets`, `asset-manifest`, `playtest`, `docs-config`, `review`. Pure simulation tasks should use `optional`; docs/config-only tasks should use `not_needed`. Include smoke/playtest verification and screenshots/logs/artifacts or explicit unverified refs/risks.
 
 ## Self-Review
 

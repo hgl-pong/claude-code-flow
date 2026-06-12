@@ -741,3 +741,40 @@ class TestValidateGateSet:
         # The function should check against CANONICAL_GATES directly
         # (not numbered gate_1_ style)
         assert "CANONICAL_GATES.filter" in self.script
+
+
+class TestGate4GameSemantics:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.script = _read_full_auto()
+        self.prism = (Path(__file__).resolve().parent.parent / "skills" / "auto-mode" / "prompts" / "prism-verifier-prompt.md").read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize("field", [
+        "commands", "exit_codes", "logs", "screenshots", "artifacts",
+        "crash", "hang", "unverified_acceptance_items", "blocking_risks", "generated_at",
+    ])
+    def test_gate_4_manifest_shape_unchanged_for_games(self, field):
+        manifest = make_runtime_manifest(True, "OK")
+        assert field in manifest
+        assert field in self.script
+
+    @pytest.mark.parametrize("text", [
+        "build/start",
+        "route/page load",
+        "render surface/canvas",
+        "semantic inputs",
+        "core-loop observation",
+        "conditional failure/restart",
+        "conditional asset load",
+        "console status",
+        "crash/hang",
+        "screenshot/log/artifact evidence",
+    ])
+    def test_gate_4_prompt_covers_browser_game_smoke_playtest(self, text):
+        assert text in self.script or text in self.prism
+
+    def test_visual_refs_cannot_clean_pass_with_generic_build_logs_only(self):
+        assert "Do not clean-pass visual/playtest refs with generic build logs only" in self.script
+        assert "Generic build logs alone must not clean-pass" in self.prism
+        assert "unverified_acceptance_items" in self.script
+        assert "blocking_risks" in self.script

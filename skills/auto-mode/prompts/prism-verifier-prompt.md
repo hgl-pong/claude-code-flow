@@ -41,7 +41,7 @@ Forbidden test patterns:
 4. Runtime smoke only when runtime evidence is required or materially useful.
 5. Acceptance checklist mapped to evidence.
 
-For runnable work, record command, exit code, crash/hang detection, logs/artifacts/screenshots when applicable, and any unverifiable acceptance items.
+For runnable work, record command, exit code, crash/hang detection, logs/artifacts/screenshots when applicable, and any unverifiable acceptance items. For runnable browser games, verify build/start, route/page load, render surface/canvas, semantic inputs derived from acceptance refs, core-loop observation, conditional failure/restart, conditional asset load, console status, crash/hang, and screenshot evidence when browser tooling permits. Generic build logs alone must not clean-pass visual/playtest refs; put those refs in `unverified_acceptance_items` with `blocking_risks` or `DONE_WITH_CONCERNS` language.
 
 ## Evidence Manifest Support
 

@@ -318,3 +318,82 @@ class TestAuditEventTypesInDocs:
     @pytest.mark.parametrize("event", ["phase_start", "run_complete", "stopped_ask_user", "gate_result", "task_result", "escalation", "review_result"])
     def test_event_type(self, event):
         assert event in self.audit_ref
+
+
+class TestGameWorkflowPromptContracts:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        prompts = AUTO_DIR / "prompts"
+        self.game_ref = _read(GAME_REF)
+        self.planner = _read(prompts / "oracle-planner-prompt.md")
+        self.implementer = _read(prompts / "implementer-prompt.md")
+        self.artist = _read(prompts / "artist-prompt.md")
+        self.prism = _read(prompts / "prism-verifier-prompt.md")
+        self.skill = _read(AUTO_SKILL)
+        self.full_auto = _read(FULL_AUTO)
+
+    @pytest.mark.parametrize("text", [
+        "prompt-only Phaser + TypeScript + Vite",
+        "React/canvas",
+        "plain TypeScript canvas",
+        "Three.js",
+        "named non-browser runtimes",
+        "Detection precedence",
+        "semantic actions",
+        "Preview before wiring",
+        "unverified_acceptance_items",
+        "blocking_risks",
+        "Runtime evidence:",
+    ])
+    def test_2d_game_reference_covers_runtime_and_evidence(self, text):
+        assert text in self.game_ref
+
+    @pytest.mark.parametrize("text", [
+        "data-contract",
+        "asset-manifest",
+        "Runtime evidence required: required",
+        "screenshots/logs/artifacts",
+        "unverified refs/risks",
+    ])
+    def test_planner_game_metadata_contract(self, text):
+        assert text in self.planner
+
+    @pytest.mark.parametrize("text", [
+        "2d-game-workflow.md",
+        "verify output files exist",
+        "previewable artifact",
+        "semantic actions",
+        "smoke/playtest evidence",
+    ])
+    def test_implementer_game_asset_and_runtime_contract(self, text):
+        assert text in self.implementer or text in self.full_auto
+
+    @pytest.mark.parametrize("text", [
+        "sprite sheet",
+        "frame_width",
+        "frame_height",
+        "frame_count",
+        "collision bounds",
+        "preview evidence",
+    ])
+    def test_artist_game_manifest_contract(self, text):
+        assert text in self.artist
+
+    @pytest.mark.parametrize("text", [
+        "render surface/canvas",
+        "semantic inputs",
+        "core-loop observation",
+        "conditional failure/restart",
+        "conditional asset load",
+        "Generic build logs alone must not clean-pass",
+    ])
+    def test_verifier_browser_game_runtime_contract(self, text):
+        assert text in self.prism or text in self.full_auto
+
+    def test_final_summary_runtime_evidence_line(self):
+        assert "Runtime evidence: <commands>; <playtest observation>; artifacts: <screenshots/logs/artifacts or none>; unverified: <refs or none>" in self.skill
+
+    def test_design_classifier_splits_game_visual_from_simulation(self):
+        assert "2D browser game playable canvas/HUD/menu/control" in self.full_auto
+        assert "pure game simulation/rules/data/docs/config/internal work" in self.full_auto
+        assert "Mixed game requests should split" in self.full_auto

@@ -111,6 +111,7 @@ Auto-mode complete. Decision trail at .claude/auto/<task-name>/
   audit_events: <count>
   resume_cursor: <cursor>
   Review: .claude/auto/<task-name>/decisions.md
+  Runtime evidence: <commands>; <playtest observation>; artifacts: <screenshots/logs/artifacts or none>; unverified: <refs or none>
 ```
 
 ## Red Flags
