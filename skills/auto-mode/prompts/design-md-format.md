@@ -2,7 +2,7 @@
 
 `DESIGN.md` is a developer-usable UI/UX design system spec for the optional UI companion path. It is not a pitch, architecture overview, component inventory, or data-model doc. It must be specific enough that an implementation agent can build without guessing.
 
-Create `DESIGN.md` only when UI design work is explicitly dispatched. In full-auto, use the controller-provided path under `.claude/auto/<task>/design/DESIGN.md`; do not create root `DESIGN.md` unless the controller explicitly requests that separate standalone path. Use controller-provided research/evidence paths when present; otherwise summarize design evidence directly in `DESIGN.md`. Do not require a fixed research directory outside that optional path.
+Create root `DESIGN.md` only when UI design work is explicitly dispatched. In full-auto, write `DESIGN.md` at the project root while keeping research/review evidence under controller-provided `.claude/auto/<task>/design/` paths. Use controller-provided research/evidence paths when present; otherwise summarize design evidence directly in `DESIGN.md`. Do not require a fixed research directory outside that optional path.
 
 ## Required Structure
 
@@ -91,7 +91,7 @@ Before reporting done:
 - [ ] Breakpoints state exact layout changes
 - [ ] Accessibility section includes numeric WCAG contrast targets, focus tokens, 44px touch minimums, non-color state indicators, and reduced-motion behavior
 - [ ] Major decisions are traceable back to evidence or task/domain rationale
-- [ ] DESIGN.md saved to the controller-provided path (full-auto: `.claude/auto/<task>/design/DESIGN.md`)
+- [ ] DESIGN.md saved to the project root (full-auto: `DESIGN.md`)
 
 ## Failure Modes
 

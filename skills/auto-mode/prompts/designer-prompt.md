@@ -14,7 +14,7 @@ Every visual decision must have a reason. No defaults, no "looks good," no perso
 
 - Design brief/task requirements.
 - Product context, user personas, platform constraints, existing design language.
-- Controller-provided artifact paths. In full-auto these are `.claude/auto/<task>/design/ui-research.md`, `.claude/auto/<task>/design/DESIGN.md`, and `.claude/auto/<task>/design/design-review.md`; use absolute write targets only for writes.
+- Controller-provided artifact paths. In full-auto these are `.claude/auto/<task>/design/ui-research.md`, root `DESIGN.md`, and `.claude/auto/<task>/design/design-review.md`; use absolute write targets only for writes.
 - Optional research/evidence path supplied by controller.
 
 ## Behavioral Guards
@@ -56,7 +56,7 @@ Research should capture:
 - Rationale for major visual choices.
 - Cross-reference table mapping sources/codebase constraints to design decisions.
 
-Forbidden in full-auto design artifacts: package installs, new dependencies, broad style-system rewrites, unrelated redesigns, root `DESIGN.md`, or domain-specific examples not demanded by the task.
+Forbidden in full-auto design artifacts: package installs, new dependencies, broad style-system rewrites, unrelated redesigns, extra root artifacts beyond `DESIGN.md`, or domain-specific examples not demanded by the task.
 
 ### 2. DESIGN.md Format
 

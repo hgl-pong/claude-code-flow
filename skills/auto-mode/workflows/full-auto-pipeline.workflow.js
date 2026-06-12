@@ -87,7 +87,7 @@ const designSlug = sanitizeDesignSlug(specId || task)
 const designDir = `.claude/auto/${designSlug}/design`
 const designPaths = {
   ui_research: `${designDir}/ui-research.md`,
-  design: `${designDir}/DESIGN.md`,
+  design: 'DESIGN.md',
   design_review: `${designDir}/design-review.md`,
 }
 const designWriteTargets = {
@@ -2502,17 +2502,17 @@ if (!classification.design_applicable) {
   auditEvents.push({ phase: 'design', event: 'phase_complete', design_applicable: false, skip_reason: designContext.skip_reason })
 } else {
   const designArtifact = await agent(
-    `Create full-auto UI/UX design artifacts for this task.\n\n## Task\n${task}\n\n## Research\n${designResearchText}\n\n## Write targets\n- UI research: ${designWriteTargets.ui_research}\n- Design spec: ${designWriteTargets.design}\n- Review placeholder: ${designWriteTargets.design_review}\n\n## Canonical relative paths to report\n${JSON.stringify(designPaths, null, 2)}\n\nWrite only under the controller-provided design directory. Do not create root DESIGN.md. Do not install dependencies or propose a broad style-system rewrite. ui-research.md must include codebase constraints and source/decision traceability. DESIGN.md must cover visual hierarchy, responsive behavior, accessibility, interactions, keyboard/focus, and loading/empty/error/disabled/hover/active/focus states where applicable. design-review.md may start as a brief pending review note.`,
+    `Create full-auto UI/UX design artifacts for this task.\n\n## Task\n${task}\n\n## Research\n${designResearchText}\n\n## Write targets\n- UI research: ${designWriteTargets.ui_research}\n- Design spec: ${designWriteTargets.design}\n- Review placeholder: ${designWriteTargets.design_review}\n\n## Canonical relative paths to report\n${JSON.stringify(designPaths, null, 2)}\n\nWrite ui-research.md and design-review.md under the controller-provided design directory, and write DESIGN.md at the project root. Do not create additional design artifacts outside these controller-provided paths. Do not install dependencies or propose a broad style-system rewrite. ui-research.md must include codebase constraints and source/decision traceability. DESIGN.md must cover visual hierarchy, responsive behavior, accessibility, interactions, keyboard/focus, and loading/empty/error/disabled/hover/active/focus states where applicable. design-review.md may start as a brief pending review note.`,
     agentOpts('write-design', 'Design', DESIGN_ARTIFACT_SCHEMA),
   )
   let designReview = await agent(
-    `Review the design artifacts for implementability and scope.\n\nRead:\n- ${designWriteTargets.ui_research}\n- ${designWriteTargets.design}\n\nWrite latest review notes to ${designWriteTargets.design_review}.\n\nCheck: controller-provided paths only, no root DESIGN.md, no dependencies/package installs, no broad redesign/style-system overhaul, no domain-specific examples, source-backed traceability, codebase feasibility, UI states/interactions/responsive/accessibility coverage. Return REVIEW_SCHEMA.`,
+    `Review the design artifacts for implementability and scope.\n\nRead:\n- ${designWriteTargets.ui_research}\n- ${designWriteTargets.design}\n\nWrite latest review notes to ${designWriteTargets.design_review}.\n\nCheck: DESIGN.md is at the project root, research/review artifacts stay under the controller-provided design directory, no dependencies/package installs, no broad redesign/style-system overhaul, no domain-specific examples, source-backed traceability, codebase feasibility, UI states/interactions/responsive/accessibility coverage. Return REVIEW_SCHEMA.`,
     agentOpts('review-design', 'Design', REVIEW_SCHEMA),
   )
   let designIterations = 0
   while (designReview && !designReview.passed && designIterations < RETRIES && designIterations < REVIEW_RETRY_CAP) {
     await agent(
-      `Revise only ${designWriteTargets.design} to fix these design-review issues. Preserve accepted decisions. Do not edit code, specs, plans, root docs, or files outside the design directory.\n${JSON.stringify(designReview.issues, null, 2)}\n\nReturn a concise text summary after writing the file.`,
+      `Revise only ${designWriteTargets.design} to fix these design-review issues. Preserve accepted decisions. Do not edit code, specs, plans, files other than DESIGN.md, or files outside the design directory.\n${JSON.stringify(designReview.issues, null, 2)}\n\nReturn a concise text summary after writing the file.`,
       { label: `fix-design-r${designIterations + 1}`, phase: 'Design', ...(model_tasks ? { model: model_tasks } : {}) },
     )
     designReview = await agent(

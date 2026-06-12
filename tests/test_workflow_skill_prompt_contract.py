@@ -276,26 +276,26 @@ class TestDesignOptionalContracts:
 
     @pytest.mark.parametrize("text", [
         ".claude/auto/<task>/design/ui-research.md",
-        ".claude/auto/<task>/design/DESIGN.md",
+        "root `DESIGN.md`",
         ".claude/auto/<task>/design/design-review.md",
         "controller-provided", "optional UI/UX companion", "codebase constraints",
         "UX framing", "visual hierarchy", "responsive behavior", "keyboard/focus",
         "Cross-reference table", "package installs", "new dependencies",
-        "broad style-system rewrites", "root `DESIGN.md`",
+        "broad style-system rewrites", "extra root artifacts",
     ])
     def test_designer_uses_controller_paths_and_strong_design_contract(self, text):
         assert text in self.designer
 
     @pytest.mark.parametrize("text", [
-        ".claude/auto/<task>/design/DESIGN.md", "controller-provided path",
+        "project root", "DESIGN.md",
         "loading, empty, error", "edge states", "Decision Traceability",
     ])
     def test_design_format_is_controller_path_ready(self, text):
         assert text in self.format
 
     @pytest.mark.parametrize("text", [
-        ".claude/auto/<task>/design/DESIGN.md", ".claude/auto/<task>/design/ui-research.md",
-        "new dependencies", "root artifacts", "non-UI mandatory design",
+        "root `DESIGN.md`", ".claude/auto/<task>/design/ui-research.md",
+        "new dependencies", "extra root artifacts", "non-UI mandatory design",
         "codebase constraints", "responsive behavior", "visual hierarchy",
     ])
     def test_design_reviewer_blocks_scope_drift(self, text):
