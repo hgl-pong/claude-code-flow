@@ -2359,7 +2359,7 @@ await flowState('event', { type: 'phase_start', phase: 'research' })
 const researchResults = await parallel(
   scope.angles.map(angle => () =>
     agent(
-      `Research this angle for the task. Search the codebase (and web if needed).
+      `Research this angle for the task. Search the codebase first. Use web search or web fetch when the angle depends on current external information, recent library/API behavior, docs, ecosystem conventions, or URLs discovered during research.
 
 ## Task
 
@@ -2372,6 +2372,13 @@ ${scope.strategy}
 ## Your Angle: ${angle.key}
 
 ${angle.question}
+
+## Web Research Guidance
+
+- Use web search for recent information, official docs, release notes, issues, or ecosystem examples when local code is insufficient.
+- Use web fetch to read specific URLs surfaced by search results, existing docs, or the task context.
+- Prefer official/primary sources. Include URLs for external claims.
+- Do not use web tools for secrets, private/internal URLs, or questions fully answerable from the codebase.
 
 Produce detailed findings with file paths, line numbers, or URLs.
 3-5 key insights. Note open questions. Be thorough — your findings

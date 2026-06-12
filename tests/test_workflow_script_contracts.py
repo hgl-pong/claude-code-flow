@@ -126,6 +126,11 @@ class TestFullAutoConstants:
     def test_validate_gate_set_function(self):
         assert "function validateGateSet" in self.script
 
+    def test_research_prompt_mentions_web_search_and_fetch(self):
+        assert "Use web search" in self.script
+        assert "Use web fetch" in self.script
+        assert "Prefer official/primary sources" in self.script
+
 
 # ── execute-plan.workflow.js contract tests ────────────────────────────
 
