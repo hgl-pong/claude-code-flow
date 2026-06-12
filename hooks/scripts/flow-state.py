@@ -29,7 +29,7 @@ from pathlib import Path
 STATE_SCHEMA_VERSION = 1
 
 VALID_PHASES = (
-    "scope", "research", "synthesize_spec", "review_spec",
+    "scope", "research", "design", "synthesize_spec", "review_spec",
     "write_plan", "review_plan", "parse_plan", "execute",
     "gates", "finalize",
 )

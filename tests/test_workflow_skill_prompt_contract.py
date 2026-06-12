@@ -265,6 +265,51 @@ class TestPromptContractMirrors:
         assert text in self.prism
 
 
+class TestDesignOptionalContracts:
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        prompts = AUTO_DIR / "prompts"
+        self.designer = _read(prompts / "designer-prompt.md")
+        self.format = _read(prompts / "design-md-format.md")
+        self.reviewer = _read(prompts / "design-reviewer-prompt.md")
+        self.full_auto = _read(FULL_AUTO)
+
+    @pytest.mark.parametrize("text", [
+        ".claude/auto/<task>/design/ui-research.md",
+        ".claude/auto/<task>/design/DESIGN.md",
+        ".claude/auto/<task>/design/design-review.md",
+        "controller-provided", "optional UI/UX companion", "codebase constraints",
+        "UX framing", "visual hierarchy", "responsive behavior", "keyboard/focus",
+        "Cross-reference table", "package installs", "new dependencies",
+        "broad style-system rewrites", "root `DESIGN.md`",
+    ])
+    def test_designer_uses_controller_paths_and_strong_design_contract(self, text):
+        assert text in self.designer
+
+    @pytest.mark.parametrize("text", [
+        ".claude/auto/<task>/design/DESIGN.md", "controller-provided path",
+        "loading, empty, error", "edge states", "Decision Traceability",
+    ])
+    def test_design_format_is_controller_path_ready(self, text):
+        assert text in self.format
+
+    @pytest.mark.parametrize("text", [
+        ".claude/auto/<task>/design/DESIGN.md", ".claude/auto/<task>/design/ui-research.md",
+        "new dependencies", "root artifacts", "non-UI mandatory design",
+        "codebase constraints", "responsive behavior", "visual hierarchy",
+    ])
+    def test_design_reviewer_blocks_scope_drift(self, text):
+        assert text in self.reviewer
+
+    @pytest.mark.parametrize("text", [
+        "DESIGN_CLASSIFICATION_SCHEMA", "design_applicable", "Non-UI task:",
+        "design-classifier", "write-design", "review-design", "fix-design-r",
+        "ui-research.md", "DESIGN.md", "design-review.md",
+    ])
+    def test_full_auto_has_conditional_design_stage_contract(self, text):
+        assert text in self.full_auto
+
+
 class TestAuditEventTypesInDocs:
     @pytest.fixture(autouse=True)
     def _load(self):

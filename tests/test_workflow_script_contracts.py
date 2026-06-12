@@ -27,7 +27,7 @@ CANONICAL_GATES = [
 ]
 
 PHASE_ORDER = [
-    "scope", "research", "synthesize_spec", "review_spec",
+    "scope", "research", "design", "synthesize_spec", "review_spec",
     "write_plan", "review_plan", "parse_plan", "execute", "gates", "finalize",
 ]
 
@@ -137,6 +137,17 @@ class TestFullAutoConstants:
         assert "skills/auto-mode/references/image-generation.md" in self.script
         assert "scripts/generate-image.py" in self.script
         assert "Never claim missing files were generated" in self.script
+
+    def test_conditional_design_stage_contract(self):
+        for text in [
+            "DESIGN_CLASSIFICATION_SCHEMA", "design_applicable", "skip_reason",
+            "ui_ux_frontend_visual", "non_ui", "Non-UI task:",
+            ".claude/auto", "/design", "ui-research.md", "DESIGN.md", "design-review.md",
+            "backend/API/DB/auth", "CLI/config/docs-only", "prompt-workflow",
+            "REVIEW_RETRY_CAP", "fix-design-r", "review-design-r",
+        ]:
+            assert text in self.script
+        assert "GATE_DESIGN" not in self.script
 
 
 # ── execute-plan.workflow.js contract tests ────────────────────────────

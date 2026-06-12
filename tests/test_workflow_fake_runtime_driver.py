@@ -57,7 +57,7 @@ CANONICAL_GATES = [
 ]
 
 VALID_PHASES = (
-    "scope", "research", "synthesize_spec", "review_spec",
+    "scope", "research", "design", "synthesize_spec", "review_spec",
     "write_plan", "review_plan", "parse_plan", "execute",
     "gates", "finalize",
 )
@@ -236,8 +236,19 @@ class TestFullAutoPhaseTransition:
         # revision: 0 init, +1 event, +1 update = 2
         assert state["revision"] >= 1
 
-        # Phase: research -> synthesize_spec
+        # Phase: research -> design -> synthesize_spec
         _append_event(state_file, "phase_start", {"phase": "research"})
+        state = _update_state(state_file, {
+            "phase": "design",
+            "design": {
+                "design_applicable": False,
+                "status": "skipped",
+                "skip_reason": "Non-UI task: no frontend visual change requested. Design stage skipped to avoid retrofitting UI/UX work.",
+            },
+        })
+        assert state["phase"] == "design"
+        assert state["design"]["design_applicable"] is False
+
         state = _update_state(state_file, {
             "phase": "synthesize_spec",
             "spec_path": ".claude/specs/lifecycle.md",
@@ -530,6 +541,14 @@ class TestResumeCursorMapping:
         fs.cmd_resume(args)
         out = json.loads(capsys.readouterr().out)
         assert out["next_entrypoint"] == "resume_gates"
+
+    def test_design_phase_maps_to_resume_design(self, tmp_path, capsys):
+        state_file, _ = _init_run(tmp_path, task_name="resume-design")
+        _update_state(state_file, {"phase": "design"})
+        args = _ArgNamespace(state_file=state_file)
+        fs.cmd_resume(args)
+        out = json.loads(capsys.readouterr().out)
+        assert out["next_entrypoint"] == "resume_design"
 
     def test_stopped_ask_user_maps_to_resume_from_user_block(self, tmp_path, capsys):
         state_file, _ = _init_run(tmp_path, task_name="resume-ask")
@@ -1330,10 +1349,16 @@ class TestFullLifecycleIntegration:
         assert state["status"] == "ACTIVE"
 
         # Phase transitions with events
-        for phase in ["research", "synthesize_spec", "write_plan", "parse_plan", "execute"]:
+        for phase in ["research", "design", "synthesize_spec", "write_plan", "parse_plan", "execute"]:
             _append_event(state_file, "phase_start", {"phase": phase})
             patch = {"phase": phase}
-            if phase == "synthesize_spec":
+            if phase == "design":
+                patch["design"] = {
+                    "design_applicable": False,
+                    "status": "skipped",
+                    "skip_reason": "Non-UI task: no frontend visual change requested. Design stage skipped to avoid retrofitting UI/UX work.",
+                }
+            elif phase == "synthesize_spec":
                 patch["spec_path"] = ".claude/specs/e2e.md"
             elif phase == "write_plan":
                 patch["plan_path"] = ".claude/plans/e2e.md"

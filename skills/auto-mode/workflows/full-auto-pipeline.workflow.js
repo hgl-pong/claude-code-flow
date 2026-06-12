@@ -1,5 +1,5 @@
 ﻿// Invoked by the auto-mode dynamic workflow for the full-auto pipeline mode.
-// Orchestrates: scope → research → synthesize spec → review spec → write plan →
+// Orchestrates: scope → research → optional design → synthesize spec → review spec → write plan →
 // review plan → parse plan → execute → gates.
 //
 // See SKILL.md for launch instructions.
@@ -7,7 +7,7 @@
 export const meta = {
   name: 'full-auto-pipeline',
   description:
-    'Full auto-mode pipeline: research → spec → plan review → parse plan → execute → gates',
+    'Full auto-mode pipeline: research → optional design → spec → plan review → parse plan → execute → gates',
   args_schema: {
     state_file: { type: 'string', description: 'Path to state.json for this run' },
     audit_dir: { type: 'string', description: 'Directory for audit event logs' },
@@ -40,6 +40,7 @@ export const meta = {
   phases: [
     { title: 'Scope', detail: 'Determine research angles' },
     { title: 'Research', detail: 'Parallel research per angle' },
+    { title: 'Design', detail: 'Conditionally create UI/UX design artifacts' },
     { title: 'Synthesize Spec', detail: 'Write .claude/specs/' },
     { title: 'Review Spec', detail: 'Adversarial spec review' },
     { title: 'Write Plan', detail: 'Decompose spec into tasks' },
@@ -82,15 +83,37 @@ const specId = task
   .slice(0, 60)
 const specPath = `${specs_dir}/${specId}.md`
 const planPath = `${plans_dir}/${specId}-plan.md`
+const designSlug = sanitizeDesignSlug(specId || task)
+const designDir = `.claude/auto/${designSlug}/design`
+const designPaths = {
+  ui_research: `${designDir}/ui-research.md`,
+  design: `${designDir}/DESIGN.md`,
+  design_review: `${designDir}/design-review.md`,
+}
+const designWriteTargets = {
+  ui_research: worktree ? `${worktree}/${designPaths.ui_research}` : designPaths.ui_research,
+  design: worktree ? `${worktree}/${designPaths.design}` : designPaths.design,
+  design_review: worktree ? `${worktree}/${designPaths.design_review}` : designPaths.design_review,
+}
 
 const RETRIES = max_retries || 5
 const REVIEW_RETRY_CAP = (retry_policy && retry_policy.review_cap) || REVIEW_RETRY_CAP_DEFAULT
 const GATE_RETRIES = (retry_policy && retry_policy.gate_retries) || GATE_RETRY_CAP_DEFAULT
 
 const PHASE_ORDER = [
-  'scope', 'research', 'synthesize_spec', 'review_spec',
+  'scope', 'research', 'design', 'synthesize_spec', 'review_spec',
   'write_plan', 'review_plan', 'parse_plan', 'execute', 'gates', 'finalize',
 ]
+
+function sanitizeDesignSlug(value) {
+  let slug = String(value || '').toLowerCase().trim()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (!slug || slug === '.' || slug === '..') slug = 'unnamed'
+  if (['con', 'prn', 'aux', 'nul', 'com1', 'lpt1'].includes(slug)) slug = `task-${slug}`
+  return slug.slice(0, 60).replace(/-+$/g, '') || 'unnamed'
+}
 
 // ── Resume from state ─────────────────────────────────────────────────
 // When resume_from is provided, determine which phases to skip based on cursor.
@@ -122,6 +145,7 @@ let parsed = {
   tasks: resumeSummary.tasks || {},
 }
 let executeResult = resumeSummary.execute_result || { completed: [], blocked: [], final_review: null }
+let designContext = (resumeCursor && resumeCursor.design) || (resumeSummary && resumeSummary.design) || defaultDesignContext('not_run', 'Non-UI task: design stage has not run yet. Design stage skipped to avoid retrofitting UI/UX work.')
 if (resumeTaskReplay.length && Object.keys(parsed.tasks).length === 0) {
   parsed.tasks = Object.fromEntries(resumeTaskReplay.map(id => [id, { id, description: `Replayed task ${id}` }]))
 }
@@ -356,6 +380,62 @@ const RESEARCH_SCHEMA = {
     open_questions: { type: 'array', items: { type: 'string' } },
   },
   required: ['angle', 'findings', 'key_insights'],
+}
+
+const DESIGN_CLASSIFICATION_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: {
+    design_applicable: { type: 'boolean' },
+    classification: { type: 'string', enum: ['ui_ux_frontend_visual', 'non_ui'] },
+    confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+    evidence: { type: 'array', items: { type: 'string' } },
+    skip_reason: { type: 'string' },
+  },
+  required: ['design_applicable', 'classification', 'confidence', 'evidence', 'skip_reason'],
+}
+
+const DESIGN_ARTIFACT_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: {
+    status: { type: 'string', enum: ['DONE', 'BLOCKED'] },
+    summary: { type: 'string' },
+    artifact_paths: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        ui_research: { type: 'string' },
+        design: { type: 'string' },
+        design_review: { type: 'string' },
+      },
+      required: ['ui_research', 'design', 'design_review'],
+    },
+    blocker_detail: { type: 'string' },
+  },
+  required: ['status', 'summary', 'artifact_paths'],
+}
+
+const DESIGN_CLASSIFICATION_CRITERIA = `Run design only for explicit UI/UX/frontend visual changes: page, view, component visuals, layout, styling, accessibility interaction, keyboard/focus behavior, visual states, user flow screens, form validation UX, UI copy/content, visual bugfixes, or product UI asset placement.
+Skip backend/API/DB/auth/data-only, CLI/config/docs-only, prompt-workflow, tests, refactor/internal architecture, nonvisual bugfixes, and weak ambiguous component/view/page mentions without explicit visual/interface delta.
+Ambiguous cases default to design_applicable=false with skip_reason starting exactly: Non-UI task:`
+
+function defaultDesignContext(status, skipReason) {
+  return {
+    status: status || 'skipped',
+    design_applicable: false,
+    classification: 'non_ui',
+    confidence: 'low',
+    evidence: [],
+    skip_reason: skipReason || 'Non-UI task: no explicit UI/UX/frontend visual change requested. Design stage skipped to avoid retrofitting UI/UX work.',
+    paths: designPaths,
+  }
+}
+
+function normalizeDesignClassification(result) {
+  if (!result || typeof result.design_applicable !== 'boolean') return null
+  if (result.design_applicable && result.classification !== 'ui_ux_frontend_visual') return null
+  if (!result.design_applicable && result.classification !== 'non_ui') return null
+  if (!result.design_applicable && !String(result.skip_reason || '').startsWith('Non-UI task:')) return null
+  if (result.design_applicable && (!Array.isArray(result.evidence) || result.evidence.length === 0)) return null
+  return result
 }
 
 const SPEC_SCHEMA = {
@@ -2395,7 +2475,88 @@ await flowState('update', { phase: 'research' })
 auditEvents.push({ phase: 'research', event: 'phase_complete', findings: allFindings.length })
 } // end research skip guard
 
-// ── Phase 3: Synthesize Spec ─────────────────────────────────────────
+// ── Phase 3: Design (conditional UI companion) ────────────────────────
+// Resume: if design already completed, skip entirely.
+
+if (shouldSkipPhase('design')) {
+  log('Phase: Design — SKIPPED (resume)')
+  auditEvents.push({ phase: 'design', event: 'phase_skipped', reason: 'resume' })
+} else {
+phase('Design')
+await flowState('event', { type: 'phase_start', phase: 'design' })
+const designResearchText = allFindings.map(r => `## ${r.angle}\n\n${r.findings}`).join('\n\n---\n\n')
+let classification = normalizeDesignClassification(await agent(
+  `Classify whether this task needs the optional full-auto design stage.\n\n## Task\n${task}\n\n## Research\n${designResearchText}\n\n## Criteria\n${DESIGN_CLASSIFICATION_CRITERIA}\n\nReturn design_applicable=true only for explicit UI/UX/frontend visual changes. Otherwise return false and a skip_reason starting exactly with "Non-UI task:". Do not infer design work just because it could improve polish.`,
+  agentOpts('design-classifier', 'Design', DESIGN_CLASSIFICATION_SCHEMA),
+))
+
+if (!classification) {
+  classification = defaultDesignContext('skipped', 'Non-UI task: design classifier returned invalid or contradictory output. Design stage skipped to avoid retrofitting UI/UX work.')
+  auditEvents.push({ phase: 'design', event: 'design_classifier_invalid' })
+}
+
+if (!classification.design_applicable) {
+  designContext = { ...defaultDesignContext('skipped', classification.skip_reason), ...classification, status: 'skipped', paths: designPaths }
+  await flowState('update', { phase: 'design', design: designContext,
+    resume_cursor: { phase: 'design', design: designContext } })
+  auditEvents.push({ phase: 'design', event: 'phase_complete', design_applicable: false, skip_reason: designContext.skip_reason })
+} else {
+  const designArtifact = await agent(
+    `Create full-auto UI/UX design artifacts for this task.\n\n## Task\n${task}\n\n## Research\n${designResearchText}\n\n## Write targets\n- UI research: ${designWriteTargets.ui_research}\n- Design spec: ${designWriteTargets.design}\n- Review placeholder: ${designWriteTargets.design_review}\n\n## Canonical relative paths to report\n${JSON.stringify(designPaths, null, 2)}\n\nWrite only under the controller-provided design directory. Do not create root DESIGN.md. Do not install dependencies or propose a broad style-system rewrite. ui-research.md must include codebase constraints and source/decision traceability. DESIGN.md must cover visual hierarchy, responsive behavior, accessibility, interactions, keyboard/focus, and loading/empty/error/disabled/hover/active/focus states where applicable. design-review.md may start as a brief pending review note.`,
+    agentOpts('write-design', 'Design', DESIGN_ARTIFACT_SCHEMA),
+  )
+  let designReview = await agent(
+    `Review the design artifacts for implementability and scope.\n\nRead:\n- ${designWriteTargets.ui_research}\n- ${designWriteTargets.design}\n\nWrite latest review notes to ${designWriteTargets.design_review}.\n\nCheck: controller-provided paths only, no root DESIGN.md, no dependencies/package installs, no broad redesign/style-system overhaul, no domain-specific examples, source-backed traceability, codebase feasibility, UI states/interactions/responsive/accessibility coverage. Return REVIEW_SCHEMA.`,
+    agentOpts('review-design', 'Design', REVIEW_SCHEMA),
+  )
+  let designIterations = 0
+  while (designReview && !designReview.passed && designIterations < RETRIES && designIterations < REVIEW_RETRY_CAP) {
+    await agent(
+      `Revise only ${designWriteTargets.design} to fix these design-review issues. Preserve accepted decisions. Do not edit code, specs, plans, root docs, or files outside the design directory.\n${JSON.stringify(designReview.issues, null, 2)}\n\nReturn a concise text summary after writing the file.`,
+      { label: `fix-design-r${designIterations + 1}`, phase: 'Design', ...(model_tasks ? { model: model_tasks } : {}) },
+    )
+    designReview = await agent(
+      `Re-review the design. Read ${designWriteTargets.ui_research}, ${designWriteTargets.design}, and ${designWriteTargets.design_review}. Verify prior issues are fixed; do not trust the revision summary.\n${JSON.stringify(designReview.issues, null, 2)}`,
+      agentOpts(`review-design-r${designIterations + 1}`, 'Design', REVIEW_SCHEMA),
+    )
+    designIterations++
+  }
+  if (!designReview || !designReview.passed) {
+    await flowState('update', { status: 'STOPPED_ASK_USER', phase: 'design',
+      resume_cursor: { phase: 'design', design_status: 'needs_user', iteration: designIterations, paths: designPaths } })
+    auditEvents.push({ phase: 'design', event: 'stopped_ask_user', design_applicable: true, iterations: designIterations })
+    return {
+      status: 'STOPPED_ASK_USER',
+      spec: { path: null, review_passed: false },
+      plan: { path: null, review_passed: false, task_count: 0 },
+      execute: { completed: [], blocked: [] },
+      gates: [],
+      all_passed: false,
+      state_file: state_file || null,
+      audit_events: auditEvents,
+      evidence_dir: evidence_dir || null,
+      resume_cursor: { phase: 'design', design_status: 'needs_user', iteration: designIterations, paths: designPaths },
+    }
+  }
+  designContext = {
+    status: 'accepted',
+    design_applicable: true,
+    classification: 'ui_ux_frontend_visual',
+    confidence: classification.confidence,
+    evidence: classification.evidence,
+    skip_reason: '',
+    paths: designPaths,
+    summary: (designArtifact && designArtifact.summary) || designReview.summary,
+    review_passed: true,
+    iteration: designIterations,
+  }
+  await flowState('update', { phase: 'design', design: designContext,
+    resume_cursor: { phase: 'design', design: designContext } })
+  auditEvents.push({ phase: 'design', event: 'phase_complete', design_applicable: true, paths: designPaths })
+}
+} // end design skip guard
+
+// ── Phase 4: Synthesize Spec ─────────────────────────────────────────
 // Resume: if synthesize_spec already completed, skip entirely.
 
 if (shouldSkipPhase('synthesize_spec')) {
@@ -2426,6 +2587,10 @@ ${researchText}
 ## Open Questions — resolve with best-guess defaults
 
 ${openQuestionsText || 'None'}
+
+## Design Context
+
+${designContext && designContext.design_applicable ? `Accepted DESIGN.md: ${designContext.paths.design}\nUI research: ${designContext.paths.ui_research}\nDesign review: ${designContext.paths.design_review}\nSummary: ${designContext.summary || 'Accepted design artifacts available'}\nUse these artifacts for UI/UX requirements and implementation constraints.` : `Design stage skipped. ${designContext && designContext.skip_reason ? designContext.skip_reason : 'Do not invent UI/UX requirements unless the task itself requires them.'}`}
 
 ## Instructions
 
@@ -2550,7 +2715,8 @@ planResult = await agent(
   `Decompose the spec into an implementation plan. Write to ${planPath}.
 
 1. Read the spec at ${spec.spec_path}
-2. Break into atomic tasks. Each task: distinct files, clear description,
+2. If accepted design context exists, read ${designContext && designContext.design_applicable ? designContext.paths.design : 'no DESIGN.md — design skipped'} and preserve those UI constraints; if design was skipped, do not create design tasks.
+3. Break into atomic tasks. Each task: distinct files, clear description,
    implementation details, depends_on list, verification command
 3. Rules: auto-split independent subsystems; each task completable in one session;
    every spec requirement covered by at least one task
@@ -2609,8 +2775,8 @@ while (!planReview.passed && planIterations < RETRIES && planIterations < REVIEW
   await agent(
     `Fix the plan at ${planResult.plan_path}:
 ${JSON.stringify(planReview.issues, null, 2)}
-Read plan and spec. Edit only what the issues describe.`,
-    agentOpts(`fix-plan-r${planIterations + 1}`, 'Review Plan', { type: 'object' }),
+Read plan and spec. Edit only what the issues describe. Return a concise text summary after writing the file.`,
+    { label: `fix-plan-r${planIterations + 1}`, phase: 'Review Plan', ...(model_tasks ? { model: model_tasks } : {}) },
   )
   planReview = await agent(
     `Re-review the plan. Verify these issues are fixed:
@@ -3494,8 +3660,9 @@ This review covers ALL tasks collectively.`,
     while (!passed && iters < GATE_RETRIES) {
       await agent(
         `Fix these final review issues: ${detail}
-Minimal fixes — do not refactor.`,
-        agentOpts(`fix-final-r${iters + 1}`, 'Gates', { type: 'object' }),
+Minimal fixes — do not refactor.
+Return a concise text summary after writing the file.`,
+        { label: `fix-final-r${iters + 1}`, phase: 'Gates', ...(model_tasks ? { model: model_tasks } : {}) },
       )
       const re = await agent(
         'Re-review: verify previous issues fixed. No new issues.',
@@ -3574,6 +3741,7 @@ const finalResumeCursor = {
   gate_states: gateStates,
   spec_path: spec.spec_path,
   plan_path: planResult.plan_path,
+  design: designContext,
 }
 
 await flowState('update', {
@@ -3595,5 +3763,6 @@ return {
   audit_events: auditEvents,
   evidence_dir: evidence_dir || null,
   resume_cursor: finalResumeCursor,
+  design: designContext,
 }
 

@@ -7,8 +7,8 @@ Use this template for optional UI companion review of `DESIGN.md`. This is not a
 ## Inputs
 
 - Design brief/task or spec excerpt.
-- `DESIGN.md` path, usually project root.
-- Optional UI research/evidence path supplied by controller. If absent, review the research summary embedded in `DESIGN.md` and report the limitation.
+- `DESIGN.md` path supplied by the controller. In full-auto this is `.claude/auto/<task>/design/DESIGN.md`; do not require or create root `DESIGN.md`.
+- Optional UI research/evidence path supplied by controller, usually `.claude/auto/<task>/design/ui-research.md`. If absent, review the research summary embedded in `DESIGN.md` and report the limitation.
 
 ## Review Requirements
 
@@ -42,7 +42,8 @@ Use this template for optional UI companion review of `DESIGN.md`. This is not a
 
 8. **Scope discipline**
    - Design covers the requested feature/page only.
-   - No unrelated redesigns, speculative surfaces, or broad design-system expansion beyond the task.
+   - No unrelated redesigns, speculative surfaces, broad design-system expansion beyond the task, package installs, new dependencies, root artifacts, non-UI mandatory design, or domain-specific examples.
+   - Design must be feasible within existing codebase constraints and must cover relevant UI states, interactions, keyboard/focus behavior, responsive behavior, accessibility, and visual hierarchy.
 
 ## Status Values
 
