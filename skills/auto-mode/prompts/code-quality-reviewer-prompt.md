@@ -47,14 +47,16 @@ Do not re-litigate requirements unless spec-review missed an unresolved requirem
 - Are tests meaningful rather than framework-only/mocked false confidence?
 - Are broad config changes, renames, deletes, or unrelated files justified?
 
-## 2D Game Checks When Applicable
+## Browser Game Checks When Applicable
 
+- Chosen 2D/3D stack matches request and detected app; no unrequested engine swap/dependency.
 - Simulation and renderer responsibilities are separated.
-- Phaser scenes orchestrate rendering/input but do not own gameplay rules.
-- DOM HUD/menu surfaces are used for dense text and accessibility-sensitive controls.
+- Phaser/Three/R3F scenes orchestrate rendering/input but do not own gameplay rules without rationale.
+- DOM HUD/menu surfaces are used for dense text and accessibility-sensitive controls; canvas/WebGL chrome does not obscure play.
 - Asset references stay behind a stable asset manifest.
 - Sprite/image generation is delegated to claude-code-flow:image-generation, not a duplicate provider path.
 - Playtest/smoke evidence exists for runnable game changes, or unverifiable runtime acceptance is called out.
+- 3D changes cover camera/readability/resize/asset loading concerns when relevant.
 
 ## Structured Output Tolerance
 

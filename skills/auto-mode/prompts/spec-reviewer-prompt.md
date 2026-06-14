@@ -91,11 +91,13 @@ For fix re-review, return normal `REVIEW_RESULT` fields plus:
 
 If no new diff is available, set `diff_verified=false`, describe the limitation, and do not infer fixes from claims alone. If fixes touch completed-task files and stale prior evidence, list that in `scope_concerns`.
 
-## 2D Game Checks When Applicable
+## Browser Game Checks When Applicable
 
-- Phaser scenes stay thin; gameplay rules live in simulation code, not renderer callbacks.
-- Saveable state is serializable simulation state, not sprites/tweens/cameras/DOM nodes.
-- Dense HUD/menu/settings/inventory surfaces use DOM unless the spec requires canvas UI.
+- Chosen 2D/3D stack matches request and detected app; no unrequested engine swap/dependency.
+- Renderer scenes stay thin; gameplay rules live in simulation code, not renderer callbacks, unless tiny-MVP engine physics is explicitly justified.
+- Saveable state is serializable simulation state, not sprites/tweens/cameras/DOM/WebGL nodes.
+- Dense HUD/menu/settings/inventory surfaces use DOM unless the spec requires canvas/WebGL UI.
 - Asset paths go through a stable manifest layer.
 - Sprite/image work goes through claude-code-flow:image-generation and only existing output files are wired.
 - Runnable game changes include smoke/playtest evidence or an explicit unverifiable note.
+- 3D changes cover camera/readability/resize/asset loading concerns when relevant.

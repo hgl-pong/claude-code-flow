@@ -1442,3 +1442,135 @@ class TestFullLifecycleIntegration:
         manifest = json.loads((run_dir / "evidence" / "manifest.json").read_text())
         assert manifest["summary"]["total"] == 2
         assert state["evidence_summary"]["total"] == 2
+
+    def test_browser_game_development_lifecycle_requires_design_docs_and_playtest_evidence(self, tmp_path, capsys):
+        """Simulate new browser-game work from planning docs through playtest evidence."""
+        state_file, state = _init_run(tmp_path, task_name="make-a-2d-browser-game")
+        run_dir = Path(state_file).parent
+
+        # Scope/research classify this as new game development, not a narrow bugfix.
+        _append_event(state_file, "phase_start", {"phase": "scope", "task_kind": "new_browser_game"})
+        state = _update_state(state_file, {
+            "phase": "design",
+            "design": {
+                "design_applicable": True,
+                "status": "accepted",
+                "classification": "ui_ux_frontend_visual",
+                "evidence": ["new playable canvas", "HUD", "controls", "asset presentation"],
+                "paths": {"design": "DESIGN.md"},
+            },
+        })
+        assert state["design"]["design_applicable"] is True
+
+        # Spec must call for lightweight game-design docs before implementation.
+        spec_path = run_dir / "spec.md"
+        spec_path.write_text(
+            "\n".join([
+                "# Spec: 2D Browser Game",
+                "Runtime: prompt-only Phaser + TypeScript + Vite",
+                "Required docs: GAME_DESIGN.md, MECHANICS_SPEC.md, CONTENT_PLAN.md, UX_PLAYTEST_PLAN.md, ASSET_BRIEF.md",
+                "Acceptance: AC-1 boot route /, AC-2 player moves via semantic input, AC-3 core loop visible, AC-4 screenshot evidence",
+            ]),
+            encoding="utf-8",
+        )
+        state = _update_state(state_file, {"phase": "synthesize_spec", "spec_path": str(spec_path)})
+        spec_text = spec_path.read_text(encoding="utf-8")
+        for doc in ["GAME_DESIGN.md", "MECHANICS_SPEC.md", "CONTENT_PLAN.md", "UX_PLAYTEST_PLAN.md", "ASSET_BRIEF.md"]:
+            assert doc in spec_text
+
+        # Plan orders game-design docs before implementation and playtest tasks.
+        plan_tasks = {
+            "task-1": {
+                "status": "queued",
+                "subsystem": "game-design",
+                "files": ["GAME_DESIGN.md", "MECHANICS_SPEC.md", "CONTENT_PLAN.md", "UX_PLAYTEST_PLAN.md", "ASSET_BRIEF.md"],
+                "acceptance_refs": ["AC-1", "AC-2", "AC-3", "AC-4"],
+                "runtime_evidence_required": "not_needed",
+                "depends_on": [],
+            },
+            "task-2": {
+                "status": "queued",
+                "subsystem": "simulation",
+                "depends_on": ["task-1"],
+                "acceptance_refs": ["AC-2", "AC-3"],
+                "runtime_evidence_required": "optional",
+            },
+            "task-3": {
+                "status": "queued",
+                "subsystem": "renderer",
+                "depends_on": ["task-1", "task-2"],
+                "acceptance_refs": ["AC-1", "AC-2", "AC-3"],
+                "runtime_evidence_required": "required",
+            },
+            "task-4": {
+                "status": "queued",
+                "subsystem": "playtest",
+                "depends_on": ["task-3"],
+                "acceptance_refs": ["AC-1", "AC-2", "AC-3", "AC-4"],
+                "runtime_evidence_required": "required",
+            },
+        }
+        state = _update_state(state_file, {
+            "phase": "execute",
+            "groups": [["task-1"], ["task-2"], ["task-3"], ["task-4"]],
+            "task_states": plan_tasks,
+            "progress": {"tasks_passed": 0, "tasks_total": 4, "gates_passed": 0, "gates_total": 7},
+        })
+        assert state["groups"] == [["task-1"], ["task-2"], ["task-3"], ["task-4"]]
+        assert state["task_states"]["task-2"]["depends_on"] == ["task-1"]
+        assert state["task_states"]["task-4"]["runtime_evidence_required"] == "required"
+
+        # Simulate completed tasks with runtime artifacts required for visual/browser acceptance.
+        for doc in ["GAME_DESIGN.md", "MECHANICS_SPEC.md", "CONTENT_PLAN.md", "UX_PLAYTEST_PLAN.md", "ASSET_BRIEF.md"]:
+            (run_dir / doc).write_text(f"# {doc}\nAcceptance-linked game planning.\n", encoding="utf-8")
+        _update_state(state_file, {
+            "task_states": {tid: {**task, "status": "passed", "attempts": 1} for tid, task in plan_tasks.items()},
+            "progress": {"tasks_passed": 4, "tasks_total": 4, "gates_passed": 0, "gates_total": 7},
+            "runtime_verification": {
+                "status": "passed",
+                "route_loaded": "/",
+                "render_surface": "canvas",
+                "semantic_inputs": ["move_left", "move_right", "jump"],
+                "core_loop_observed": True,
+                "screenshot": "evidence/game-smoke.png",
+                "crash_detected": False,
+                "hang_detected": False,
+                "unverified_acceptance_items": [],
+                "blocking_risks": [],
+            },
+        })
+
+        args = _ArgNamespace(
+            state_file=state_file,
+            patch_json=json.dumps({
+                "artifacts": [
+                    {"name": "GAME_DESIGN.md", "type": "spec", "status": "passed", "task_id": "task-1"},
+                    {"name": "UX_PLAYTEST_PLAN.md", "type": "spec", "status": "passed", "task_id": "task-1"},
+                    {"name": "game-smoke.png", "type": "screenshot", "status": "passed", "task_id": "task-4"},
+                    {"name": "console.log", "type": "log", "status": "passed", "task_id": "task-4"},
+                ],
+            }),
+        )
+        fs.cmd_manifest(args)
+        capsys.readouterr()
+
+        # Gates can only pass after game planning docs and browser playtest evidence exist.
+        state = json.loads(Path(state_file).read_text())
+        assert state["runtime_verification"]["render_surface"] == "canvas"
+        assert state["runtime_verification"]["core_loop_observed"] is True
+        assert state["runtime_verification"]["unverified_acceptance_items"] == []
+        assert state["evidence_summary"]["by_type"]["screenshot"] == 1
+
+        _update_state(state_file, {
+            "phase": "gates",
+            "gate_states": [{"gate": g, "passed": True, "iterations": 1} for g in CANONICAL_GATES],
+            "progress": {"tasks_passed": 4, "tasks_total": 4, "gates_passed": 7, "gates_total": 7},
+        })
+        state = _update_state(state_file, {"phase": "finalize", "status": "DONE"})
+        assert state["status"] == "DONE"
+
+        args = _ArgNamespace(state_file=state_file)
+        code = fs.cmd_validate(args)
+        out = json.loads(capsys.readouterr().out)
+        assert code == 0, f"Validation failed: {out.get('errors', [])}"
+        assert out["ok"] is True

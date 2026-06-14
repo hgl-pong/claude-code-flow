@@ -10,7 +10,6 @@ AUTO_DIR = SKILLS_DIR / "auto-mode"
 AUTO_SKILL = AUTO_DIR / "SKILL.md"
 AUDIT_TRAIL_REF = AUTO_DIR / "references" / "audit-trail.md"
 IMAGE_REF = AUTO_DIR / "references" / "image-generation.md"
-GAME_REF = AUTO_DIR / "references" / "2d-game-workflow.md"
 ARTIST_PROMPT = AUTO_DIR / "prompts" / "artist-prompt.md"
 FULL_AUTO = AUTO_DIR / "workflows" / "full-auto-pipeline.workflow.js"
 EXECUTE_PLAN = FULL_AUTO  # consolidated into single file
@@ -44,7 +43,7 @@ class TestDocFilesExist:
 
     def test_folded_refs_exist(self):
         assert IMAGE_REF.exists()
-        assert GAME_REF.exists()
+        assert FULL_AUTO.exists()
 
     def test_artist_prompt_exists(self):
         assert ARTIST_PROMPT.exists()
@@ -157,10 +156,10 @@ class TestFoldedCapabilities:
     def _load(self):
         self.auto_skill = _read(AUTO_SKILL)
         self.image_ref = _read(IMAGE_REF)
-        self.game_ref = _read(GAME_REF)
+        self.full_auto = _read(FULL_AUTO)
         self.artist_prompt = _read(ARTIST_PROMPT)
 
-    @pytest.mark.parametrize("text", ["image-generation.md", "2d-game-workflow.md", "image generation", "sprite"])
+    @pytest.mark.parametrize("text", ["image-generation.md", "dynamic browser-game workflow contract", "image generation", "sprite"])
     def test_auto_mode_links_folded_capabilities(self, text):
         assert text in self.auto_skill
 
@@ -172,9 +171,9 @@ class TestFoldedCapabilities:
     def test_artist_prompt_contract(self, text):
         assert text in self.artist_prompt
 
-    @pytest.mark.parametrize("text", ["Phaser", "simulation", "renderer", "DOM", "asset", "image-generation.md", "playtest"])
-    def test_2d_game_guidance(self, text):
-        assert text in self.game_ref
+    @pytest.mark.parametrize("text", ["Phaser", "simulation", "renderer", "DOM", "asset", "image-generation.md", "playtest", "React Three Fiber", "GLB/glTF", "GAME_DESIGN.md", "MECHANICS_SPEC.md", "CONTENT_PLAN.md", "UX_PLAYTEST_PLAN.md", "ASSET_BRIEF.md"])
+    def test_browser_game_guidance(self, text):
+        assert text in self.full_auto
 
 
 class TestReviewPromptContracts:
@@ -324,7 +323,6 @@ class TestGameWorkflowPromptContracts:
     @pytest.fixture(autouse=True)
     def _load(self):
         prompts = AUTO_DIR / "prompts"
-        self.game_ref = _read(GAME_REF)
         self.planner = _read(prompts / "oracle-planner-prompt.md")
         self.implementer = _read(prompts / "implementer-prompt.md")
         self.artist = _read(prompts / "artist-prompt.md")
@@ -340,13 +338,16 @@ class TestGameWorkflowPromptContracts:
         "named non-browser runtimes",
         "Detection precedence",
         "semantic actions",
-        "Preview before wiring",
+        "preview before manifest/preload wiring",
         "unverified_acceptance_items",
         "blocking_risks",
         "Runtime evidence:",
+        "Game design planning",
+        "GAME_DESIGN.md",
+        "UX_PLAYTEST_PLAN.md",
     ])
-    def test_2d_game_reference_covers_runtime_and_evidence(self, text):
-        assert text in self.game_ref
+    def test_browser_game_contract_covers_runtime_and_evidence(self, text):
+        assert text in self.full_auto
 
     @pytest.mark.parametrize("text", [
         "data-contract",
@@ -359,7 +360,7 @@ class TestGameWorkflowPromptContracts:
         assert text in self.planner
 
     @pytest.mark.parametrize("text", [
-        "2d-game-workflow.md",
+        "dynamic browser-game workflow contract",
         "verify output files exist",
         "previewable artifact",
         "semantic actions",

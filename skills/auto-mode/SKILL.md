@@ -69,7 +69,7 @@ No post-pass approval prompt: when all seven completion gates pass, do not ask w
 
 Clarifications → infer/log. Approach → existing patterns > project convention > minimal viable default. Spec/plan approval → reviewer loop. Branch completion → internal finalization phase. Apply YAGNI.
 
-For UI/game tasks, use `2d-game-workflow.md` when relevant. For image/sprite/asset generation or image editing, use `image-generation.md`; dispatch artist work only when files are actually needed.
+For UI/browser-game tasks, apply the dynamic browser-game workflow contract embedded in `workflows/full-auto-pipeline.workflow.js`. For image/sprite/asset generation or image editing, use `image-generation.md`; dispatch artist work only when files are actually needed.
 
 ## Completion Gates
 

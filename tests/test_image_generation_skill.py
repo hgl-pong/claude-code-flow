@@ -54,12 +54,14 @@ def test_image_generation_reference_protocol_and_manifest_contract():
     assert "rate" in ref.lower()
 
 
-def test_auto_mode_lists_image_and_2d_game_references():
+def test_auto_mode_lists_image_and_embedded_game_contract():
     skill = read("skills/auto-mode/SKILL.md")
-    game_ref = read("skills/auto-mode/references/2d-game-workflow.md")
+    workflow = read("skills/auto-mode/workflows/full-auto-pipeline.workflow.js")
 
     assert "image-generation.md" in skill
-    assert "2d-game-workflow.md" in skill
+    assert "dynamic browser-game workflow contract" in skill
     assert "image generation" in skill.lower()
-    assert "sprite" in game_ref
-    assert "Phaser" in game_ref
+    assert "Browser-game workflow" in workflow
+    assert "sprite" in workflow
+    assert "Phaser" in workflow
+    assert "React Three Fiber" in workflow

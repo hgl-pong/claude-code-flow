@@ -418,6 +418,17 @@ Skip backend/API/DB/auth/data-only, CLI/config/docs-only, prompt-workflow, tests
 Mixed game requests should split design-backed visual/playable work from non-design simulation/internal tasks.
 Ambiguous cases default to design_applicable=false with skip_reason starting exactly: Non-UI task:`
 
+const GAME_2D_DYNAMIC_WORKFLOW_CONTRACT = `Browser-game workflow: classify before design/coding. Routes: game design planning, 2D default, 3D plain TS/Vite, 3D React, asset pipeline, UI/HUD, QA. Lock player fantasy, primary verbs, core loop, failure/recovery, progression/session length when relevant, UI surface, asset workflow, and playtest path.
+Scope/runtime: preserve explicit user choices and detected stacks first, including React/canvas, plain TypeScript canvas, Three.js, custom engines, or named non-browser runtimes such as Unity, Godot, Bevy, Pygame, terminal, or server simulation. Detection precedence: current user request, package/source imports and scripts, existing game files or asset registry, accepted design/spec for this run, then greenfield default. Greenfield ambiguous small 2D browser games may use prompt-only Phaser + TypeScript + Vite. Explicit 3D/WebGL/plain TS/Vite may use vanilla Three.js. React-hosted 3D/shared React state may use React Three Fiber. Raw WebGL only for explicit shader/custom-renderer work. Babylon.js/PlayCanvas only when explicitly chosen or existing ecosystem requires. Do not add Phaser/Vite/Three/R3F/browser screenshots/new deps when existing runtime conflicts.
+Scope down or ask for native/mobile-first/touch, multiplayer/accounts/leaderboards, monetization, licensed/external assets, production art/audio, save/load/progression, level editors, deployment, or conflicting engines. Assume only routine defaults unless requested: desktop browser, keyboard controls, one playable core loop, one arena/screen, simple code-drawn placeholders, silence unless audio requested, no persistence.
+Game design planning: generate lightweight game-design docs only when the task creates or substantially changes a game, core loop, mechanics, level/content set, controls/readability, progression, or asset direction. Do not generate planning docs for pure bugfixes, test-only work, data/config tweaks, or narrow internal refactors. Use GAME_DESIGN.md for player fantasy, target feel, core loop, primary verbs, goals, failure/recovery, session length, scope boundaries, and out-of-scope items. Use MECHANICS_SPEC.md when rules, numeric tuning, collision/combat/economy/progression/state machines, or deterministic simulation matter. Use CONTENT_PLAN.md when levels, enemies, items, missions, dialogue, maps, waves, or authored encounters matter. Use UX_PLAYTEST_PLAN.md for controls, HUD, feedback, readability, camera, pause/failure/restart, accessibility-sensitive interactions, acceptance refs, and playtest checklist. Use ASSET_BRIEF.md when art/audio/sprite/3D assets are needed: style, dimensions, animations, naming, manifest keys, delivery format, evidence paths. Keep docs lightweight, implementation-facing, and traceable to acceptance; avoid heavyweight GDD sections not needed for the current scope.
+Design: run Design for visible playable canvas/WebGL changes, HUD, menus, overlays, controls/input UX, camera/readability, visual feedback, or asset presentation. Skip Design for pure simulation/rules/data/docs/config/test-only/internal refactors. Split mixed requests so simulation/internal tasks can proceed without visual design while playable/UI tasks use accepted Design refs.
+Architecture: simulation owns serializable rules/entities/movement/collisions/timers/combat/inventory/progression/objectives/saveable state. Renderer owns scenes/sprites/meshes/materials/animations/camera/particles/tweens/presentation. Input maps physical controls to semantic actions before simulation. UI/DOM owns dense text/forms/settings/menus/inventory/accessibility-sensitive controls. Canvas/WebGL HUD is acceptable for simple score/health/ammo overlays with rationale. Keep the playfield clear; use low-chrome/collapsed secondary panels for 3D when relevant. Save serializable simulation state, not sprites/tweens/cameras/DOM/WebGL objects.
+Default 2D shape when no stronger existing structure exists: src/game/simulation, src/game/content, src/game/input, src/game/assets/manifest.ts, src/phaser/scenes, src/phaser/view, src/phaser/adapters/sceneBridge.ts, src/ui/hud, src/ui/menus, src/ui/overlays. Phaser Arcade/engine physics is acceptable for tiny arcade MVP collision/movement when no persistence/replay/testing boundary is needed; separate simulation/state modules once multiple mechanics, score/timer progression, inventory, persistence, replay, deterministic tests, or saveable state matter.
+Assets: use image-generation.md and artist-prompt.md for 2D sprites/images. Start sprite animations from one approved in-game seed frame, generate whole strips in one task, preserve facing direction/silhouette family/palette family/proportions/readable features/transparent background, normalize with shared scale and bottom-center anchor, and preview before manifest/preload wiring. Artist output must include asset_id, kind, output path, pixel size, logical size if used, transparency/background, scale, preview path/output, concerns, and sprite-sheet metadata: frame_width, frame_height, frame_count, layout columns/rows or strip direction, animation names, fps, loop, origin/anchor, collision bounds when relevant. For explicit 3D asset work, prefer GLB/glTF 2.0 shipping format and record asset size, texture packaging, streaming, LOD/compression concerns when relevant. Verify generated files and preview artifacts exist before manifest/preload imports; never claim final art if provider/auth failed.
+Planning: split data-contract, simulation, input map, artist assets, asset manifest/preload, renderer adapter, HUD/UI, and playtest evidence where applicable. Runnable browser-game tasks need Acceptance refs, Runtime evidence required: required, concrete verification, screenshots/logs/artifacts or explicit unverified refs/risks.
+Runtime evidence: verify build/start, route load, render surface/canvas/WebGL, semantic inputs from acceptance refs, core-loop observation, pause/failure/recovery when relevant, conditional asset load, viewport/focus/pointer-lock/modal handoff when relevant, console status, crash/hang, and screenshot evidence when browser tooling permits. For 3D, also check camera stability, depth readability, resize/aspect ratio, context loss/fallback when applicable, GLB/texture streaming, and collision proxy alignment when relevant. Logs alone cannot clean-pass visual refs; list likely owner for findings: simulation, renderer, frontend, or asset pipeline.`
+
 function defaultDesignContext(status, skipReason) {
   return {
     status: status || 'skipped',
@@ -1326,7 +1337,7 @@ You work independently. If something is unclear:
 2. Write failing test first (for behavior changes)
 3. Implement only what the task specifies — no scope creep
 4. If this task requires art/image assets, read skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py exclusively, verify output files exist, and report manifest/evidence paths. Never claim missing files were generated.
-5. For 2D/browser game tasks, read skills/auto-mode/references/2d-game-workflow.md. Preserve explicit/detected runtime, keep simulation/input/renderer/HUD boundaries when applicable, verify generated asset file existence and preview before manifest/preload wiring, and gather smoke/playtest evidence or list unverified refs/risks.
+5. For browser-game tasks, apply the embedded dynamic browser-game workflow contract. Preserve explicit/detected runtime, keep simulation/input/renderer/HUD boundaries when applicable, verify generated asset file existence and preview before manifest/preload wiring, and gather smoke/playtest evidence or list unverified refs/risks.
 6. Run tests, verify GREEN
 6. Commit with: feat(${task.id}): [what you built]
 7. Self-review before reporting (see below)
@@ -1446,6 +1457,7 @@ ${JSON.stringify(branchDiffEvidence, null, 2)}
 Inspect branch-level diff evidence first. Prefer controller metadata for changed files. Expected commands are git diff --name-status BASE...HEAD and git diff BASE...HEAD, or explicit BASE_SHA..HEAD when applicable.
 
 Review only cross-task integration bugs, conflicts, duplicated changes, missing shared tests, regression risk, and branch-wide consistency issues.
+For branch-level browser-game changes, also enforce the dynamic browser-game contract: runtime not swapped without spec support, 2D/3D stack choice matches request and detected app, simulation/input/renderer/HUD boundaries preserved, asset files/previews exist before manifest/preload wiring, raw paths are not scattered, DOM/canvas/WebGL UI choice is justified, and runnable visual refs have smoke/playtest evidence or explicit unverified refs/risks.
 Do not propose or apply final fixes. Report blocking findings only as review issues.
 
 ## Final Targeted Re-Review Requirements
@@ -1623,7 +1635,7 @@ Inspect controller diff metadata first. Treat files_modified as untrusted. If di
 
 Read the actual code in the changed files. Evaluate:
 
-For changed game/2D/canvas/Phaser/sprite code, treat these as blockers when introduced by this change: gameplay truth embedded in render loops without rationale, direct device reads in simulation, unserializable save state, scattered raw asset paths outside existing manifest/preload convention, asset wiring before files/previews exist, unrequested engine swap/dependency, dense/a11y HUD forced into canvas without reason, or runnable game completion without valid smoke/playtest evidence or limitation.
+For changed browser-game/canvas/WebGL/Phaser/Three/R3F/sprite code, treat these as blockers when introduced by this change: gameplay truth embedded in render loops without rationale, direct device reads in simulation, unserializable save state, scattered raw asset paths outside existing manifest/preload convention, asset wiring before files/previews exist, unrequested engine swap/dependency, 2D/3D stack mismatch, dense/a11y HUD forced into canvas/WebGL without reason, playfield obscured by persistent chrome, or runnable game completion without valid smoke/playtest evidence or limitation.
 
 Cleanliness:
 - Are names clear and accurate (describe WHAT, not HOW)?
@@ -2490,7 +2502,7 @@ phase('Design')
 await flowState('event', { type: 'phase_start', phase: 'design' })
 const designResearchText = allFindings.map(r => `## ${r.angle}\n\n${r.findings}`).join('\n\n---\n\n')
 let classification = normalizeDesignClassification(await agent(
-  `Classify whether this task needs the optional full-auto design stage.\n\n## Task\n${task}\n\n## Research\n${designResearchText}\n\n## Criteria\n${DESIGN_CLASSIFICATION_CRITERIA}\n\nReturn design_applicable=true only for explicit UI/UX/frontend visual changes. Otherwise return false and a skip_reason starting exactly with "Non-UI task:". Do not infer design work just because it could improve polish.`,
+  `Classify whether this task needs the optional full-auto design stage.\n\n## Task\n${task}\n\n## Research\n${designResearchText}\n\n## Criteria\n${DESIGN_CLASSIFICATION_CRITERIA}\n\n## Browser Game Dynamic Workflow Contract\n${GAME_2D_DYNAMIC_WORKFLOW_CONTRACT}\n\nReturn design_applicable=true only for explicit UI/UX/frontend visual changes. Otherwise return false and a skip_reason starting exactly with "Non-UI task:". Do not infer design work just because it could improve polish.`,
   agentOpts('design-classifier', 'Design', DESIGN_CLASSIFICATION_SCHEMA),
 ))
 
@@ -2602,7 +2614,9 @@ ${designContext && designContext.design_applicable ? `Accepted DESIGN.md: ${desi
 2. Decision principles: YAGNI scope, existing codebase patterns first,
    simplest architecture, match project conventions
 3. Check whether this task requires art/image assets. If yes, include an Asset Requirements section that references skills/auto-mode/references/image-generation.md and records concrete asset briefs, count, size/aspect, quality, output path, and evidence requirements. If no assets are needed, state "Asset Requirements: none".
-4. For 2D/browser game tasks, read/use skills/auto-mode/references/2d-game-workflow.md. Record runtime choice and compatibility rationale, assumptions, controls, route, camera/readability if relevant, MVP core loop, failure/restart policy, asset policy, smoke/playtest plan, accepted Design mapping when Design ran, and stable acceptance refs. Preserve explicit/detected React/canvas/plain TS/Three/custom or non-browser runtimes; use Phaser + TypeScript + Vite only as prompt-only greenfield default.
+4. For browser-game tasks, apply this contract inline:
+${GAME_2D_DYNAMIC_WORKFLOW_CONTRACT}
+Record runtime choice and compatibility rationale, assumptions, controls, route, camera/readability if relevant, MVP core loop, failure/restart policy, asset policy, game-design doc needs, smoke/playtest plan, accepted Design mapping when Design ran, and stable acceptance refs. When design docs are needed, include exact doc outputs: GAME_DESIGN.md, MECHANICS_SPEC.md, CONTENT_PLAN.md, UX_PLAYTEST_PLAN.md, and/or ASSET_BRIEF.md; omit docs that do not fit the scope.
 5. Write spec to: ${specPath}
 5. Structure:
 
@@ -2721,26 +2735,28 @@ planResult = await agent(
 
 1. Read the spec at ${spec.spec_path}
 2. If accepted design context exists, read ${designContext && designContext.design_applicable ? designContext.paths.design : 'no DESIGN.md — design skipped'} and preserve those UI constraints; if design was skipped, do not create design tasks.
-3. Break into atomic tasks. Each task: distinct files, clear description,
-   implementation details, depends_on list, verification command
-3. Rules: auto-split independent subsystems; each task completable in one session;
-   every spec requirement covered by at least one task
-4. If the spec requires art/image assets, create explicit artist task(s). Artist tasks must reference skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py, list output paths as files, set runtime_evidence_required to required, and verify generated files plus manifest evidence. If no assets are needed, do not create artist tasks.
-5. For 2D/browser game work, follow skills/auto-mode/references/2d-game-workflow.md. Split data-contract, simulation, input, assets, asset-manifest/preload, renderer, HUD/UI, and playtest tasks where applicable. Include parser-stable lines: Acceptance refs, Runtime evidence required, Risk, Subsystem. Runnable visual/browser game tasks need runtime_evidence_required: required, smoke/playtest verification, and screenshots/logs/artifacts or explicit unverified refs/risks.
-6. Format each task as:
+3. Break into atomic tasks. Each task: distinct files, clear description, implementation details, depends_on list, verification command, acceptance refs, risk, subsystem, runtime-evidence intent.
+4. Rules: auto-split independent subsystems; each task completable in one session; every spec requirement covered by at least one task.
+5. If the spec requires art/image assets, create explicit artist task(s). Artist tasks must reference skills/auto-mode/prompts/artist-prompt.md and skills/auto-mode/references/image-generation.md, use scripts/generate-image.py, list output paths as files, set Runtime evidence required: required, and verify generated files plus manifest evidence. If no assets are needed, do not create artist tasks.
+6. For browser-game work, apply this contract inline:
+${GAME_2D_DYNAMIC_WORKFLOW_CONTRACT}
+If the spec calls for game-design docs, create explicit early planning tasks before implementation. Keep docs lightweight and acceptance-linked; make downstream simulation/UI/asset/playtest tasks depend on the relevant doc tasks.
+7. Format each task with this exact parser-stable grammar:
 
 \`\`\`markdown
 ## Task N: [name]
 
-**Depends on:** none  OR  **Depends on:** task-1, task-2
+ID: task-N
+Depends on: none | task-1, task-2
+Files: repo/relative/path or none
+Tests: command/path or none
+Verification: command/check or none
+Acceptance refs: AC-1, AC-2 or none
+Runtime evidence required: required|optional|not_needed
+Risk: low|medium|high|critical
+Subsystem: data-contract|simulation|input|renderer|hud-ui|assets|asset-manifest|playtest|docs-config|review|other
 
 [description with implementation details]
-
-**Files:** \`src/...\`
-
-**Tests:** \`test/...\`
-
-**Verification:** \`command\`
 \`\`\`
 
 Return the plan path, task count, and number of topological levels.`,
@@ -2768,6 +2784,7 @@ planReview = await agent(
 
 Verify: every spec requirement covered, dependencies correct (no cycles,
 no missing), each task atomic and independently completable.
+For 2D/browser game plans, verify the dynamic 2D contract was applied: runtime preserved, mixed visual/simulation work split correctly, dependencies ordered data-contract → simulation → input/assets → manifest/preload → renderer → HUD/UI → playtest where applicable, and runnable visual/browser tasks include Acceptance refs plus Runtime evidence required: required with smoke/playtest artifacts or explicit unverified refs/risks.
 
 Critical: missing requirement, broken dependency.
 Important: task too large, unclear scope.
@@ -2839,16 +2856,17 @@ Required fields per task:
 - id: "task-N"
 - description: FULL task text from the plan (all details, must not be empty)
 
-Extracted from plan where present, inferred otherwise:
-- depends_on: array of task IDs this task depends on (empty if none)
-- files: array of file paths the task touches
-- tests: array of test file paths
-- verification: array of verification commands
-- acceptance_refs: array of acceptance criteria identifiers from the spec
-- runtime_evidence_required: "required" | "optional" | "not_needed"
-- risk: "low" | "medium" | "high" | "critical"
-- subsystem: which part of the codebase this task affects
+Extracted from exact plan labels where present, inferred otherwise:
+- Depends on: → depends_on array of task IDs (empty if none)
+- Files: → files array of file paths
+- Tests: → tests array of test paths/commands
+- Verification: → verification array of commands/checks
+- Acceptance refs: → acceptance_refs array of spec criteria identifiers
+- Runtime evidence required: → runtime_evidence_required "required" | "optional" | "not_needed"
+- Risk: → risk "low" | "medium" | "high" | "critical"
+- Subsystem: → subsystem string
 
+If the plan explicitly says Runtime evidence required: required, preserve required; do not downgrade runnable 2D browser visual/playable tasks.
 If the plan does not explicitly provide a field, omit it — defaults will be applied.
 Risk inference: tasks touching shared/util code = "high"; tasks with runtime
 behavior changes = default "medium"; docs-only = "low".
